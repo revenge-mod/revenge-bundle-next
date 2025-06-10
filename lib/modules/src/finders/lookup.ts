@@ -144,7 +144,7 @@ export function lookupModule<F extends Filter>(
 export function lookupModule<F extends Filter, O extends LookupModulesOptions>(
     filter: F,
     options: O,
-): LookupModulesResult<F, O>
+): LookupModulesResult<F, O> | []
 
 export function lookupModule(filter: Filter, options?: LookupModulesOptions) {
     if (options?.includeInitialized ?? true)
