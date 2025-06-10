@@ -2,6 +2,7 @@ import { getAssetIdByName } from '@revenge-mod/assets'
 import FormSwitch from '@revenge-mod/components/FormSwitch'
 import Page from '@revenge-mod/components/Page'
 import SearchInput from '@revenge-mod/components/SearchInput'
+import { ActionSheetActionCreators } from '@revenge-mod/discord/actions'
 import { Tokens } from '@revenge-mod/discord/common'
 import { Stores } from '@revenge-mod/discord/common/flux'
 import { Design } from '@revenge-mod/discord/design'
@@ -25,25 +26,32 @@ import { RouteNames, Setting } from '../constants'
 import type { ReactNavigationParamList } from '@revenge-mod/externals/react-navigation'
 import type { InternalPlugin } from '@revenge-mod/plugins/_'
 import type { PluginApi } from '@revenge-mod/plugins/types'
-import { ActionSheetActionCreators } from '@revenge-mod/discord/actions'
 import type { Plugin } from '@revenge-mod/plugins/types'
+
 const { Card, Text, Stack, IconButton } = Design
 
-const ACTION_KEY = "sort-key"
-
+const ACTION_KEY = 'sort-key'
 
 const sortOptions: Record<string, (a: Plugin[], b: Plugin[]) => number> = {
-    "Name (A-Z)": (a, b) => a[0].manifest.name.localeCompare(b[0].manifest.name),
-    "Name (Z-A)": (a, b) => b[0].manifest.name.localeCompare(a[0].manifest.name),
-    "Enabled": (a, b) => Number(Boolean(b[0].flags & PluginFlags.Enabled)) - Number(a[0].flags & PluginFlags.Enabled),
-    "Disabled": (a, b) => Number(a[0].flags & PluginFlags.Enabled) - Number(b[0].flags & PluginFlags.Enabled)
+    'Name (A-Z)': (a, b) =>
+        a[0].manifest.name.localeCompare(b[0].manifest.name),
+    'Name (Z-A)': (a, b) =>
+        b[0].manifest.name.localeCompare(a[0].manifest.name),
+    Enabled: (a, b) =>
+        Number(Boolean(b[0].flags & PluginFlags.Enabled)) -
+        Number(a[0].flags & PluginFlags.Enabled),
+    Disabled: (a, b) =>
+        Number(a[0].flags & PluginFlags.Enabled) -
+        Number(b[0].flags & PluginFlags.Enabled),
 }
 
 export default function RevengePluginsSettingScreen() {
     const [search, setSearch] = useState('')
     const debouncedSetSearch = useCallback(debounce(setSearch, 100), [])
-    const [sortFn, setSortFn] = useState<(a: any, b: any) => number>(() => (a: Plugin[], b: Plugin[]) => a[0].manifest.name.localeCompare(b[0].manifest.name))
-    const [iteration, setIteration] = useState(0)
+    const [sortFn, setSortFn] = useState<(a: any, b: any) => number>(
+        () => sortOptions['Name (A-Z)'],
+    )
+
     const { width } = useWindowDimensions()
     const numColumns = Math.floor((width - 16) / 448)
 
@@ -52,65 +60,63 @@ export default function RevengePluginsSettingScreen() {
             [..._plugins.values()].map(
                 plugin => [plugin, _metas.get(plugin.manifest.id)![2]] as const,
             ),
-        [],
-    )
-
-    const sortedPlugins = useMemo(
-        () => {
-            return plugins.slice().sort(sortFn)
-        }, [plugins, sortFn, iteration],
+        [sortFn],
     )
 
     const filteredPlugins = useMemo(
         () =>
-            sortedPlugins.filter(([plugin]) => { 
-                const { name, description, author } = plugin.manifest
-                const query = search.toLowerCase()
-                return (
-                    name.toLowerCase().includes(query) ||
-                    description.toLowerCase().includes(query) ||
-                    author.toLowerCase().includes(query)
-                )
-            }),
-        [search, sortedPlugins],
+            plugins
+                .filter(([plugin]) => {
+                    const { name, description, author } = plugin.manifest
+                    const query = search.toLowerCase()
+                    return (
+                        name.toLowerCase().includes(query) ||
+                        description.toLowerCase().includes(query) ||
+                        author.toLowerCase().includes(query)
+                    )
+                })
+                .slice()
+                .sort(sortFn),
+        [plugins, search],
     )
 
     const style = useHeaderStyles()
     return (
         <Page spacing={16}>
-            <Design.Stack direction='horizontal'>
+            <Design.Stack direction="horizontal">
                 <View style={style.searchBar}>
                     <SearchInput
                         onChange={(v: string) => debouncedSetSearch(v)}
                         size="md"
-
                     />
                 </View>
-                <View >
+                <View style={style.icon}>
                     <IconButton
-                        style={style.icon}
-                        icon={getAssetIdByName("ic_forum_channel_sort_order_24px")!}
+                        icon={
+                            getAssetIdByName(
+                                'ic_forum_channel_sort_order_24px',
+                            )!
+                        }
                         variant="tertiary"
                         disabled={!!search}
                         onPress={() =>
                             ActionSheetActionCreators.openLazy(
-                                import('./components/sortActionWrapper'),
+                                import('../components/SortActionSheet'),
                                 ACTION_KEY,
                                 {
                                     sortOptions,
                                     onSelectSort: (fn: string) => {
-                                        setSortFn(() => sortOptions[fn]);
-                                        ActionSheetActionCreators.hideActionSheet(ACTION_KEY);
-                                    }
-
-                                }
+                                        setSortFn(() => sortOptions[fn])
+                                        ActionSheetActionCreators.hideActionSheet(
+                                            ACTION_KEY,
+                                        )
+                                    },
+                                },
                             )
                         }
-
                     />
                 </View>
             </Design.Stack>
-
 
             <FlashList.MasonryFlashList
                 data={filteredPlugins}
@@ -122,7 +128,6 @@ export default function RevengePluginsSettingScreen() {
                         key={plugin.manifest.id}
                         plugin={plugin}
                         rightGap={columnIndex + 1 < numColumns}
-                        onToggle={() => setIteration(v => v + 1)}
                     />
                 )}
             />
@@ -162,25 +167,21 @@ const usePluginCardStyles = Design.createStyles({
 const useHeaderStyles = Design.createStyles({
     icon: {
         flex: 1,
-        paddingTop: 4
+        justifyContent: 'center',
     },
     searchBar: {
         flex: 6,
-        
-    }
-
+    },
 })
 
 function InstalledPluginCard({
     plugin,
     iflags,
     rightGap,
-    onToggle,
 }: {
     plugin: InternalPlugin
     iflags: number
-    rightGap?: boolean,
-    onToggle: () => void
+    rightGap?: boolean
 }) {
     const {
         manifest: { name, description, author, icon },
@@ -193,7 +194,6 @@ function InstalledPluginCard({
     const styles = usePluginCardStyles()
 
     return (
-
         <Card style={[styles.card, rightGap && styles.rightGap]}>
             <Stack
                 direction="horizontal"
@@ -230,7 +230,11 @@ function InstalledPluginCard({
                         } else await plugin.disable()
 
                         reRender()
-                        onToggle()
+
+                        // TODO(plugins/settings): handle sorting after plugin enabled/disabled
+                        // make an event based system for this, so we can register a listener for when plugins are disabled or enabled
+                        // and sort the list again afterwards
+
                         // TODO(plugins/settings): show ReloadRequired modal
                         // make an event based system for this, so we can register a listener for when plugins are disabled
                         // and check its flags afterwards
