@@ -63,6 +63,7 @@ export function registerPlugin<S extends AnyObject = AnyObject>(
             start: options.start,
             stop: options.stop,
         },
+        SettingsComponent: options.SettingsComponent,
         status: 0,
         flags,
         disable: () => disablePlugin(plugin),

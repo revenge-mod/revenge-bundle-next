@@ -1,5 +1,6 @@
 import type { Storage, StorageOptions } from '@revenge-mod/storage'
 import type { AnyObject } from '@revenge-mod/utils/types'
+import type { FunctionComponent } from 'react'
 import type { PluginApiModules } from './apis/modules'
 import type { PluginApiPlugins } from './apis/plugins'
 import type { PluginApiReact } from './apis/react'
@@ -114,6 +115,7 @@ export interface PluginManifest {
 
 export interface PluginOptions<S extends AnyObject = AnyObject>
     extends PluginLifecycles<S> {
+    SettingsComponent?: PluginSettingsComponent<S>
     storage?: Omit<StorageOptions<S>, 'directory'>
 }
 
@@ -177,6 +179,11 @@ export interface Plugin<S extends AnyObject = AnyObject> {
     errors: unknown[]
 
     /**
+     * The plugin settings page.
+     */
+    SettingsComponent?: PluginSettingsComponent<S>
+
+    /**
      * Disable the plugin. This will also stop the plugin if it is running.
      */
     disable(): Promise<void>
@@ -185,3 +192,6 @@ export interface Plugin<S extends AnyObject = AnyObject> {
      */
     stop(): Promise<void>
 }
+
+export type PluginSettingsComponent<S extends AnyObject = AnyObject> =
+    FunctionComponent<{ api: PluginApi<S> }>

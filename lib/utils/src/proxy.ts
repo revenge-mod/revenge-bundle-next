@@ -47,7 +47,7 @@ export function getProxyTarget(obj: object) {
 
 const _metas = new WeakMap<
     object,
-    [factory: () => unknown, cacheable: boolean, cache?: unknown]
+    [factory: () => unknown, bind: boolean, cacheable: boolean, cache?: unknown]
 >()
 
 const _handler = {
@@ -64,7 +64,7 @@ const _handler = {
         const target = unproxifyFromHint(hint)
         const val = Reflect.get(target!, p, recv)
 
-        if (typeof val === 'function')
+        if (typeof val === 'function' && _metas.get(hint)![1])
             return new Proxy(val, {
                 // If thisArg happens to be a proxified value, we will use the target object instead
                 apply: (fn, thisArg, args) =>
@@ -98,6 +98,13 @@ export interface ProxifyOptions {
      * Whether the proxified value should be cached.
      */
     cache?: boolean
+    /**
+     * For methods of the proxified value, whether to bind the `this` context to the proxified value.
+     * The original reference of this method will NOT be retained. To get the original method, use `getProxyTarget` on the method.
+     *
+     * @default false
+     */
+    bindMethods?: boolean
 }
 
 /**
@@ -140,7 +147,11 @@ export function proxify<T>(signal: () => T, options?: ProxifyOptions): T {
             break
     }
 
-    _metas.set(hint, [signal, options?.cache ?? false])
+    _metas.set(hint, [
+        signal,
+        options?.bindMethods ?? false,
+        options?.cache ?? false,
+    ])
     return new Proxy(hint, _handler)
 }
 
@@ -181,7 +192,7 @@ export function unproxify<T extends object>(proxified: T): T {
 
 function unproxifyFromHint(hint: object) {
     const meta = _metas.get(hint)!
-    if (meta[1]) return meta[2] ?? ((meta[2] = meta[0]()) as any)
+    if (meta[1]) return meta[2] ?? ((meta[3] = meta[0]()) as any)
     return meta[0]() as any
 }
 

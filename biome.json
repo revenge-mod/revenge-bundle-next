@@ -18,6 +18,7 @@
     "enabled": true
   },
   "files": {
+    "includes": ["*.js", "*.json", "*.ts", "*.tsx", "*.jsx", "*.mjs"],
     "ignoreUnknown": true
   },
   "formatter": {

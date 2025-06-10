@@ -96,6 +96,7 @@ export interface Design {
     ContextMenuItem: DiscordModules.Components.ContextMenuItem
     IconButton: DiscordModules.Components.IconButton
     ImageButton: DiscordModules.Components.ImageButton
+    NavigatorHeader: DiscordModules.Components.NavigatorHeader
     Stack: DiscordModules.Components.Stack
     Slider: DiscordModules.Components.Slider
     TableRow: DiscordModules.Components.TableRow

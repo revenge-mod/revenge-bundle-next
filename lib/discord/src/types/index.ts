@@ -522,6 +522,14 @@ export namespace DiscordModules {
         }
 
         export type Slider = FC<SliderProps>
+
+        export interface NavigatorHeaderProps {
+            icon?: ReactNode
+            title: string
+            subtitle?: string
+        }
+
+        export type NavigatorHeader = FC<NavigatorHeaderProps>
     }
 
     export namespace Modules {
