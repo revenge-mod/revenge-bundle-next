@@ -88,6 +88,7 @@ export interface Design {
     ActionSheet: DiscordModules.Components.ActionSheet
     ActionSheetRow: DiscordModules.Components.ActionSheetRow
     ActionSheetSwitchRow: DiscordModules.Components.ActionSheetSwitchRow
+    BottomSheetTitleHeader: DiscordModules.Components.BottomSheetTitleHeader
     AlertActionButton: DiscordModules.Components.AlertActionButton
     AlertModal: DiscordModules.Components.AlertModal
     Button: DiscordModules.Components.Button

@@ -195,7 +195,7 @@ export namespace DiscordModules {
         }
 
         export interface ActionSheetActionCreators {
-            openLazy<T extends ComponentType>(
+            openLazy<T extends ComponentType<any>>(
                 sheet: Promise<{ default: T }>,
                 key: string,
                 props: ComponentProps<T>,
@@ -372,7 +372,13 @@ export namespace DiscordModules {
         // TODO
         // export type ActionSheetIconHeader = FC
         // export type ActionSheetHeaderBar = FC
-        // export type BottomSheetTitleHeader = FC
+        export interface BottomSheetTitleHeaderProps {
+            leading?: ReactNode
+            title: string
+            trailing?: ReactNode
+        }
+
+        export type BottomSheetTitleHeader = FC<BottomSheetTitleHeaderProps>
 
         export type IconSize =
             | 'extraSmall10'
@@ -407,6 +413,7 @@ export namespace DiscordModules {
         export interface TableRow extends FC<TableRowProps> {
             Arrow: FC
             Icon: TableRowIcon
+            Group: TableRowGroup
         }
 
         export interface TableSwitchRowProps
