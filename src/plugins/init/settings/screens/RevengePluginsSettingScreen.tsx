@@ -21,36 +21,34 @@ import { PluginFlags } from '@revenge-mod/plugins/constants'
 import { debounce } from '@revenge-mod/utils/callbacks'
 import { useReRender } from '@revenge-mod/utils/react'
 import { createElement, useCallback, useMemo, useState } from 'react'
-import { Image, useWindowDimensions, View } from 'react-native'
+import { Image, StyleSheet, useWindowDimensions, View } from 'react-native'
 import { RouteNames, Setting } from '../constants'
 import type { ReactNavigationParamList } from '@revenge-mod/externals/react-navigation'
 import type { InternalPlugin } from '@revenge-mod/plugins/_'
 import type { PluginApi } from '@revenge-mod/plugins/types'
-import type { Plugin } from '@revenge-mod/plugins/types'
+import type { FilterAndSortActionSheetProps } from '../components/FilterAndSortActionSheet'
 
 const { Card, Text, Stack, IconButton } = Design
 
-const ACTION_KEY = 'sort-key'
+const FilterAndSortActionSheetKey = 'filter-and-sort-plugins'
 
-const sortOptions: Record<string, (a: Plugin[], b: Plugin[]) => number> = {
-    'Name (A-Z)': (a, b) =>
-        a[0].manifest.name.localeCompare(b[0].manifest.name),
-    'Name (Z-A)': (a, b) =>
-        b[0].manifest.name.localeCompare(a[0].manifest.name),
-    Enabled: (a, b) =>
-        Number(Boolean(b[0].flags & PluginFlags.Enabled)) -
-        Number(a[0].flags & PluginFlags.Enabled),
-    Disabled: (a, b) =>
-        Number(a[0].flags & PluginFlags.Enabled) -
-        Number(b[0].flags & PluginFlags.Enabled),
-}
+const Sorts = {
+    'Name (A-Z)': (a, b) => a.manifest.name.localeCompare(b.manifest.name),
+    'Name (Z-A)': (a, b) => b.manifest.name.localeCompare(a.manifest.name),
+    'Enabled first': (a, b) =>
+        Number(Boolean(b.flags & PluginFlags.Enabled)) -
+        Number(a.flags & PluginFlags.Enabled),
+    'Disabled first': (a, b) =>
+        Number(a.flags & PluginFlags.Enabled) -
+        Number(b.flags & PluginFlags.Enabled),
+} as const satisfies FilterAndSortActionSheetProps<string>['sorts']
+
+const DefaultSort: keyof typeof Sorts = 'Name (A-Z)'
 
 export default function RevengePluginsSettingScreen() {
     const [search, setSearch] = useState('')
     const debouncedSetSearch = useCallback(debounce(setSearch, 100), [])
-    const [sortFn, setSortFn] = useState<(a: any, b: any) => number>(
-        () => sortOptions['Name (A-Z)'],
-    )
+    const [sort, setSort] = useState(DefaultSort)
 
     const { width } = useWindowDimensions()
     const numColumns = Math.floor((width - 16) / 448)
@@ -60,7 +58,7 @@ export default function RevengePluginsSettingScreen() {
             [..._plugins.values()].map(
                 plugin => [plugin, _metas.get(plugin.manifest.id)![2]] as const,
             ),
-        [sortFn],
+        [],
     )
 
     const filteredPlugins = useMemo(
@@ -76,48 +74,40 @@ export default function RevengePluginsSettingScreen() {
                     )
                 })
                 .slice()
-                .sort(sortFn),
-        [plugins, search],
+                .sort(([a], [b]) => Sorts[sort](a, b)),
+        [plugins, search, sort],
     )
 
-    const style = useHeaderStyles()
     return (
         <Page spacing={16}>
             <Design.Stack direction="horizontal">
-                <View style={style.searchBar}>
+                <View style={styles.flex}>
                     <SearchInput
                         onChange={(v: string) => debouncedSetSearch(v)}
                         size="md"
                     />
                 </View>
-                <View style={style.icon}>
-                    <IconButton
-                        icon={
-                            getAssetIdByName(
-                                'ic_forum_channel_sort_order_24px',
-                            )!
-                        }
-                        variant="tertiary"
-                        disabled={!!search}
-                        onPress={() =>
-                            ActionSheetActionCreators.openLazy(
-                                import('../components/SortActionSheet'),
-                                ACTION_KEY,
-                                {
-                                    sortOptions,
-                                    onSelectSort: (fn: string) => {
-                                        setSortFn(() => sortOptions[fn])
-                                        ActionSheetActionCreators.hideActionSheet(
-                                            ACTION_KEY,
-                                        )
-                                    },
+                <IconButton
+                    icon={getAssetIdByName('ArrowsUpDownIcon')!}
+                    variant="tertiary"
+                    onPress={() =>
+                        ActionSheetActionCreators.openLazy(
+                            import('../components/FilterAndSortActionSheet'),
+                            FilterAndSortActionSheetKey,
+                            {
+                                sorts: Sorts,
+                                selectedSort: sort,
+                                onSelectSort: key => {
+                                    setSort(key as keyof typeof Sorts)
+                                    ActionSheetActionCreators.hideActionSheet(
+                                        FilterAndSortActionSheetKey,
+                                    )
                                 },
-                            )
-                        }
-                    />
-                </View>
+                            },
+                        )
+                    }
+                />
             </Design.Stack>
-
             <FlashList.MasonryFlashList
                 data={filteredPlugins}
                 estimatedItemSize={108}
@@ -134,6 +124,12 @@ export default function RevengePluginsSettingScreen() {
         </Page>
     )
 }
+
+const styles = StyleSheet.create({
+    flex: {
+        flex: 1,
+    },
+})
 
 const usePluginCardStyles = Design.createStyles({
     icon: {
@@ -157,21 +153,6 @@ const usePluginCardStyles = Design.createStyles({
     alignedContainer: {
         paddingLeft: 28,
     },
-    grow: {
-        flexGrow: 1,
-    },
-    autoSize: {
-        flex: 1,
-    },
-})
-const useHeaderStyles = Design.createStyles({
-    icon: {
-        flex: 1,
-        justifyContent: 'center',
-    },
-    searchBar: {
-        flex: 6,
-    },
 })
 
 function InstalledPluginCard({
@@ -191,22 +172,22 @@ function InstalledPluginCard({
     const reRender = useReRender()
     const essential = Boolean(iflags & InternalPluginFlags.Essential)
     const enabled = Boolean(flags & PluginFlags.Enabled)
-    const styles = usePluginCardStyles()
+    const styles_ = usePluginCardStyles()
 
     return (
-        <Card style={[styles.card, rightGap && styles.rightGap]}>
+        <Card style={[styles_.card, rightGap && styles_.rightGap]}>
             <Stack
                 direction="horizontal"
-                style={[styles.grow, styles.topContainer]}
+                style={[styles.flex, styles_.topContainer]}
             >
                 <Stack
                     direction="horizontal"
                     spacing={8}
-                    style={[styles.topContainer, styles.autoSize]}
+                    style={[styles_.topContainer, styles.flex]}
                 >
                     <Image
                         source={getAssetIdByName(icon ?? 'PuzzlePieceIcon')!}
-                        style={styles.icon}
+                        style={styles_.icon}
                     />
                     <Text variant="heading-lg/semibold">{name}</Text>
                 </Stack>
@@ -242,15 +223,15 @@ function InstalledPluginCard({
                     value={enabled}
                 />
             </Stack>
-            <Stack spacing={4} style={[styles.alignedContainer, styles.grow]}>
+            <Stack spacing={4} style={[styles_.alignedContainer, styles.flex]}>
                 <Text
                     color="text-muted"
-                    style={styles.grow}
+                    style={styles.flex}
                     variant="heading-md/medium"
                 >
                     by {author}
                 </Text>
-                <Text style={styles.grow} variant="text-md/medium">
+                <Text style={styles.flex} variant="text-md/medium">
                     {description}
                 </Text>
             </Stack>
