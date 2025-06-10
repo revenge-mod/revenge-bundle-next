@@ -1,5 +1,9 @@
 import { noopFalse } from '@revenge-mod/utils/callbacks'
-import { lookupModule, lookupModuleByImportedPath } from './lookup'
+import {
+    lookupModule,
+    lookupModuleByImportedPath,
+    lookupModules,
+} from './lookup'
 import { waitForModuleByImportedPath, waitForModules } from './wait'
 import type { MaybeDefaultExportMatched, Metro } from '../types'
 import type { RunFilterReturnExportsOptions } from './_internal'
@@ -11,7 +15,14 @@ export type GetModuleOptions<
     ReturnNamespace extends boolean = boolean,
     IncludeUninitialized extends boolean = boolean,
 > = WaitForModulesOptions<ReturnNamespace> &
-    LookupModulesOptions<ReturnNamespace, IncludeUninitialized>
+    LookupModulesOptions<ReturnNamespace, IncludeUninitialized> & {
+        /**
+         * The maximum number of modules to get.
+         *
+         * @default 1
+         */
+        max?: number
+    }
 
 export type GetModuleResult<
     F extends Filter,
@@ -25,7 +36,7 @@ export type GetModuleCallback<T> = (exports: T, id: Metro.ModuleID) => any
 export type GetModuleUnsubscribeFunction = () => boolean
 
 /**
- * Get a module matching the filter.
+ * Get modules matching the filter.
  *
  * This is a combination of {@link lookupModule} and {@link waitForModules}.
  *
@@ -42,6 +53,11 @@ export type GetModuleUnsubscribeFunction = () => boolean
  * getModule(byProps<typeof import('@shopify/flash-list')>('FlashList'), FlashList => {
  *   // Called when the module is initialized
  * })
+ *
+ * // Get multiple modules matching the filter
+ * getModule(byProps<ReactNative.AssetsRegistry>('registerAsset'), AssetsRegistry => {
+ *   // Called 2 times, once for each module that matches the filter
+ * }, { max: 2 })
  * ```
  */
 export function getModule<F extends Filter>(
@@ -65,16 +81,24 @@ export function getModule(
     callback: GetModuleCallback<any>,
     options?: GetModuleOptions,
 ) {
-    const [exports, id] = lookupModule(filter, options!)
-    if (id != null) {
-        callback(exports, id)
-        return noopFalse
-    }
+    let max = options?.max ?? 1
+
+    if (max === 1) {
+        const [exports, id] = lookupModule(filter, options!)
+        if (id != null) {
+            callback(exports, id)
+            return noopFalse
+        }
+    } else
+        for (const [exports, id] of lookupModules(filter, options!)) {
+            callback(exports, id)
+            if (--max === 0) return noopFalse
+        }
 
     const unsub = waitForModules(
         filter,
         (exports, id) => {
-            unsub()
+            if (--max === 0) unsub()
             callback(exports, id)
         },
         options!,
@@ -84,7 +108,8 @@ export function getModule(
 }
 
 /**
- * Get a module by its imported path.
+ * Get a single module by its imported path.
+ * Once a module is found, unsubscription happens automatically, since imported paths are unique.
  *
  * @param path The path to find the module by.
  * @param options The options to use for the find.

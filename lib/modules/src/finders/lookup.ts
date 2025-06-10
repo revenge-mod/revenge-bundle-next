@@ -139,7 +139,7 @@ export function* lookupModules(filter: Filter, options?: LookupModulesOptions) {
  */
 export function lookupModule<F extends Filter>(
     filter: F,
-): LookupModulesResult<F, object>
+): LookupModulesResult<F, object> | []
 
 export function lookupModule<F extends Filter, O extends LookupModulesOptions>(
     filter: F,

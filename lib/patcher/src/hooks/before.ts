@@ -34,12 +34,8 @@ function unpatchBefore<T extends UnknownFunction>(
 
 export function before<
     Parent extends Record<Key, UnknownFunction>,
-    Key extends PropertyKey,
->(
-    parent: Parent,
-    key: FiniteDomain<Key>,
-    hook: BeforeHook<Parent[Key]>,
-): () => void
+    Key extends keyof Parent,
+>(parent: Parent, key: Key, hook: BeforeHook<Parent[Key]>): () => void
 export function before<Key extends PropertyKey, Value extends UnknownFunction>(
     parent: Record<Key, Value>,
     key: FiniteDomain<Key>,

@@ -34,12 +34,8 @@ function unpatchAfter<T extends UnknownFunction>(
 
 export function after<
     Parent extends Record<Key, UnknownFunction>,
-    Key extends PropertyKey,
->(
-    parent: Parent,
-    key: FiniteDomain<Key>,
-    hook: AfterHook<Parent[Key]>,
-): () => void
+    Key extends keyof Parent,
+>(parent: Parent, key: Key, hook: AfterHook<Parent[Key]>): () => void
 export function after<Key extends PropertyKey, Value extends UnknownFunction>(
     parent: Record<Key, Value>,
     key: FiniteDomain<Key>,

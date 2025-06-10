@@ -72,12 +72,8 @@ function unpatchInstead<T extends UnknownFunction>(
 
 export function instead<
     Parent extends Record<Key, UnknownFunction>,
-    Key extends PropertyKey,
->(
-    parent: Parent,
-    key: FiniteDomain<Key>,
-    hook: InsteadHook<Parent[Key]>,
-): () => void
+    Key extends keyof Parent,
+>(parent: Parent, key: Key, hook: InsteadHook<Parent[Key]>): () => void
 export function instead<Key extends PropertyKey, Value extends UnknownFunction>(
     parent: Record<Key, Value>,
     key: FiniteDomain<Key>,

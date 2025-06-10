@@ -12,17 +12,19 @@ const lanHost = process.argv.includes('--lan')
 console.info(chalk.redBright(`\nRevenge ${chalk.white(`v${pkg.version}`)}\n`))
 
 const cwdify = (path: string) => join(process.cwd(), path)
-const Sources = ['src', 'lib', 'plugins'].map(cwdify)
-const ExitTriggers = [
-    'scripts',
+const Sources = [
+    'src',
+    'lib',
+    'plugins',
     'shims',
     'package.json',
     'bun.lock',
     'tsconfig.json',
 ].map(cwdify)
+const ExitTriggers = ['scripts'].map(cwdify)
 
 const debouncedBuildDev = debounce(
-    () => ((needRebuild = false), build(true).catch(console.error)),
+    () => ((needRebuild = false), build(true)),
     250,
 )
 
@@ -32,11 +34,7 @@ watcher.subscribe(process.cwd(), (err, events) => {
     if (err) return console.error(err)
 
     if (events.some(it => ExitTriggers.some(se => it.path.startsWith(se)))) {
-        console.error(
-            chalk.redBright(
-                '\u26A0 Scripts, packages, shims, or tsconfig.json has changed, exiting!',
-            ),
-        )
+        console.error(chalk.redBright('\u26A0 Scripts has changed, exiting!'))
         process.exit()
     }
 
@@ -48,13 +46,21 @@ watcher.subscribe(process.cwd(), (err, events) => {
 const server = Bun.serve({
     hostname: lanHost ? '0.0.0.0' : '127.0.0.1',
     async fetch(req, srv) {
-        if (needRebuild) await debouncedBuildDev()
-        console.debug(
-            chalk.gray(
-                `\u{1F79B} Receiving request from ${srv.requestIP(req)!.address}`,
-            ),
-        )
-        return new Response(Bun.file('./dist/revenge.bundle'))
+        try {
+            if (needRebuild) await debouncedBuildDev()
+            console.debug(
+                chalk.gray(
+                    `\u{1F79B} Receiving request from ${srv.requestIP(req)!.address}`,
+                ),
+            )
+
+            const file = Bun.file('./dist/revenge.bundle')
+            if (await file.exists()) return new Response(file)
+            else throw new Error('Could not serve the bundle! No file found.')
+        } catch (e) {
+            console.error(e)
+            throw new Error('Build failed. Check console for details.')
+        }
     },
     port: 4040,
 })
