@@ -1,6 +1,7 @@
 import {
     byDependencies,
     byProps,
+    looseDeps,
     preferExports,
     relativeDep,
 } from '@revenge-mod/modules/finders/filters'
@@ -12,7 +13,11 @@ export let nodeUtil: typeof import('node:util') = proxify(
         const [module] = lookupModule(
             preferExports(
                 byProps<typeof nodeUtil>('inspect'),
-                byDependencies([relativeDep(1), [], []]),
+                byDependencies([
+                    looseDeps([relativeDep(2, true), relativeDep(4, true)]),
+                    [],
+                    [],
+                ]),
             ),
             {
                 includeUninitialized: true,

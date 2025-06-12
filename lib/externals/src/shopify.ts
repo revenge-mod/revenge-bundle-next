@@ -25,7 +25,6 @@ export let FlashList: typeof import('@shopify/flash-list') = proxify(
                     undefined,
                     2,
                     undefined,
-                    undefined,
                 ]),
                 // Dependencies. One in brackets are dynamic or late initialized.
                 // [React, RN, JSXRuntime, (FlashListExports), (Reanimated), (RNBottomSheet), ImportTracker, (BottomSheetFlashList)]

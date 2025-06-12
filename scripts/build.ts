@@ -52,6 +52,10 @@ export default async function build(dev = false, log = true) {
                 (await $`git rev-parse --abbrev-ref HEAD`.text()).trim(),
             ),
             __BUILD_ENV__: JSON.stringify(dev ? 'development' : 'production'),
+
+            // See types.d.ts for what these flags do
+            __BUILD_FLAG_DEBUG_MODULE_LOOKUPS: 'false',
+            __BUILD_FLAG_DEBUG_PROXIFIED_VALUES: 'false',
             __BUILD_FLAG_LOG_PROMISE_REJECTIONS__: String(dev),
         },
         plugins: [
@@ -110,6 +114,7 @@ export default async function build(dev = false, log = true) {
 
     await bundle.write({
         minify: {
+            compress: false,
             mangle: true,
         },
         file: 'dist/revenge.js',

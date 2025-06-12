@@ -1,59 +1,108 @@
 import { getAssetIdByName } from '@revenge-mod/assets'
-import FormSwitch from '@revenge-mod/components/FormSwitch'
+import { styles } from '@revenge-mod/components/_'
 import Page from '@revenge-mod/components/Page'
 import SearchInput from '@revenge-mod/components/SearchInput'
 import { ActionSheetActionCreators } from '@revenge-mod/discord/actions'
-import { Tokens } from '@revenge-mod/discord/common'
-import { Stores } from '@revenge-mod/discord/common/flux'
 import { Design } from '@revenge-mod/discord/design'
-import { RootNavigationRef } from '@revenge-mod/discord/modules/main_tabs_v2'
+import { ReactNavigationNative } from '@revenge-mod/externals/react-navigation'
 import { FlashList } from '@revenge-mod/externals/shopify'
-import {
-    _metas,
-    _plugins,
-    enablePlugin,
-    InternalPluginFlags,
-    initPlugin,
-    preInitPlugin,
-    startPlugin,
-} from '@revenge-mod/plugins/_'
+import { _metas, _plugins, InternalPluginFlags } from '@revenge-mod/plugins/_'
 import { PluginFlags } from '@revenge-mod/plugins/constants'
 import { debounce } from '@revenge-mod/utils/callbacks'
-import { useReRender } from '@revenge-mod/utils/react'
-import { createElement, useCallback, useMemo, useState } from 'react'
-import { Image, StyleSheet, useWindowDimensions, View } from 'react-native'
-import { RouteNames, Setting } from '../constants'
+import { useCallback, useMemo, useState } from 'react'
+import { useWindowDimensions, View } from 'react-native'
+import { ClickOutsideProvider } from 'react-native-click-outside'
+import RevengeIcon from '~assets/RevengeIcon'
+import { InstalledPluginCard } from '../components/PluginCard'
+import {
+    EnablePluginTooltipProvider,
+    EssentialPluginTooltipProvider,
+    resetTooltips,
+} from '../components/TooltipProvider'
+import type { RouteProp } from '@react-navigation/core'
 import type { ReactNavigationParamList } from '@revenge-mod/externals/react-navigation'
 import type { InternalPlugin } from '@revenge-mod/plugins/_'
-import type { PluginApi } from '@revenge-mod/plugins/types'
 import type { FilterAndSortActionSheetProps } from '../components/FilterAndSortActionSheet'
+import type { RouteNames, Setting } from '../constants'
 
-const { Card, Text, Stack, IconButton } = Design
+const { Text, Stack, IconButton, LayerScope } = Design
 
-const FilterAndSortActionSheetKey = 'filter-and-sort-plugins'
-
-const Sorts = {
-    'Name (A-Z)': (a, b) => a.manifest.name.localeCompare(b.manifest.name),
-    'Name (Z-A)': (a, b) => b.manifest.name.localeCompare(a.manifest.name),
-    'Enabled first': (a, b) =>
-        Number(Boolean(b.flags & PluginFlags.Enabled)) -
-        Number(a.flags & PluginFlags.Enabled),
-    'Disabled first': (a, b) =>
-        Number(a.flags & PluginFlags.Enabled) -
-        Number(b.flags & PluginFlags.Enabled),
-} as const satisfies FilterAndSortActionSheetProps<string>['sorts']
-
-const DefaultSort: keyof typeof Sorts = 'Name (A-Z)'
+const FiltersHorizontalIcon = getAssetIdByName('FiltersHorizontalIcon', 'png')!
 
 export default function RevengePluginsSettingScreen() {
+    return (
+        <LayerScope>
+            <ClickOutsideProvider>
+                <Page spacing={16}>
+                    <EssentialPluginTooltipProvider>
+                        <EnablePluginTooltipProvider>
+                            <Screen />
+                        </EnablePluginTooltipProvider>
+                    </EssentialPluginTooltipProvider>
+                </Page>
+            </ClickOutsideProvider>
+        </LayerScope>
+    )
+}
+
+const SearchDebounceTime = 100
+
+const Filters: FilterAndSortActionSheetProps['filters'] = {
+    Enabled: [
+        getAssetIdByName('CircleCheckIcon')!,
+        plugin => Boolean(plugin.flags & PluginFlags.Enabled),
+    ],
+    Disabled: [
+        getAssetIdByName('CircleXIcon')!,
+        plugin => !(plugin.flags & PluginFlags.Enabled),
+    ],
+    Internal: [
+        RevengeIcon,
+        plugin => Boolean(plugin.flags & InternalPluginFlags.Internal),
+    ],
+    Essential: [
+        getAssetIdByName('StarIcon')!,
+        (_, iflags) => Boolean(iflags & InternalPluginFlags.Essential),
+    ],
+} satisfies FilterAndSortActionSheetProps['filters']
+const DefaultFilters: FilterAndSortActionSheetProps['filter'] = []
+
+const DefaultSort: keyof typeof Sorts = 'Name'
+const Sorts = {
+    Name: [
+        getAssetIdByName('IdIcon')!,
+        (a, b) => a.manifest.name.localeCompare(b.manifest.name),
+    ],
+    'Enabled first': [
+        getAssetIdByName('CircleCheckIcon')!,
+        (a, b) =>
+            (b.flags & PluginFlags.Enabled) - (a.flags & PluginFlags.Enabled),
+    ],
+} satisfies FilterAndSortActionSheetProps['sorts']
+
+function Screen() {
+    const navigation = ReactNavigationNative.useNavigation()
+    const route =
+        ReactNavigationNative.useRoute<
+            RouteProp<
+                ReactNavigationParamList,
+                (typeof RouteNames)[typeof Setting.RevengePlugins]
+            >
+        >()
+
     const [search, setSearch] = useState('')
-    const debouncedSetSearch = useCallback(debounce(setSearch, 100), [])
-    const [sort, setSort] = useState(DefaultSort)
+    const debouncedSetSearch = useCallback(
+        debounce(setSearch, SearchDebounceTime),
+        [],
+    )
 
-    const { width } = useWindowDimensions()
-    const numColumns = Math.floor((width - 16) / 448)
+    const [filter, setFilter] = useState(route.params?.filter ?? DefaultFilters)
+    const [matchAll, setMatchAll] = useState(route.params?.matchAll ?? false)
 
-    const plugins = useMemo(
+    const [reverse, setReverse] = useState(route.params?.reverse ?? false)
+    const [sort, setSort] = useState(route.params?.sort ?? DefaultSort)
+
+    const allPlugins = useMemo(
         () =>
             [..._plugins.values()].map(
                 plugin => [plugin, _metas.get(plugin.manifest.id)![2]] as const,
@@ -61,9 +110,16 @@ export default function RevengePluginsSettingScreen() {
         [sortFn],
     )
 
-    const filteredPlugins = useMemo(
+    const plugins = useMemo(
         () =>
-            plugins
+            allPlugins
+                .filter(([plugin, iflags]) => {
+                    if (filter.length === 0) return true
+                    if (matchAll)
+                        return filter.every(f => Filters[f][1](plugin, iflags))
+
+                    return filter.some(f => Filters[f][1](plugin, iflags))
+                })
                 .filter(([plugin]) => {
                     const { name, description, author } = plugin.manifest
                     const query = search.toLowerCase()
@@ -73,215 +129,98 @@ export default function RevengePluginsSettingScreen() {
                         author.toLowerCase().includes(query)
                     )
                 })
-                .slice()
-                .sort(([a], [b]) => Sorts[sort](a, b)),
-        [plugins, search, sort],
+                .sort(([a], [b]) => {
+                    const result = Sorts[sort as keyof typeof Sorts][1](a, b)
+                    if (reverse) return -result
+                    return result
+                }),
+        [search, sort, reverse, filter, matchAll, allPlugins],
     )
 
     const style = useHeaderStyles()
     return (
-        <Page spacing={16}>
-            <Design.Stack direction="horizontal">
-                <View style={styles.flex}>
+        <>
+            <Stack direction="horizontal">
+                <View style={styles.grow}>
                     <SearchInput
                         onChange={(v: string) => debouncedSetSearch(v)}
                         size="md"
                     />
                 </View>
                 <IconButton
-                    icon={getAssetIdByName('ArrowsUpDownIcon')!}
+                    icon={FiltersHorizontalIcon}
                     variant="tertiary"
                     onPress={() =>
                         ActionSheetActionCreators.openLazy(
                             import('../components/FilterAndSortActionSheet'),
-                            FilterAndSortActionSheetKey,
+                            'filter-and-sort-plugins',
                             {
+                                filters: Filters,
+                                filter,
+                                setFilter: filter => {
+                                    navigation.setParams({ filter })
+                                    setFilter(filter)
+                                },
+                                matchAll,
+                                setMatchAll: matchAll => {
+                                    navigation.setParams({ matchAll })
+                                    setMatchAll(matchAll)
+                                },
+                                reverse,
+                                setReverse: reverse => {
+                                    navigation.setParams({ reverse })
+                                    setReverse(reverse)
+                                },
                                 sorts: Sorts,
-                                selectedSort: sort,
-                                onSelectSort: key => {
-                                    setSort(key as keyof typeof Sorts)
-                                    ActionSheetActionCreators.hideActionSheet(
-                                        FilterAndSortActionSheetKey,
-                                    )
+                                sort,
+                                setSort: sort => {
+                                    navigation.setParams({ sort })
+                                    setSort(sort)
                                 },
                             },
                         )
                     }
                 />
-            </Design.Stack>
-            <FlashList.MasonryFlashList
-                data={filteredPlugins}
-                estimatedItemSize={108}
-                numColumns={numColumns}
-                renderItem={({ item: [plugin, iflags], columnIndex }) => (
-                    <InstalledPluginCard
-                        iflags={iflags}
-                        key={plugin.manifest.id}
-                        plugin={plugin}
-                        rightGap={columnIndex + 1 < numColumns}
-                    />
-                )}
-            />
-        </Page>
+            </Stack>
+            <PluginMasonryFlashList plugins={plugins} />
+        </>
     )
 }
 
-const styles = StyleSheet.create({
-    flex: {
-        flex: 1,
-    },
-})
-
-const usePluginCardStyles = Design.createStyles({
-    icon: {
-        width: 20,
-        height: 20,
-        tintColor: Tokens.default.colors.TEXT_NORMAL,
-    },
-    card: {
-        flexGrow: 1,
-        marginBottom: 12,
-        paddingVertical: 12,
-        paddingHorizontal: 12,
-        gap: 4,
-    },
-    rightGap: {
-        marginRight: 12,
-    },
-    topContainer: {
-        alignItems: 'center',
-    },
-    alignedContainer: {
-        paddingLeft: 28,
-    },
-})
-
-
-function InstalledPluginCard({
-    plugin,
-    iflags,
-    rightGap,
+function PluginMasonryFlashList({
+    plugins,
 }: {
-    plugin: InternalPlugin
-    iflags: number
-    rightGap?: boolean
+    plugins: (readonly [InternalPlugin, number])[]
 }) {
-    const {
-        manifest: { name, description, author, icon },
-        flags,
-    } = plugin
-
-    const reRender = useReRender()
-    const essential = Boolean(iflags & InternalPluginFlags.Essential)
-    const enabled = Boolean(flags & PluginFlags.Enabled)
-    const styles_ = usePluginCardStyles()
+    const { width, height } = useWindowDimensions()
+    const numColumns = Math.floor((width - 16) / 448)
 
     return (
-        <Card style={[styles_.card, rightGap && styles_.rightGap]}>
-            <Stack
-                direction="horizontal"
-                style={[styles.flex, styles_.topContainer]}
-            >
-                <Stack
-                    direction="horizontal"
-                    spacing={8}
-                    style={[styles_.topContainer, styles.flex]}
-                >
-                    <Image
-                        source={getAssetIdByName(icon ?? 'PuzzlePieceIcon')!}
-                        style={styles_.icon}
-                    />
-                    <Text variant="heading-lg/semibold">{name}</Text>
-                </Stack>
-                {plugin.SettingsComponent && (
-                    <Design.IconButton
-                        size="sm"
-                        variant="secondary"
-                        icon={getAssetIdByName('SettingsIcon')!}
-                        onPress={() => navigatePluginSettings(plugin)}
-                    />
-                )}
-                <FormSwitch
-                    disabled={essential}
-                    // biome-ignore lint/complexity/useArrowFunction: Async arrows are not supported
-                    onValueChange={async function (v) {
-                        if (v) {
-                            await enablePlugin(plugin, true)
-                            await preInitPlugin(plugin)
-                            await initPlugin(plugin)
-                            await startPlugin(plugin)
-                        } else await plugin.disable()
-
-                        reRender()
-
-                        // TODO(plugins/settings): handle sorting after plugin enabled/disabled
-                        // make an event based system for this, so we can register a listener for when plugins are disabled or enabled
-                        // and sort the list again afterwards
-
-                        // TODO(plugins/settings): show ReloadRequired modal
-                        // make an event based system for this, so we can register a listener for when plugins are disabled
-                        // and check its flags afterwards
-                    }}
-                    value={enabled}
+        <FlashList.MasonryFlashList
+            data={plugins}
+            onScrollBeginDrag={resetTooltips}
+            fadingEdgeLength={16}
+            keyExtractor={([plugin]) => plugin.manifest.id}
+            estimatedListSize={{ width: width - 32, height: height - 160 }}
+            estimatedItemSize={116}
+            numColumns={numColumns}
+            ListEmptyComponent={NoPlugins}
+            renderItem={({ item: [plugin, iflags], columnIndex }) => (
+                <InstalledPluginCard
+                    iflags={iflags}
+                    key={plugin.manifest.id}
+                    plugin={plugin}
+                    rightGap={columnIndex + 1 < numColumns}
                 />
-            </Stack>
-            <Stack spacing={4} style={[styles_.alignedContainer, styles.flex]}>
-                <Text
-                    color="text-muted"
-                    style={styles.flex}
-                    variant="heading-md/medium"
-                >
-                    by {author}
-                </Text>
-                <Text style={styles.flex} variant="text-md/medium">
-                    {description}
-                </Text>
-            </Stack>
-        </Card>
+            )}
+        />
     )
 }
 
-// TODO(plugins/settings): Register a custom route instead, so plugin "settings" can actually be pinned and navigated to without hassle.
-// This would require us to implement the event-based plugin management system first, so we can listen to plugin enable/disable events and update the settings accordingly.
-export function navigatePluginSettings(plugin: InternalPlugin) {
-    const [api] = _metas.get(plugin.manifest.id)!
-    const navigation =
-        RootNavigationRef.getRootNavigationRef<ReactNavigationParamList>()
-    if (!navigation.isReady()) return
-
-    navigation.navigate(RouteNames[Setting.RevengeCustomPage], {
-        render: () =>
-            createElement(plugin.SettingsComponent!, {
-                api: api as PluginApi,
-            }),
-        options: plugin.manifest.icon
-            ? {
-                  headerTitle: () => (
-                      <Design.NavigatorHeader
-                          icon={
-                              <Image
-                                  style={{
-                                      width: 24,
-                                      height: 24,
-                                      marginEnd: 8,
-                                      tintColor:
-                                          Tokens.default.internal.resolveSemanticColor(
-                                              Stores.ThemeStore.theme,
-                                              Tokens.default.colors
-                                                  .HEADER_PRIMARY,
-                                          ),
-                                  }}
-                                  source={getAssetIdByName(
-                                      plugin.manifest.icon!,
-                                  )}
-                              />
-                          }
-                          title={plugin.manifest.name}
-                      />
-                  ),
-              }
-            : {
-                  title: plugin.manifest.name,
-              },
-    })
+function NoPlugins() {
+    return (
+        <Text variant="heading-md/medium" style={{ textAlign: 'center' }}>
+            No plugins found. Try changing your query or filters.
+        </Text>
+    )
 }

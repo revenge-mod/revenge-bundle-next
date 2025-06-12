@@ -83,7 +83,8 @@ export let FormSwitch: DiscordModules.Components.FormSwitch = proxify(() => {
 })!
 
 export interface Design {
-    createStyles: DiscordModules.Styles.CreateStylesFunction
+    createStyles: DiscordModules.Components.Styles.CreateStylesFunction
+    useTooltip: DiscordModules.Components.UseTooltipFunction
 
     ActionSheet: DiscordModules.Components.ActionSheet
     ActionSheetRow: DiscordModules.Components.ActionSheetRow
@@ -97,6 +98,7 @@ export interface Design {
     ContextMenuItem: DiscordModules.Components.ContextMenuItem
     IconButton: DiscordModules.Components.IconButton
     ImageButton: DiscordModules.Components.ImageButton
+    LayerScope: DiscordModules.Components.LayerScope
     NavigatorHeader: DiscordModules.Components.NavigatorHeader
     Stack: DiscordModules.Components.Stack
     Slider: DiscordModules.Components.Slider

@@ -20,6 +20,9 @@
     },
     "./types": {
       "types": "./src/types.ts"
+    },
+    "./_": {
+      "default": "./src/_internal.ts"
     }
   }
 }

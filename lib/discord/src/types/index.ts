@@ -6,6 +6,7 @@ import type {
     TextInputProps as RNTextInputProps,
     TextProps as RNTextProps,
     TextStyle,
+    View,
     ViewProps,
     ViewStyle,
 } from 'react-native'
@@ -107,7 +108,7 @@ export namespace DiscordModules {
     export interface AppStartPerformance {
         mark(...args: AppStartPerformance.MarkArgs): void
         markAndLog(
-            logger: InstanceType<DiscordModules.Logger>,
+            logger: InstanceType<Logger>,
             ...args: AppStartPerformance.MarkArgs
         ): void
         [index: string]: unknown
@@ -143,31 +144,6 @@ export namespace DiscordModules {
             verboseDangerously(...args: unknown[]): void
             verbose(...args: unknown[]): void
         }
-    }
-
-    export namespace Styles {
-        export type TextType = 'heading' | 'text'
-        export type BasicTextSize = 'sm' | 'md' | 'lg'
-        export type BasicTextSizeWithExtraLarges = BasicTextSize | 'xl' | 'xxl'
-        export type TextSize = BasicTextSizeWithExtraLarges | 'xs' | 'xxs'
-        export type TextWeight = 'normal' | 'medium' | 'semibold' | 'bold'
-        export type TextWeightWithExtraBold = TextWeight | 'extrabold'
-        export type RedesignTextCategory = 'message-preview' | 'channel-title'
-
-        export type TextVariant =
-            | `heading-${BasicTextSizeWithExtraLarges}/${TextWeightWithExtraBold}`
-            | `text-${TextSize}/${TextWeight}`
-            | `display-${BasicTextSize}`
-            | `redesign/${RedesignTextCategory}/${TextWeight}`
-            | 'redesign/heading-18/bold'
-            | 'eyebrow'
-
-        export type TextStyleSheet = Record<TextVariant, RNTextProps>
-        export type CreateStylesFunction = <
-            const S extends Record<string, TextStyle | ViewStyle | ImageStyle>,
-        >(
-            styles: S,
-        ) => () => S
     }
 
     export namespace Actions {
@@ -225,7 +201,54 @@ export namespace DiscordModules {
     }
 
     export namespace Components {
-        export interface BaseButtonProps extends PressableProps {
+        export namespace Styles {
+            export type TextType = 'heading' | 'text'
+            export type BasicTextSize = 'sm' | 'md' | 'lg'
+            export type BasicTextSizeWithExtraLarges =
+                | BasicTextSize
+                | 'xl'
+                | 'xxl'
+            export type TextSize = BasicTextSizeWithExtraLarges | 'xs' | 'xxs'
+            export type TextWeight = 'normal' | 'medium' | 'semibold' | 'bold'
+            export type TextWeightWithExtraBold = TextWeight | 'extrabold'
+            export type RedesignTextCategory =
+                | 'message-preview'
+                | 'channel-title'
+
+            export type TextVariant =
+                | `heading-${BasicTextSizeWithExtraLarges}/${TextWeightWithExtraBold}`
+                | `text-${TextSize}/${TextWeight}`
+                | `display-${BasicTextSize}`
+                | `redesign/${RedesignTextCategory}/${TextWeight}`
+                | 'redesign/heading-18/bold'
+                | 'eyebrow'
+
+            export type TextStyleSheet = Record<TextVariant, RNTextProps>
+            export type CreateStylesFunction = <
+                const S extends Record<
+                    string,
+                    TextStyle | ViewStyle | ImageStyle
+                >,
+            >(
+                styles: S,
+            ) => () => S
+        }
+
+        export type UseTooltipFunction = (
+            ref: React.MutableRefObject<View | null>,
+            props: UseTooltipFunctionProps,
+        ) => unknown
+
+        export interface UseTooltipFunctionProps {
+            label: string
+            position?: 'top' | 'bottom'
+            visible?: boolean
+            onPress?: () => void
+        }
+
+        export interface BaseButtonProps
+            extends PressableProps,
+                React.RefAttributes<View> {
             disabled?: boolean
             size?: ButtonSize
             variant?:
@@ -498,7 +521,7 @@ export namespace DiscordModules {
         }
 
         export interface TextProps extends RNTextProps {
-            variant?: DiscordModules.Styles.TextVariant
+            variant?: Styles.TextVariant
             color?: string
             style?: TextStyle
             lineClamp?: number
@@ -537,6 +560,13 @@ export namespace DiscordModules {
         }
 
         export type NavigatorHeader = FC<NavigatorHeaderProps>
+
+        export interface LayerScopeProps {
+            children?: ReactNode
+            zIndex?: number
+        }
+
+        export type LayerScope = FC<LayerScopeProps>
     }
 
     export namespace Modules {
@@ -566,7 +596,7 @@ export namespace DiscordModules {
                 title: () => string
                 parent: string | null
                 unsearchable?: boolean
-                variant?: DiscordModules.Components.TableRowProps['variant']
+                variant?: Components.TableRowProps['variant']
                 IconComponent?: () => ReactNode
                 usePredicate?: () => boolean
                 useTrailing?: () => ReactNode

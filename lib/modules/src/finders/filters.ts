@@ -366,7 +366,7 @@ export type Every = {
  * const [SomeModule] = lookupModule(every(
  *    byProps('x', 'name'),
  *    byName('SomeName'),
- *    byDependencies([1, 485, , 2]),
+ *    byDependencies([1, 485, undefined, 2]),
  * ))
  * ```
  */
@@ -413,7 +413,7 @@ export type Some = {
  * const [SomeModule] = lookupModule(some(
  *   byProps('x', 'name'),
  *   byName('SomeName'),
- *   byDependencies([1, 485, , 2]),
+ *   byDependencies([1, 485, undefined, 2]),
  * ))
  * ```
  */
@@ -434,6 +434,7 @@ function filtersToKey(filters: Filter[]): string {
 export type ModuleStateAware = <IF extends Filter>(
     initializedFilter: IF,
     uninitializedFilter: Filter<any, false>,
+    strict?: boolean,
 ) => Filter<FilterResult<IF>, false>
 
 /**
@@ -441,24 +442,26 @@ export type ModuleStateAware = <IF extends Filter>(
  *
  * @param initializedFilter The filter to use for initialized modules.
  * @param uninitializedFilter The filter to use for uninitialized modules.
+ * @param strict Whether to also filter with `uninitializedFilter` after `initializedFilter` passes, confirming the module is definitely the correct module. Defaults to `false`.
  *
  * @example
  * ```ts
  * // will filter byProps('x') for initialized modules
- * // and byDependencies([1, 485, , 2]) for uninitialized modules
+ * // and byDependencies([1, 485, undefined, 2]) for uninitialized modules
  * const [SomeModule] = lookupModule(moduleStateAware(
  *   byProps('x'),
- *   byDependencies([1, 485, , 2]),
+ *   byDependencies([1, 485, undefined, 2]),
  * ))
  * ```
  */
 export const moduleStateAware = createFilterGenerator<
     Parameters<ModuleStateAware>
 >(
-    ([initializedFilter, uninitializedFilter], id, exports) => {
+    ([initializedFilter, uninitializedFilter, strict], id, exports) => {
         if (isModuleInitialized(id)) {
-            if (!initializedModuleHasBadExports(id))
-                return initializedFilter(id, exports)
+            if (initializedModuleHasBadExports(id)) return false
+            if (initializedFilter(id, exports))
+                return strict ? uninitializedFilter(id) : true
             return false
         }
 
@@ -470,6 +473,7 @@ export const moduleStateAware = createFilterGenerator<
 export type PreferExports = <WEF extends Filter>(
     withExportsFilter: WEF,
     exportslessFilter: Filter<any, false>,
+    strict?: boolean,
 ) => Filter<FilterResult<WEF>, false>
 
 /**
@@ -481,20 +485,26 @@ export type PreferExports = <WEF extends Filter>(
  *
  * @param withExportsFilter The filter to use for modules with proper exports.
  * @param exportslessFilter The filter to use for modules without proper exports (uninitialized or bad).
+ * @param strict Whether to also filter with `exportslessFilter` after `withExportsFilter` passes, confirming the module is definitely the correct module. Defaults to `false`.
  *
  * @example
  * ```ts
  * // will filter byProps('x') for modules with proper exports
- * // and byDependencies([1, 485, , 2]) for without proper exports (uninitialized or bad)
+ * // and byDependencies([1, 485, undefined, 2]) for without proper exports (uninitialized or bad)
  * const [SomeModule] = lookupModule(preferExports(
  *   byProps('x'),
- *   byDependencies([1, 485, , 2]),
+ *   byDependencies([1, 485, undefined, 2]),
  * ))
  * ```
  */
 export const preferExports = createFilterGenerator<Parameters<PreferExports>>(
-    ([withExportsFilter, exportslessFilter], id, exports) => {
-        if (_inits.has(id)) return withExportsFilter(id, exports)
+    ([withExportsFilter, exportslessFilter, strict], id, exports) => {
+        if (_inits.has(id)) {
+            if (withExportsFilter(id, exports))
+                return strict ? exportslessFilter(id) : true
+            return false
+        }
+
         return exportslessFilter(id)
     },
     ([f1, f2]) => `revenge.preferExports(${f1.key},${f2.key})`,

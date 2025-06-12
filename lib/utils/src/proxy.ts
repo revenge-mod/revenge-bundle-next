@@ -3,6 +3,9 @@
  * This is especially useful for blacklisting exports that cannot be patched.
  */
 
+import { getCurrentStack } from './errors'
+import { createLogger } from './logger'
+
 const _targets = new WeakMap<object, object>()
 
 const OriginalProxy = globalThis.Proxy
@@ -64,7 +67,7 @@ const _handler = {
         const target = unproxifyFromHint(hint)
         const val = Reflect.get(target!, p, recv)
 
-        if (typeof val === 'function' && _metas.get(hint)![1])
+        if (_metas.get(hint)![1] && typeof val === 'function')
             return new Proxy(val, {
                 // If thisArg happens to be a proxified value, we will use the target object instead
                 apply: (fn, thisArg, args) =>
@@ -152,6 +155,12 @@ export function proxify<T>(signal: () => T, options?: ProxifyOptions): T {
         options?.bindMethods ?? false,
         options?.cache ?? false,
     ])
+
+    if (__BUILD_FLAG_DEBUG_PROXIFIED_VALUES) {
+        const v = unproxifyFromHint(hint)
+        if (v == null) warnDeveloperAboutNullishProxifiedValue()
+    }
+
     return new Proxy(hint, _handler)
 }
 
@@ -243,4 +252,12 @@ export function destructure<T extends object>(
                 )
             }, options),
     })
+}
+
+const logger = createLogger('revenge.utils.proxy')
+
+function warnDeveloperAboutNullishProxifiedValue() {
+    logger.wtf(
+        `Proxified value is nullish! The signal is may be invalid.\n${getCurrentStack()}`,
+    )
 }

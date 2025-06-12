@@ -10,7 +10,11 @@ import {
     lookupModule,
     lookupModules,
 } from '@revenge-mod/modules/finders/lookup'
-import { ReactJsxRuntimeModuleId, ReactModuleId } from '@revenge-mod/react'
+import {
+    ReactJsxRuntimeModuleId,
+    ReactModuleId,
+    ReactNativeModuleId,
+} from '@revenge-mod/react'
 import { proxify } from '@revenge-mod/utils/proxy'
 import { DispatcherModuleId } from './common/flux'
 import type { DiscordModules } from './types'
@@ -22,6 +26,7 @@ export let ActionSheetActionCreators: DiscordModules.Actions.ActionSheetActionCr
                 preferExports(
                     byProps<DiscordModules.Actions.ActionSheetActionCreators>(
                         'hideActionSheet',
+                        'openLazy',
                     ),
                     byDependencies([
                         undefined,
@@ -52,15 +57,10 @@ export let AlertActionCreators: DiscordModules.Actions.AlertActionCreators =
                 preferExports(
                     byProps<DiscordModules.Actions.AlertActionCreators>(
                         'openAlert',
-                        'dismissAlert',
                     ),
                     byDependencies([
-                        ReactModuleId,
-                        ReactJsxRuntimeModuleId,
-                        undefined,
-                        DispatcherModuleId,
-                        relativeDep(1),
-                        undefined,
+                        [[], relativeDep(1)],
+                        [ReactNativeModuleId, 2],
                         2,
                     ]),
                 ),

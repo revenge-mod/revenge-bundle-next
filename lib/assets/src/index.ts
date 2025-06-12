@@ -62,7 +62,7 @@ export function* getPackagerAssets(): Generator<PackagerAsset> {
  */
 export function getAssetByName(
     name: string,
-    type = _preferredType,
+    type?: Asset['type'],
 ): Asset | undefined {
     const id = getAssetIdByName(name, type)
     if (id !== undefined) return AssetsRegistry.getAssetByID(id)
@@ -98,13 +98,27 @@ export function getAssetsByName(
  */
 export function getAssetIdByName(
     name: string,
-    type = _preferredType,
+    type?: Asset['type'],
 ): AssetId | undefined {
     const reg = cache[name]
     if (!reg) return
 
-    const mid = reg[type] ?? reg[Object.keys(reg)[0]!]
-    if (mid !== undefined) return __r(mid)
+    if (type) {
+        const mid = reg[type]
+        if (mid === undefined) return
+        return __r(mid)
+    }
+
+    let mid = reg[_preferredType]
+    if (mid === undefined)
+        for (const t in reg) {
+            mid = reg[t]
+            break
+        }
+
+    if (mid === undefined) return
+
+    return __r(mid)
 }
 
 /**

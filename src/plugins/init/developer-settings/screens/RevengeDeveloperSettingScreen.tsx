@@ -1,3 +1,4 @@
+import { styles } from '@revenge-mod/components/_'
 import { ToastActionCreators } from '@revenge-mod/discord/actions'
 import { Design } from '@revenge-mod/discord/design'
 import { SettingListRenderer } from '@revenge-mod/discord/modules/settings/renderer'
@@ -16,7 +17,7 @@ const CircleCheckIcon = lookupGeneratedIconComponent(
 // TODO(plugins/settings): debug bridge
 export default function RevengeDeveloperSettingScreen() {
     return (
-        <Design.Stack spacing={0} style={{ flexGrow: 1 }}>
+        <Design.Stack spacing={0} style={styles.flex}>
             {globalThis.__REACT_DEVTOOLS__ && <RDTAddrSetting />}
             <SettingListRenderer.SettingsList
                 sections={[

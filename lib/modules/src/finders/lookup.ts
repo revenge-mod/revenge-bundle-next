@@ -1,3 +1,5 @@
+import { getCurrentStack } from '@revenge-mod/utils/errors'
+import { createLogger } from '@revenge-mod/utils/logger'
 import { _inits, _paths, _uninits } from '../metro/_internal'
 import { getInitializedModuleExports } from '../metro/utils'
 import { exportsFromFilterResultFlag, runFilter } from './_internal'
@@ -100,12 +102,16 @@ export function lookupModules<
 >(filter: F, options: O): Generator<LookupModulesResult<F, O>, undefined>
 
 export function* lookupModules(filter: Filter, options?: LookupModulesOptions) {
+    let warn = true
+
     if (options?.includeInitialized ?? true)
         for (const id of _inits) {
             const exports = getInitializedModuleExports(id)
             const flag = runFilter(filter, id, exports, options)
-            if (flag)
+            if (flag) {
+                warn = false
                 yield [exportsFromFilterResultFlag(flag, exports, options), id]
+            }
         }
 
     if (options?.includeUninitialized)
@@ -114,13 +120,18 @@ export function* lookupModules(filter: Filter, options?: LookupModulesOptions) {
                 // Run the filter again to ensure we have the correct exports
                 const exports = __r(id)
                 const flag = runFilter(filter, id, exports, options)
-                if (flag)
+                if (flag) {
+                    warn = false
                     yield [
                         exportsFromFilterResultFlag(flag, exports, options),
                         id,
                     ]
-                else warnDeveloperAboutAPartialFilterMatch(id, filter.key)
+                } else if (__BUILD_FLAG_DEBUG_MODULE_LOOKUPS)
+                    warnDeveloperAboutPartialFilterMatch(id, filter.key)
             }
+
+    if (__BUILD_FLAG_DEBUG_MODULE_LOOKUPS)
+        if (warn) warnDeveloperAboutNoFilterMatch(filter)
 }
 
 /**
@@ -166,8 +177,12 @@ export function lookupModule(filter: Filter, options?: LookupModulesOptions) {
                         exportsFromFilterResultFlag(flag, exports, options),
                         id,
                     ]
-                warnDeveloperAboutAPartialFilterMatch(id, filter.key)
+                else if (__BUILD_FLAG_DEBUG_MODULE_LOOKUPS)
+                    warnDeveloperAboutPartialFilterMatch(id, filter.key)
             }
+
+    if (__BUILD_FLAG_DEBUG_MODULE_LOOKUPS)
+        warnDeveloperAboutNoFilterMatch(filter)
 
     return []
 }
@@ -189,20 +204,40 @@ export function lookupModuleByImportedPath<T = any>(
     path: string,
 ): [exports: T, id: Metro.ModuleID] | [] {
     const id = _paths.get(path)
-    if (id == null) return []
+    if (id == null) {
+        return []
+    }
     return [getInitializedModuleExports(id), id]
 }
+
+const logger = createLogger('revenge.modules.finders.lookup')
 
 /**
  * Warns the developer that the filter matched during exportsless comparison, but not during the full comparison.
  * This will cause modules to be initialized unnecessarily, and may cause issues.
  * @internal
  */
-function warnDeveloperAboutAPartialFilterMatch(
-    id: Metro.ModuleID,
-    key: string,
-) {
-    console.warn(
-        `[revenge.modules.finders.lookup] Module ${id} matched ${key} during uninitialized lookup, but did not match the full filter.`,
-    )
+function warnDeveloperAboutPartialFilterMatch(id: Metro.ModuleID, key: string) {
+    logger.wtf(`${key} matched module ${id} partially.\n${getCurrentStack()}`)
+}
+
+const __blacklistedFunctions = __BUILD_FLAG_DEBUG_MODULE_LOOKUPS
+    ? [
+          import('./get').then(m => m.getModule),
+          import('@revenge-mod/utils/discord').then(
+              m => m.lookupGeneratedIconComponent,
+          ),
+      ]
+    : []
+
+/**
+ * Warns the developer that no module was found for the given filter.
+ * This is useful for debugging purposes, especially when using filters that are expected to match a module.
+ */
+async function warnDeveloperAboutNoFilterMatch(filter: Filter) {
+    const stack = getCurrentStack()
+    for (const func of __blacklistedFunctions)
+        if (stack.includes((await func).name)) return
+
+    logger.wtf(`No module found for filter: ${filter.key}\n${stack}`)
 }
