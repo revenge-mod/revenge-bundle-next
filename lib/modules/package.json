@@ -21,6 +21,9 @@
     "./native": {
       "default": "./src/native/index.ts"
     },
+    "./native/fs": {
+      "default": "./src/native/fs.ts"
+    },
     "./types": {
       "types": "./src/types.ts"
     }
