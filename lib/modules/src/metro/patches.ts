@@ -4,7 +4,7 @@ import {
     metroImportAll,
     metroImportDefault,
     metroRequire,
-} from './custom'
+} from './runtime'
 import { onModuleInitialized } from './subscriptions'
 import {
     executeImportedPathSubscriptions,

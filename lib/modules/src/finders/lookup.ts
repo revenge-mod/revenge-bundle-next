@@ -1,13 +1,13 @@
 import { getCurrentStack } from '@revenge-mod/utils/error'
 import { proxify } from '@revenge-mod/utils/proxy'
 import { cacheFilterNotFound, getFilterMatches } from '../caches'
-import { metroRequire } from '../metro/custom'
 import {
     mImportedPaths,
     mInitialized,
     mList,
     mUninitialized,
 } from '../metro/patches'
+import { metroRequire } from '../metro/runtime'
 import {
     getInitializedModuleExports,
     isModuleInitialized,
