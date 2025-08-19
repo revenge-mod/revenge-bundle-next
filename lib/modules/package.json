@@ -21,7 +21,6 @@
     "./native": {
       "default": "./src/native/index.ts"
     },
-    },
     "./types": {
       "types": "./src/types.ts"
     }

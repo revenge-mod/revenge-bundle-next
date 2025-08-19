@@ -1,6 +1,6 @@
 import { getCurrentStack } from '@revenge-mod/utils/error'
 import { proxify } from '@revenge-mod/utils/proxy'
-import { cacheFilterNotFound, getCachedFilterRegistry } from '../caches'
+import { cacheFilterNotFound, getFilterMatches } from '../caches'
 import { metroRequire } from '../metro/custom'
 import {
     mImportedPaths,
@@ -164,7 +164,7 @@ export function* lookupModules(filter: Filter, options?: LookupModulesOptions) {
     if (options?.cached ?? true) {
         const notInit = !(options?.initialize ?? true)
 
-        const reg = getCachedFilterRegistry(filter.key)
+        const reg = getFilterMatches(filter.key)
         // Return early if previous lookup was a full lookup and no modules were found
         if (reg === null) return
 
@@ -308,7 +308,7 @@ export function lookupModule(filter: Filter, options?: LookupModulesOptions) {
     if (options?.cached ?? true) {
         const notInit = !(options?.initialize ?? true)
 
-        const reg = getCachedFilterRegistry(filter.key)
+        const reg = getFilterMatches(filter.key)
         // Return early if previous lookup was a full lookup and no modules were found
         if (reg === null) return NotFoundResult
 

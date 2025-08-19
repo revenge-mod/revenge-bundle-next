@@ -1,8 +1,4 @@
-import {
-    cacheBlacklistedModule,
-    cached,
-    getCachedBlacklistedModules,
-} from '../caches'
+import { cache, cacheBlacklistedModule, Uncached } from '../caches'
 import {
     global,
     metroImportAll,
@@ -144,11 +140,8 @@ function handleFactoryCall(
 /// MODULE PATCHES AND BLACKLISTS
 
 // Restore blacklists
-cached.then(cached => {
-    if (cached)
-        for (const id of getCachedBlacklistedModules())
-            mUninitialized.delete(id)
-})
+if (cache !== Uncached)
+    for (const id of cache.blacklist) mUninitialized.delete(id)
 
 const ImportTrackerModuleId = 2
 
