@@ -4,16 +4,19 @@ import { getModuleDependencies, isModuleInitialized } from '../metro/utils'
 import type { If, LogicalOr } from '@revenge-mod/utils/types'
 import type { Metro } from '../types'
 
-export type FilterResult<F> = F extends Filter<infer R, boolean> ? R : never
+export type FilterResult<F> = F extends Filter<infer R, boolean>
+    ? R
+    : F extends FilterBase<infer R>
+      ? R
+      : never
 
 export type IsFilterWithExports<F> = F extends Filter<any, infer WE>
     ? WE
-    : never
+    : F extends FilterBase<any, infer WE>
+      ? WE
+      : never
 
-export interface Filter<
-    _Inferable = any,
-    WithExports extends boolean = boolean,
-> {
+interface FilterBase<_Inferable = any, WithExports extends boolean = boolean> {
     (
         ...args: If<
             WithExports,
@@ -23,9 +26,90 @@ export interface Filter<
     ): boolean
     key: string
 }
+export type Filter<
+    Inferable = any,
+    WithExports extends boolean = boolean,
+> = FilterHelpers & FilterBase<Inferable, WithExports>
+
+interface FilterHelpers {
+    /**
+     * Manually the key for this filter.
+     *
+     * **Don't use this unless you know what you're doing.** Only API exports should be using
+     *
+     * @param key The key to set for this filter.
+     */
+    keyAs<T extends FilterBase>(this: T, key: string): T
+    /**
+     * Combines this filter with another filter, returning a new filter that matches if **both** filters match.
+     *
+     * @param filter The filter to combine with.
+     */
+    and<T extends FilterBase, F extends FilterBase>(
+        this: T,
+        filter: F,
+    ): Filter<
+        FilterResult<T> & FilterResult<F>,
+        LogicalOr<IsFilterWithExports<T>, IsFilterWithExports<F>>
+    >
+    /**
+     * Combines this filter with another filter, returning a new filter that matches if **either** filter matches.
+     *
+     * @param filter
+     */
+    or<T extends FilterBase, F extends FilterBase>(
+        this: T,
+        filter: F,
+    ): Filter<
+        FilterResult<T> | FilterResult<F>,
+        IsFilterWithExports<T> | IsFilterWithExports<F>
+    >
+    /**
+     * Combines this filter with another filter that filters by exports, returning a new filter that matches if **both** filters match.
+     *
+     * @see {@link preferExports} for more information on how to use this.
+     */
+    withExports<T extends FilterBase<any, false>>(
+        this: T,
+        withExportsFilter: FilterBase<any, true>,
+        strict?: boolean,
+    ): Filter<
+        FilterResult<typeof withExportsFilter>,
+        IsFilterWithExports<T> | IsFilterWithExports<typeof withExportsFilter>
+    >
+    /**
+     * Combines this filter with another filter that filters by dependencies, returning a new filter that matches if **both** filters match.
+     *
+     * @see {@link byDependencies} for more information on how to use this.
+     */
+    withDependencies<T extends FilterBase<any, true>>(
+        this: T,
+        deps: ComparableDependencyMap,
+        strict?: boolean,
+    ): Filter<FilterResult<T>, false>
+}
 
 export type FilterGenerator<G extends (...args: any[]) => Filter> = G & {
-    keyFor: (args: Parameters<G>) => string
+    keyFor(args: Parameters<G>): string
+}
+
+const Helpers: FilterHelpers = {
+    keyAs(key) {
+        this.key = key
+        return this
+    },
+    and(filter) {
+        return every(this, filter)
+    },
+    or(filter) {
+        return some(this, filter)
+    },
+    withExports(withExportsFilter, strict) {
+        return preferExports(withExportsFilter, this, strict)
+    },
+    withDependencies(deps, strict) {
+        return preferExports(this, byDependencies(deps), strict)
+    },
 }
 
 /**
@@ -63,15 +147,23 @@ export function createFilterGenerator<A extends any[]>(
 ): FilterGenerator<(...args: A) => Filter<any, false>>
 
 export function createFilterGenerator<A extends any[]>(
-    f: (args: A, id: Metro.ModuleID, exports?: Metro.ModuleExports) => boolean,
+    filter: (
+        args: A,
+        id: Metro.ModuleID,
+        exports?: Metro.ModuleExports,
+    ) => boolean,
     keyFor: (args: A) => string,
 ): FilterGenerator<(...args: A) => Filter> {
-    const generator = (...args: A) => {
-        const filter = (id: Metro.ModuleID, exports?: Metro.ModuleExports) =>
-            f(args, id, exports)
-        filter.key = keyFor(args)
-        return filter
+    type GeneratorType = ReturnType<typeof createFilterGenerator<A>>
+
+    const generator: GeneratorType = (...args: A) => {
+        const filter_ = ((id: Metro.ModuleID, exports?: Metro.ModuleExports) =>
+            filter(args, id, exports)) as ReturnType<GeneratorType>
+
+        filter_.key = keyFor(args)
+        return Object.setPrototypeOf(filter_, Helpers)
     }
+
     generator.keyFor = keyFor
     return generator
 }
@@ -299,7 +391,6 @@ function relative(id: Metro.ModuleID, root?: boolean) {
  *
  * @see {@link byDependencies}
  * @see {@link relative}
- * @see {@link relative.toRoot}
  *
  * @example
  * ```ts
@@ -432,14 +523,14 @@ function depGenRelativeKeyPart(dep: number) {
 }
 
 export type Every = FilterGenerator<{
-    <F1 extends Filter, F2 extends Filter>(
+    <F1 extends FilterBase, F2 extends FilterBase>(
         f1: F1,
         f2: F2,
     ): Filter<
         FilterResult<F1> & FilterResult<F2>,
         LogicalOr<IsFilterWithExports<F1>, IsFilterWithExports<F2>>
     >
-    <F1 extends Filter, F2 extends Filter, F3 extends Filter>(
+    <F1 extends FilterBase, F2 extends FilterBase, F3 extends FilterBase>(
         f1: F1,
         f2: F2,
         f3: F3,
@@ -450,7 +541,7 @@ export type Every = FilterGenerator<{
             IsFilterWithExports<F3>
         >
     >
-    (...filters: Filter[]): Filter
+    (...filters: FilterBase[]): Filter
 }>
 
 /**
@@ -480,14 +571,14 @@ export const every = createFilterGenerator<[...filters: Filter[]]>(
 ) as Every
 
 export type Some = FilterGenerator<{
-    <F1 extends Filter, F2 extends Filter>(
+    <F1 extends FilterBase, F2 extends FilterBase>(
         f1: F1,
         f2: F2,
     ): Filter<
         FilterResult<F1> | FilterResult<F2>,
         IsFilterWithExports<F1> | IsFilterWithExports<F2>
     >
-    <F1 extends Filter, F2 extends Filter, F3 extends Filter>(
+    <F1 extends FilterBase, F2 extends FilterBase, F3 extends FilterBase>(
         f1: F1,
         f2: F2,
         f3: F3,
@@ -497,7 +588,7 @@ export type Some = FilterGenerator<{
         | IsFilterWithExports<F2>
         | IsFilterWithExports<F3>
     >
-    (...filters: Filter[]): Filter
+    (...filters: FilterBase[]): Filter
 }>
 
 /**
@@ -514,7 +605,7 @@ export type Some = FilterGenerator<{
  * ))
  * ```
  */
-export const some = createFilterGenerator<[...filters: Filter[]]>(
+export const some = createFilterGenerator<[...filters: FilterBase[]]>(
     (filters, id, exports) => {
         for (const filter of filters) if (filter(id, exports)) return true
         return false
@@ -522,16 +613,16 @@ export const some = createFilterGenerator<[...filters: Filter[]]>(
     filters => `revenge.some(${filtersToKey(filters)})`,
 ) as Some
 
-function filtersToKey(filters: Filter[]): string {
+function filtersToKey(filters: FilterBase[]): string {
     let s = ''
     for (const filter of filters) s += `${filter.key},`
     return s.substring(0, s.length - 1)
 }
 
 export type ModuleStateAware = FilterGenerator<
-    <IF extends Filter>(
+    <IF extends FilterBase>(
         initializedFilter: IF,
-        uninitializedFilter: Filter<any, false>,
+        uninitializedFilter: FilterBase<any, false>,
         strict?: boolean,
     ) => Filter<FilterResult<IF>, false>
 >
@@ -569,9 +660,9 @@ export const moduleStateAware = createFilterGenerator<
 ) as ModuleStateAware
 
 export type PreferExports = FilterGenerator<
-    <WEF extends Filter>(
+    <WEF extends FilterBase>(
         withExportsFilter: WEF,
-        exportslessFilter: Filter<any, false>,
+        exportslessFilter: FilterBase<any, false>,
         strict?: boolean,
     ) => Filter<FilterResult<WEF>, false>
 >
