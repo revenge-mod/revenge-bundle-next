@@ -93,24 +93,27 @@ export type FilterGenerator<G extends (...args: any[]) => Filter> = G & {
     keyFor(args: Parameters<G>): string
 }
 
-const Helpers: FilterHelpers = {
-    keyAs(key) {
-        this.key = key
-        return this
-    },
-    and(filter) {
-        return every(this, filter)
-    },
-    or(filter) {
-        return some(this, filter)
-    },
-    withExports(withExportsFilter, strict) {
-        return preferExports(withExportsFilter, this, strict)
-    },
-    withDependencies(deps, strict) {
-        return preferExports(this, byDependencies(deps), strict)
-    },
-}
+const Helpers: FilterHelpers = Object.setPrototypeOf(
+    {
+        keyAs(key) {
+            this.key = key
+            return this
+        },
+        and(filter) {
+            return every(this, filter)
+        },
+        or(filter) {
+            return some(this, filter)
+        },
+        withExports(withExportsFilter, strict) {
+            return preferExports(withExportsFilter, this, strict)
+        },
+        withDependencies(deps, strict) {
+            return preferExports(this, byDependencies(deps), strict)
+        },
+    } satisfies FilterHelpers,
+    Function.prototype,
+)
 
 /**
  * Create a filter generator.
