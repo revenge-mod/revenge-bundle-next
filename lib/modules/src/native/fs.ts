@@ -15,7 +15,7 @@ export function exists(path: string) {
     return callBridgeMethod('revenge.fs.exists', [path])
 }
 
-export function deleteFile(path: string) {
+export function rm(path: string) {
     return callBridgeMethod('revenge.fs.delete', [path])
 }
 
@@ -27,7 +27,7 @@ export function writeFileSync(path: string, data: string) {
     return callBridgeMethodSync('revenge.fs.write', [path, data])
 }
 
-export function existsSync(path: string) {
+export function rmSync(path: string) {
     return callBridgeMethodSync('revenge.fs.exists', [path])
 }
 
