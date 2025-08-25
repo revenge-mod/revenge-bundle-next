@@ -59,7 +59,7 @@ export async function callBridgeMethod<N extends MethodName>(
 
         throw 'The module did not return a valid result. The native hook must have failed.'
     } catch (error) {
-        throw new Error(`Call failed: ${String(error)}`)
+        throw new Error(`Call failed: ${error}`)
     }
 }
 
@@ -84,7 +84,7 @@ export function callBridgeMethodSync<N extends MethodName>(
 
         throw 'The module did not return a valid result. The native hook must have failed.'
     } catch (error) {
-        throw new Error(`Call failed: ${String(error)}`)
+        throw new Error(`Call failed: ${error}`)
     }
 }
 
