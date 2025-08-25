@@ -344,6 +344,14 @@ const __DEBUG_WARNED_BAD_BY_DEPENDENCIES_FILTERS__ =
  * // Module having these dependencies: [4, ...], [4, ..., ...], [4, ..., ..., ...], etc. would match:
  * const [SomeOtherModule] = lookupModule(byDependencies(loose([4])))
  * ```
+ *
+ * @example With filter helpers (preferred)
+ * ```ts
+ * const [Logger] = lookupModule(
+ *   byProps('log')
+ *     .withDependencies([4, null, 2]),
+ * )
+ * ```
  */
 export const byDependencies = createFilterGenerator<Parameters<ByDependencies>>(
     ([deps], id) => depCompare(getModuleDependencies(id)!, deps, id, id),
@@ -552,6 +560,15 @@ export type Every = FilterGenerator<{
  *
  * @param filters The filters to combine.
  *
+ * @example With filter helpers (preferred)
+ * ```ts
+ * const [SomeModule] = lookupModule(
+ *   byProps('x', 'name')
+ *     .and(byName('SomeName'))
+ *     .and(byDependencies([1, 485, null, 2])),
+ * )
+ * ```
+ *
  * @example
  * ```ts
  * const [SomeModule] = lookupModule(every(
@@ -598,6 +615,15 @@ export type Some = FilterGenerator<{
  * Combines multiple filters into one, returning true if **some** filters match.
  *
  * @param filters The filters to combine.
+ *
+ * @example With filter helpers (preferred)
+ * ```ts
+ * const [SomeModule] = lookupModule(
+ *   byProps('x', 'name')
+ *     .or(byName('SomeName'))
+ *     .or(byDependencies([1, 485, null, 2])),
+ * )
+ * ```
  *
  * @example
  * ```ts
@@ -680,6 +706,14 @@ export type PreferExports = FilterGenerator<
  * @param withExportsFilter The filter to use for modules with proper exports.
  * @param exportslessFilter The filter to use for modules without proper exports (uninitialized or bad).
  * @param strict Whether to also filter with `exportslessFilter` after `withExportsFilter` passes, confirming the module is definitely the correct module. Defaults to `false`.
+ *
+ * @example With filter helpers (preferred)
+ * ```ts
+ * const [SomeModule] = lookupModule(
+ *   byDependencies([1, 485, null, 2])
+ *     .withExports(byProps('x')),
+ * )
+ * ```
  *
  * @example
  * ```ts
