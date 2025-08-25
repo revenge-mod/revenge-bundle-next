@@ -9,7 +9,7 @@ import {
 } from '@revenge-mod/modules/finders/filters'
 import { getModuleDependencies } from '@revenge-mod/modules/metro/utils'
 import { asap, noop } from '@revenge-mod/utils/callback'
-import { cached, cacheFilterResultForId } from '#modules/src/caches'
+import { cache, cacheFilterResultForId, Uncached } from '#modules/src/caches'
 import { FilterResultFlags } from '#modules/src/finders/_internal'
 import type {
     Filter,
@@ -137,13 +137,11 @@ waitForModules(byStore(), (store, id) => {
     Stores[name] = store
 })
 
-cached.then(cached => {
-    if (!cached)
-        asap(() => {
-            const lookup = lookupModules(byStore(), {
-                uninitialized: true,
-            })
-
-            while (lookup.next().done);
+if (cache === Uncached)
+    asap(() => {
+        const lookup = lookupModules(byStore(), {
+            uninitialized: true,
         })
-})
+
+        while (lookup.next().done);
+    })

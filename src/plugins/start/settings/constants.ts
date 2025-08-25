@@ -15,6 +15,7 @@ export const Setting = {
     ReactVersion: 'ReactVersion',
     ReactNativeVersion: 'ReactNativeVersion',
     HermesVersion: 'HermesVersion',
+    LoaderVersion: 'LoaderVersion',
 } as const
 
 export const RouteNames = {

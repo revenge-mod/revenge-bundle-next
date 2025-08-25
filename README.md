@@ -119,3 +119,4 @@ bun run types
 <sub>Types are generated at `dist/types`. To consume, include `<dir>/globals.d.ts`, and map `@revenge-mod/*` to `<dir>/lib/*`.</sub>
 <br>
 <sub>Bundlers will need to map imports to property access on `revenge` turning `kebab-case` and `snake_case` to `camelCase`.</sub>
+<sub>Example: `@revenge-mod/discord/modules/main_tabs_v2` to `revenge.discord.modules.mainTabsV2`</sub>

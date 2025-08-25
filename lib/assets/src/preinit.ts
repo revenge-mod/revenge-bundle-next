@@ -15,7 +15,7 @@ import {
 import { getModuleDependencies } from '@revenge-mod/modules/metro/utils'
 import { proxify } from '@revenge-mod/utils/proxy'
 import { aOverrides } from './_internal'
-import { cacheAsset, cached } from './caches'
+import { cache, cacheAsset, Uncached } from './caches'
 import type { Metro } from '@revenge-mod/modules/types'
 import type { ReactNative } from '@revenge-mod/react/types'
 import type { Asset, PackagerAsset } from './types'
@@ -52,24 +52,20 @@ const unsubAR = waitForModules(
         if (getModuleDependencies(id)!.length) {
             unsubAR()
 
-            // TODO(lib/assets/caches): Ideally we should not wait for the cache promise here, see the promise impl for more info.
-            cached.then(cached => {
-                if (!cached) {
-                    // Resolve reference once and keep in closure
-                    const metroRequire = __r
+            if (cache === Uncached) {
+                // Resolve reference once and keep in closure
+                const metroRequire = __r
 
-                    // More fragile way, but also more performant:
-                    // There is exactly one asset before the reexported asset registry :/
-                    const firstAssetModuleId = id - 1
-                    for (const mId of mUninitialized) {
-                        if (mId < firstAssetModuleId) continue
+                // More fragile way, but also more performant:
+                // There is exactly one asset before the reexported asset registry :/
+                const firstAssetModuleId = id - 1
+                for (const mId of mUninitialized) {
+                    if (mId < firstAssetModuleId) continue
 
-                        const deps = getModuleDependencies(mId)!
-                        if (deps.length === 1 && deps[0] === id)
-                            metroRequire(mId)
-                    }
+                    const deps = getModuleDependencies(mId)!
+                    if (deps.length === 1 && deps[0] === id) metroRequire(mId)
                 }
-            })
+            }
 
             // We already patched the original asset registry, so we don't need to patch again.
             return

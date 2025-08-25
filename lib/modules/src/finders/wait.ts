@@ -1,5 +1,5 @@
 import { noop } from '@revenge-mod/utils/callback'
-import { getCachedFilterRegistry } from '../caches'
+import { getFilterMatches } from '../caches'
 import { mInitialized } from '../metro/patches'
 import {
     onAnyModuleInitialized,
@@ -97,13 +97,13 @@ export function waitForModules(
     options?: WaitForModulesOptions,
 ): WaitForModulesUnsubscribeFunction {
     if (options?.cached) {
-        const reg = getCachedFilterRegistry(filter.key)
+        const reg = getFilterMatches(filter.key)
         if (reg === null) return noop
 
         if (reg) {
             if (__BUILD_FLAG_DEBUG_MODULE_WAITS__)
                 nativeLoggingHook(
-                    `\u001b[32mUsing cached results for wait \u001b[33m${filter.key}\u001b[0m`,
+                    `\u001b[32mUsing cached results for wait: \u001b[33m${filter.key}\u001b[0m`,
                     1,
                 )
 

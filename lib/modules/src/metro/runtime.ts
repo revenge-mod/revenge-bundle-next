@@ -1,6 +1,8 @@
 /**
- * A more performant implementation of Metro's core functions.
+ * A minimal implementation of Metro's runtime with little overhead.
  * Making initialization faster and use less resources.
+ *
+ * Also avoids cloning exports, allowing for patches to be applied directly without checking for clones.
  */
 
 import { mList } from './patches'
@@ -58,6 +60,9 @@ export const metroImportDefault: Metro.RequireFn = moduleId => {
     if (mod.flags & HasImportedDefault) return mod.importedDefault
 
     const exports = metroRequire(moduleId)
+
+    mod.flags |= HasImportedDefault
+
     return (mod.importedDefault = exports?.__esModule
         ? exports.default
         : exports)
@@ -68,7 +73,11 @@ export const metroImportAll: Metro.RequireFn = moduleId => {
     if (mod.flags & HasImportedAll) return mod.importedAll
 
     const exports = metroRequire(moduleId)
+    // Our implementation doesn't match Metro's because we modify the exports directly instead of cloning
+    // But this is why ours is superior, it allows patching the exports without needing to do it more than a single time
     if (!exports?.__esModule) exports.default = exports
+
+    mod.flags |= HasImportedAll
 
     return (mod.importedAll = exports)
 }
