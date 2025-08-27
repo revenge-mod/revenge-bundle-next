@@ -415,10 +415,10 @@ export function lookupModule(filter: Filter, options?: LookupModulesOptions) {
  *
  * @example
  * ```ts
- * const [{ default: Logger }] = lookupModuleByImportedPath<{ default: typeof DiscordModules.Logger }>('modules/debug/Logger.tsx')
+ * const [{ default: Logger }] = lookupModuleWithImportedPath<{ default: typeof DiscordModules.Logger }>('modules/debug/Logger.tsx')
  * ```
  */
-export function lookupModuleByImportedPath<T = any>(
+export function lookupModuleWithImportedPath<T = any>(
     path: string,
 ): [exports: T, id: Metro.ModuleID] | LookupNotFoundResult {
     const id = mImportedPaths.get(path)

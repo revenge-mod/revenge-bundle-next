@@ -1,8 +1,8 @@
 import { sRefresher, sSections } from '@revenge-mod/discord/_/modules/settings'
 import { onSettingsModulesLoaded } from '@revenge-mod/discord/modules/settings'
 import {
-    waitForModuleByImportedPath,
     waitForModules,
+    waitForModuleWithImportedPath,
 } from '@revenge-mod/modules/finders'
 import { byName } from '@revenge-mod/modules/finders/filters'
 import { instead } from '@revenge-mod/patcher'
@@ -30,7 +30,7 @@ const pluginSettings = registerPlugin(
                 require('./register')
             })
 
-            waitForModuleByImportedPath(
+            waitForModuleWithImportedPath(
                 'modules/main_tabs_v2/native/settings/SettingsNavigator.tsx',
                 exports => {
                     patchSettingsNavigator(exports)

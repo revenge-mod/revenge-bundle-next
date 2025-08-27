@@ -192,7 +192,7 @@ export function waitForModules(
  *
  * @example
  * ```ts
- * waitForModuleByImportedPath(
+ * waitForModuleWithImportedPath(
  *   'utils/PlatformUtils.tsx',
  *   (exports, id) => {
  *      // Do something with the module...
@@ -200,7 +200,7 @@ export function waitForModules(
  * )
  * ```
  */
-export function waitForModuleByImportedPath<T = any>(
+export function waitForModuleWithImportedPath<T = any>(
     path: string,
     callback: WaitForModulesCallback<T>,
     options?: BaseWaitForModulesOptions,

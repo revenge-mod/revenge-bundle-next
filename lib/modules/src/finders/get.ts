@@ -1,10 +1,10 @@
 import { asap, noop } from '@revenge-mod/utils/callback'
 import {
     lookupModule,
-    lookupModuleByImportedPath,
     lookupModules,
+    lookupModuleWithImportedPath,
 } from './lookup'
-import { waitForModuleByImportedPath, waitForModules } from './wait'
+import { waitForModules, waitForModuleWithImportedPath } from './wait'
 import type { If } from '@revenge-mod/utils/types'
 import type { MaybeDefaultExportMatched, Metro } from '../types'
 import type { RunFilterReturnExportsOptions } from './_internal'
@@ -123,22 +123,22 @@ export function getModules(
  *
  * @example
  * ```ts
- * getModuleByImportedPath('modules/main_tabs_v2/native/settings/SettingsConstants.tsx', SettingsConstants => {
+ * getModuleWithImportedPath('modules/main_tabs_v2/native/settings/SettingsConstants.tsx', SettingsConstants => {
  *   console.log('Settings page opened') // Logs once the module is initialized
  * })
  * ```
  */
-export function getModuleByImportedPath<T>(
+export function getModuleWithImportedPath<T>(
     path: string,
     callback: GetModulesCallback<T>,
 ): GetModulesUnsubscribeFunction {
-    const [exports, id] = lookupModuleByImportedPath(path)
+    const [exports, id] = lookupModuleWithImportedPath(path)
     if (id !== undefined) {
         callback(exports, id)
         return noop
     }
 
-    const unsub = waitForModuleByImportedPath(path, (exports, id) => {
+    const unsub = waitForModuleWithImportedPath(path, (exports, id) => {
         unsub()
         callback(exports, id)
     })
