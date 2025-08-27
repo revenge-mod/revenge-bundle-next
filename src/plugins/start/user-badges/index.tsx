@@ -62,8 +62,6 @@ registerPlugin(
                     'ProfileBadgeRows',
                 ),
                 ({ ProfileBadgeRows }) => {
-                    unsub()
-
                     cleanup(
                         beforeJSX(ProfileBadgeRows, args => {
                             const [, props] = args
