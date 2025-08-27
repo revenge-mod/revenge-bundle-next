@@ -4,6 +4,7 @@ import { lookupModule } from '@revenge-mod/modules/finders'
 import {
     byDependencies,
     createFilterGenerator,
+    FilterFlags,
 } from '@revenge-mod/modules/finders/filters'
 import {
     ReactJSXRuntimeModuleId,
@@ -117,6 +118,7 @@ export const byGeneratedIconComponent = createFilterGenerator<
         return false
     },
     names => `revenge.byGeneratedIconComponent(${names.join(',')})`,
+    FilterFlags.Any,
 ) as ByGeneratedIconComponent
 
 /**

@@ -6,6 +6,7 @@ import {
 import {
     byName,
     createFilterGenerator,
+    FilterFlags,
 } from '@revenge-mod/modules/finders/filters'
 import { getModuleDependencies } from '@revenge-mod/modules/metro/utils'
 import { asap, noop } from '@revenge-mod/utils/callback'
@@ -109,6 +110,7 @@ export const byStore = createFilterGenerator(
         }
     },
     () => 'revenge.discord.byStore',
+    FilterFlags.Any,
 ) as ByStore
 
 export type ByStoreName = FilterGenerator<
@@ -122,6 +124,7 @@ export const byStoreName = createFilterGenerator(
     ([name], _, exports) =>
         exports.getName?.length === 0 && exports.getName() === name,
     ([name]) => `revenge.discord.byStoreName(${name})`,
+    FilterFlags.RequiresExports,
 ) as ByStoreName
 
 /// STORE CACHING
