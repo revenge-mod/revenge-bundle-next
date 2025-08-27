@@ -1,12 +1,12 @@
 import { waitForModules } from '@revenge-mod/modules/finders'
-import { byProps } from '@revenge-mod/modules/finders/filters'
+import { withProps } from '@revenge-mod/modules/finders/filters'
 import { sConfig, sSubscriptions } from './modules/settings/_internal'
 import type { SettingsItem } from './modules/settings'
 
 export let sLoaded = false
 
 const unsubSRC = waitForModules(
-    byProps<{ SETTING_RENDERER_CONFIG: Record<string, SettingsItem> }>(
+    withProps<{ SETTING_RENDERER_CONFIG: Record<string, SettingsItem> }>(
         'SETTING_RENDERER_CONFIG',
     ),
     SettingRendererConfig => {

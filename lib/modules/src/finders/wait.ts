@@ -66,7 +66,7 @@ export type WaitForModulesResult<
  * @example
  * ```ts
  * const unsub = waitForModules(
- *   byName<typeof import('@shopify/flash-list')>('FlashList'),
+ *   withName<typeof import('@shopify/flash-list')>('FlashList'),
  *   // (exports: typeof import('@shopify/flash-list'), id: Metro.ModuleID) => any
  *   (exports, id) => {
  *     unsub()

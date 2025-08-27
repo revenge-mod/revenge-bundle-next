@@ -1,9 +1,9 @@
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
-    byDependencies,
-    byName,
-    byProps,
     preferExports,
+    withDependencies,
+    withName,
+    withProps,
 } from '@revenge-mod/modules/finders/filters'
 import { proxify } from '@revenge-mod/utils/proxy'
 import type { Metro } from '@revenge-mod/modules/types'
@@ -13,15 +13,15 @@ export { AppStartPerformance } from '../preinit'
 export * as flux from './flux'
 export * as utils from './utils'
 
-const { loose, relative } = byDependencies
+const { loose, relative } = withDependencies
 
 // ../discord_common/js/packages/logger/Logger.tsx
 export const [Logger, LoggerModuleId] = lookupModule(
-    byName<typeof DiscordModules.Logger>('Logger'),
+    withName<typeof DiscordModules.Logger>('Logger'),
 ) as [typeof DiscordModules.Logger, Metro.ModuleID]
 
 // ../discord_common/js/packages/tokens/native.tsx
-export const [Tokens, TokensModuleId] = lookupModule(byProps('RawColor')) as [
+export const [Tokens, TokensModuleId] = lookupModule(withProps('RawColor')) as [
     any,
     Metro.ModuleID,
 ]
@@ -44,12 +44,12 @@ export let Constants: DiscordModules.Constants = proxify(
     () => {
         const [module, id] = lookupModule(
             preferExports(
-                byProps<DiscordModules.Constants>('ME'),
+                withProps<DiscordModules.Constants>('ME'),
 
                 // ID:   1236
                 // Deps: 26, 1237, 1238, 1239, 1240, ...
                 // Every module has only one dependency, which is the import tracker
-                byDependencies(
+                withDependencies(
                     loose([
                         null,
                         relative.withDependencies(OnlyImportTrackerDep, 1),

@@ -1,19 +1,19 @@
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
-    byDependencies,
-    byProps,
     preferExports,
+    withDependencies,
+    withProps,
 } from '@revenge-mod/modules/finders/filters'
 import type { Metro } from '@revenge-mod/modules/types'
 import type { DiscordModules } from './types'
 
-const { relative } = byDependencies
+const { relative } = withDependencies
 
 // ../discord_common/js/packages/app-start-performance/AppStartPerformance.tsx
 export const [AppStartPerformance] = lookupModule(
     preferExports(
-        byProps<DiscordModules.AppStartPerformance>('markAndLog'),
-        byDependencies([relative(-1), null, null, 2]),
+        withProps<DiscordModules.AppStartPerformance>('markAndLog'),
+        withDependencies([relative(-1), null, null, 2]),
     ),
     {
         uninitialized: true,

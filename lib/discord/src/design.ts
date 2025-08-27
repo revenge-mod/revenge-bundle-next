@@ -1,10 +1,10 @@
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
-    byDependencies,
-    byProps,
-    bySingleProp,
     or,
     preferExports,
+    withDependencies,
+    withProps,
+    withSingleProp,
 } from '@revenge-mod/modules/finders/filters'
 import {
     ReactJSXRuntimeModuleId,
@@ -14,7 +14,7 @@ import {
 import { proxify } from '@revenge-mod/utils/proxy'
 import type { DiscordModules } from './types'
 
-const { loose, relative } = byDependencies
+const { loose, relative } = withDependencies
 
 // design/native.tsx
 export let Design: Design = proxify(
@@ -23,9 +23,9 @@ export let Design: Design = proxify(
         // [3237, 1366, 3238, 3239, 2, ...];
         const [module] = lookupModule(
             preferExports(
-                byProps<Design>('TableRow', 'Button'),
+                withProps<Design>('TableRow', 'Button'),
                 or(
-                    byDependencies(
+                    withDependencies(
                         loose([
                             null,
                             null,
@@ -40,7 +40,7 @@ export let Design: Design = proxify(
                         ]),
                     ),
                     // TODO(PalmDevs): Remove once stable channel is > 295203 (for 295203 and below)
-                    byDependencies(
+                    withDependencies(
                         loose([relative(1), null, relative(2), relative(3), 2]),
                     ),
                 ),
@@ -66,10 +66,10 @@ export let FormSwitch: DiscordModules.Components.FormSwitch = proxify(() => {
 
     const [module] = lookupModule(
         preferExports(
-            bySingleProp<{ FormSwitch: DiscordModules.Components.FormSwitch }>(
-                'FormSwitch',
-            ),
-            byDependencies([
+            withSingleProp<{
+                FormSwitch: DiscordModules.Components.FormSwitch
+            }>('FormSwitch'),
+            withDependencies([
                 [relative(1), relative(2), null, relative(3)],
                 ReactModuleId,
                 ReactNativeModuleId,

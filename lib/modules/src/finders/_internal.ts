@@ -65,7 +65,7 @@ export const FilterResultFlagToHumanReadable: Record<FilterResultFlag, string> =
         [FilterResultFlags.Found]: '\u001b[96mexportsless\u001b[0m',
     }
 
-// The reason this returns a flag is because flags are never falsy, while exports may be falsy when using ID-only filters (eg. `byDependencies`).
+// The reason this returns a flag is because flags are never falsy, while exports may be falsy when using ID-only filters (eg. `withDependencies`).
 
 // Currently, we only have options that are relevant for checking exports
 // If we add more options later on, do NOT forget about

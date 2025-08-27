@@ -1,5 +1,5 @@
 import { waitForModules } from '@revenge-mod/modules/finders'
-import { byProps } from '@revenge-mod/modules/finders/filters'
+import { withProps } from '@revenge-mod/modules/finders/filters'
 import { getModuleDependencies } from '@revenge-mod/modules/metro/utils'
 import { instead } from '@revenge-mod/patcher'
 import { InternalPluginFlags, registerPlugin } from '@revenge-mod/plugins/_'
@@ -27,7 +27,7 @@ registerPlugin(
 
             // utils/SentryUtils.native.tsx
             const unsubSU = waitForModules(
-                byProps<{
+                withProps<{
                     profiledRootComponent<T>(x: T): T
                     addBreadcrumb(): void
                     setTags(): void
@@ -51,7 +51,7 @@ registerPlugin(
 
             // modules/errors/native/SentryInitUtils.tsx
             const unsubSIU = waitForModules(
-                byProps('initSentry'),
+                withProps('initSentry'),
                 SentryInitUtils => {
                     unsubSIU()
 
@@ -62,9 +62,9 @@ registerPlugin(
 
             // Discord uses ReactNavigationInstrumentation to track navigation
             // Discord also uses Profiler to track performance, but we blocked that by patching profiledRootComponent
-            // Note that to actually find Sentry, we just need to add 'init' to byProps
+            // Note that to actually find Sentry, we just need to add 'init' to withProps
             const unsubSentryInst = waitForModules(
-                byProps('ReactNavigationInstrumentation'),
+                withProps('ReactNavigationInstrumentation'),
                 exports => {
                     unsubSentryInst()
 
@@ -96,7 +96,7 @@ registerPlugin(
         init({ cleanup }) {
             // utils/AnalyticsUtils.tsx
             const unsubAU = waitForModules(
-                byProps<{
+                withProps<{
                     trackNetworkAction: () => void
                     default: {
                         track: () => void
@@ -133,7 +133,7 @@ registerPlugin(
         }) {
             // modules/app_analytics/useTrackImpression.tsx
             const unsubTI = waitForModules(
-                byProps<{
+                withProps<{
                     default: () => void
                     trackImpression: () => void
                 }>('trackImpression'),
@@ -148,7 +148,7 @@ registerPlugin(
 
             // actions/AnalyticsTrackActionCreators.tsx
             const unsubATAC = waitForModules(
-                byProps('track'),
+                withProps('track'),
                 (AnalyticsTrackActionCreators, id) => {
                     if (getModuleDependencies(id)![0] === DispatcherModuleId) {
                         unsubATAC()

@@ -1,13 +1,13 @@
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
-    byDependencies,
-    byProps,
     preferExports,
+    withDependencies,
+    withProps,
 } from '@revenge-mod/modules/finders/filters'
 import { ReactModuleId, ReactNativeModuleId } from '@revenge-mod/react'
 import { destructure, proxify } from '@revenge-mod/utils/proxy'
 
-const { relative } = byDependencies
+const { relative } = withDependencies
 
 let ClipboardModule: typeof import('@react-native-clipboard/clipboard') =
     proxify(
@@ -25,8 +25,8 @@ let ClipboardModule: typeof import('@react-native-clipboard/clipboard') =
 
             const [module] = lookupModule(
                 preferExports(
-                    byProps<typeof ClipboardModule>('useClipboard'),
-                    byDependencies([
+                    withProps<typeof ClipboardModule>('useClipboard'),
+                    withDependencies([
                         relative.withDependencies(
                             [ReactModuleId, relative(2, true)],
                             1,

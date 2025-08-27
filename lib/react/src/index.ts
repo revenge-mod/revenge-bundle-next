@@ -1,5 +1,5 @@
 import { waitForModules } from '@revenge-mod/modules/finders'
-import { byProps } from '@revenge-mod/modules/finders/filters'
+import { withProps } from '@revenge-mod/modules/finders/filters'
 import type { Metro } from '@revenge-mod/modules/types'
 
 export let ReactModuleId: Metro.ModuleID
@@ -13,7 +13,7 @@ export let ReactJSXRuntime: typeof import('react/jsx-runtime')
 let RtCount = 0
 
 const unsubRt = waitForModules(
-    byProps<typeof React>('useState'),
+    withProps<typeof React>('useState'),
     (exports, id) => {
         if (RtCount++ === 2) return unsubRt()
 
@@ -23,7 +23,7 @@ const unsubRt = waitForModules(
 )
 
 const unsubRN = waitForModules(
-    byProps<typeof ReactNative>('AppRegistry'),
+    withProps<typeof ReactNative>('AppRegistry'),
     (exports, id) => {
         unsubRN()
 
@@ -40,7 +40,7 @@ const unsubRN = waitForModules(
 let RJsxRCount = 0
 
 const unsubRJSXR = waitForModules(
-    byProps<typeof ReactJSXRuntime>('jsxs'),
+    withProps<typeof ReactJSXRuntime>('jsxs'),
     (exports, id) => {
         if (RJsxRCount++ === 2) return unsubRJSXR()
 

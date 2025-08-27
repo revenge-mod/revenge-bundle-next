@@ -1,13 +1,13 @@
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
-    byDependencies,
-    byProps,
     preferExports,
+    withDependencies,
+    withProps,
 } from '@revenge-mod/modules/finders/filters'
 import { proxify } from '@revenge-mod/utils/proxy'
 import type { NavigationContainerRef } from '@react-navigation/core'
 
-const { loose, relative } = byDependencies
+const { loose, relative } = withDependencies
 
 export interface RootNavigationRef {
     getRootNavigationRef<
@@ -20,8 +20,8 @@ export let RootNavigationRef: RootNavigationRef = proxify(
     () => {
         const [module] = lookupModule(
             preferExports(
-                byProps<RootNavigationRef>('getRootNavigationRef'),
-                byDependencies([
+                withProps<RootNavigationRef>('getRootNavigationRef'),
+                withDependencies([
                     loose([[], loose([relative(1), relative(2)])]),
                     2,
                 ]),

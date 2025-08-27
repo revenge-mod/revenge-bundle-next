@@ -1,7 +1,7 @@
 import { ToastActionCreators } from '@revenge-mod/discord/actions'
 import { getStore, Stores } from '@revenge-mod/discord/flux'
 import { getModules } from '@revenge-mod/modules/finders'
-import { byProps } from '@revenge-mod/modules/finders/filters'
+import { withProps } from '@revenge-mod/modules/finders/filters'
 import { instead } from '@revenge-mod/patcher'
 import { InternalPluginFlags, registerPlugin } from '@revenge-mod/plugins/_'
 import { PluginFlags } from '@revenge-mod/plugins/constants'
@@ -50,7 +50,7 @@ registerPlugin(
             }
 
             cleanup(
-                getModules(byProps('isStaffEnv'), UserStoreUtils => {
+                getModules(withProps('isStaffEnv'), UserStoreUtils => {
                     logger.log('Patching UserStoreUtils...')
 
                     cleanup(

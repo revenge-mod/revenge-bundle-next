@@ -4,9 +4,9 @@ import {
     waitForModules,
 } from '@revenge-mod/modules/finders'
 import {
-    byDependencies,
-    byName,
-    byProps,
+    withDependencies,
+    withName,
+    withProps,
 } from '@revenge-mod/modules/finders/filters'
 import {
     mInitializingId,
@@ -20,13 +20,13 @@ import type { Metro } from '@revenge-mod/modules/types'
 import type { ReactNative } from '@revenge-mod/react/types'
 import type { Asset, PackagerAsset } from './types'
 
-const { relative } = byDependencies
+const { relative } = withDependencies
 
-const [, _classCallCheckId] = lookupModule(byName('_classCallCheck'))
-const [, _createClassId] = lookupModule(byName('_createClass'))
+const [, _classCallCheckId] = lookupModule(withName('_classCallCheck'))
+const [, _createClassId] = lookupModule(withName('_createClass'))
 
 // https://github.com/facebook/react-native/blob/main/packages/react-native/Libraries/Image/AssetSourceResolver.js
-const byAssetSourceResolver = byDependencies([
+const withAssetSourceResolver = withDependencies([
     _classCallCheckId,
     _createClassId,
     relative(1),
@@ -39,7 +39,7 @@ const cachedOnly = { cached: true }
 
 // Tracking/caching assets
 const unsubAR = waitForModules(
-    byProps<ReactNative.AssetsRegistry>('registerAsset'),
+    withProps<ReactNative.AssetsRegistry>('registerAsset'),
     (exports, id) => {
         AssetsRegistryModuleId = id
         AssetsRegistry = exports as ReactNative.AssetsRegistry
@@ -104,7 +104,7 @@ const unsubAR = waitForModules(
  */
 export let AssetsRegistryModuleId: Metro.ModuleID | undefined
 export let AssetsRegistry: ReactNative.AssetsRegistry = proxify(() => {
-    for (const [, id] of lookupModules(byDependencies([[]]), {
+    for (const [, id] of lookupModules(withDependencies([[]]), {
         initialize: false,
         uninitialized: true,
     })) {
@@ -112,7 +112,7 @@ export let AssetsRegistry: ReactNative.AssetsRegistry = proxify(() => {
         if (deps.length !== 1) continue
 
         // The module next to assets-registry is AssetSourceResolver
-        if (byAssetSourceResolver(deps[0] + 1)) {
+        if (withAssetSourceResolver(deps[0] + 1)) {
             const module = __r(id)
             // ID will be set by the wait below
             if (module?.registerAsset) return (AssetsRegistry = module)
@@ -124,7 +124,7 @@ export let AssetsRegistry: ReactNative.AssetsRegistry = proxify(() => {
 
 // Asset overrides
 const unsubRAS = waitForModules(
-    byName<{
+    withName<{
         addCustomSourceTransformer: (
             transformer: (arg: { asset: Asset }) => PackagerAsset,
         ) => void

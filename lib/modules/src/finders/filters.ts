@@ -139,7 +139,7 @@ const Helpers: FilterHelpers = Object.setPrototypeOf(
  * )
  * ```
  *
- * @see {@link byProps} for an example on custom-typed filters.
+ * @see {@link withProps} for an example on custom-typed filters.
  */
 export function createFilterGenerator<A extends any[]>(
     filter: (
@@ -183,7 +183,7 @@ export function createFilterGenerator<A extends any[]>(
     return generator
 }
 
-export type ByProps = FilterGenerator<
+export type WithProps = FilterGenerator<
     <T extends Record<string, any> = Record<string, any>>(
         prop: keyof T,
         ...props: Array<keyof T>
@@ -198,11 +198,11 @@ export type ByProps = FilterGenerator<
  *
  * @example
  * ```ts
- * const [React] = lookupModule(byProps<typeof import('react')>('createElement'))
+ * const [React] = lookupModule(withProps<typeof import('react')>('createElement'))
  * // const React: typeof import('react')
  * ```
  */
-export const byProps = createFilterGenerator<Parameters<ByProps>>(
+export const withProps = createFilterGenerator<Parameters<WithProps>>(
     (props, _, exports) => {
         const type = typeof exports
         if (type === 'object' || type === 'function') {
@@ -218,7 +218,7 @@ export const byProps = createFilterGenerator<Parameters<ByProps>>(
     },
     props => `revenge.props(${props.join(',')})`,
     FilterFlags.RequiresExports,
-) as ByProps
+) as WithProps
 
 export type WithoutProps = FilterGenerator<
     <T extends Record<string, any>>(
@@ -245,7 +245,7 @@ export const withoutProps = createFilterGenerator<Parameters<WithoutProps>>(
     FilterFlags.RequiresExports,
 ) as WithoutProps
 
-export type BySingleProp = FilterGenerator<
+export type WithSingleProp = FilterGenerator<
     <T extends Record<string, any>>(prop: keyof T) => Filter<T, true>
 >
 
@@ -256,11 +256,11 @@ export type BySingleProp = FilterGenerator<
  *
  * @example
  * ```ts
- * const [FormSwitchModule] = lookupModule(bySingleProp('FormSwitch'))
+ * const [FormSwitchModule] = lookupModule(withSingleProp('FormSwitch'))
  * // const FormSwitchModule: { FormSwitch: any }
  * ```
  */
-export const bySingleProp = createFilterGenerator<Parameters<BySingleProp>>(
+export const withSingleProp = createFilterGenerator<Parameters<WithSingleProp>>(
     ([prop], _, exports) => {
         if (typeof exports === 'object' && prop in exports)
             return Object.keys(exports).length === 1
@@ -269,9 +269,9 @@ export const bySingleProp = createFilterGenerator<Parameters<BySingleProp>>(
     },
     ([prop]) => `revenge.singleProp(${prop})`,
     FilterFlags.RequiresExports,
-) as BySingleProp
+) as WithSingleProp
 
-export type ByName = FilterGenerator<
+export type WithName = FilterGenerator<
     <T extends object = object>(name: string) => Filter<T, true>
 >
 
@@ -284,7 +284,7 @@ export type ByName = FilterGenerator<
  *
  * @example Auto-typing as object
  * ```ts
- * const [SomeComponent] = lookupModule(byName('SomeComponent'))
+ * const [SomeComponent] = lookupModule(withName('SomeComponent'))
  * // const SomeComponent: { name: 'SomeComponent' }
  * ```
  *
@@ -292,7 +292,7 @@ export type ByName = FilterGenerator<
  * ```ts
  * type MyComponent = React.FC<{ foo: string }>
  *
- * const [MyComponent] = lookupModule(byName<MyComponent>('MyComponent'))
+ * const [MyComponent] = lookupModule(withName<MyComponent>('MyComponent'))
  * // const MyComponent: MyComponent & { name: 'MyComponent' }
  * ```
  *
@@ -302,14 +302,14 @@ export type ByName = FilterGenerator<
  *    someMethod(): void
  * }
  *
- * const [SomeClass] = lookupModule(byName<{ new(param: string): SomeClass }>('SomeClass'))
+ * const [SomeClass] = lookupModule(withName<{ new(param: string): SomeClass }>('SomeClass'))
  * // const SomeClass: { new(): SomeClass, name: 'SomeClass' }
  */
-export const byName = createFilterGenerator<Parameters<ByName>>(
+export const withName = createFilterGenerator<Parameters<WithName>>(
     ([name], _, exports) => exports.name === name,
     ([name]) => `revenge.name(${name})`,
     FilterFlags.RequiresExports,
-) as ByName
+) as WithName
 
 export interface ComparableDependencyMap
     extends Array<
@@ -319,7 +319,7 @@ export interface ComparableDependencyMap
     r?: number
 }
 
-type ByDependencies = FilterGenerator<
+type WithDependencies = FilterGenerator<
     <T>(deps: ComparableDependencyMap) => Filter<T, false>
 > & {
     loose: typeof loose
@@ -335,48 +335,50 @@ const __DEBUG_WARNED_BAD_BY_DEPENDENCIES_FILTERS__ =
  * @param deps The dependency map to check for, can be a sparse array or have `null` to be any dependency ("dynamic"). **Order and size matters!**
  *
  * To do proper fingerprinting for modules:
- * @see {@link byDependencies.loose} to loosen the checks.
- * @see {@link byDependencies.relative} to compare dependencies relatively.
+ * @see {@link withDependencies.loose} to loosen the checks.
+ * @see {@link withDependencies.relative} to compare dependencies relatively.
  *
  * @example
  * ```ts
- * const { loose, relative } = byDependencies
+ * const { loose, relative } = withDependencies
  *
  * // Logger's module ID is 5
  * // It has 3 dependencies [4, ?, 2]
  *
- * const [Logger] = lookupModule(byDependencies([4, null, 2]))
+ * const [Logger] = lookupModule(withDependencies([4, null, 2]))
  * // or
- * const [Logger] = lookupModule(byDependencies([4, , 2]))
+ * const [Logger] = lookupModule(withDependencies([4, , 2]))
  *
  * // Relative dependencies
- * const [Logger] = lookupModule(byDependencies([relative(-1), null, 2]))
+ * const [Logger] = lookupModule(withDependencies([relative(-1), null, 2]))
  *
  * // Nested dependencies
  * // The last dependency (module ID 2) would need to have zero dependencies:
- * const [Logger] = lookupModule(byDependencies([4, null, []]))
+ * const [Logger] = lookupModule(withDependencies([4, null, []]))
  *
  * // Loose dependencies
  * // Module having these dependencies: [4, ...], [4, ..., ...], [4, ..., ..., ...], etc. would match:
- * const [SomeOtherModule] = lookupModule(byDependencies(loose([4])))
+ * const [SomeOtherModule] = lookupModule(withDependencies(loose([4])))
  * ```
  *
  * @example With filter helpers (preferred)
  * ```ts
  * const [Logger] = lookupModule(
- *   byProps('log')
+ *   withProps('log')
  *     .withDependencies([4, null, 2]),
  * )
  * ```
  */
-export const byDependencies = createFilterGenerator<Parameters<ByDependencies>>(
+export const withDependencies = createFilterGenerator<
+    Parameters<WithDependencies>
+>(
     ([deps], id) => depCompare(getModuleDependencies(id)!, deps, id, id),
     deps => `revenge.deps(${depGenFilterKey(deps)})`,
     FilterFlags.Any,
-) as ByDependencies
+) as WithDependencies
 
-byDependencies.loose = loose
-byDependencies.relative = relative
+withDependencies.loose = loose
+withDependencies.relative = relative
 
 /**
  * Make this set of comparable dependencies as loose.
@@ -417,16 +419,16 @@ function relative(id: Metro.ModuleID, root?: boolean) {
  * @param root Whether to use {@link relative.toRoot} instead of {@link relative}. Defaults to `false`.
  * @returns The modified dependency map.
  *
- * @see {@link byDependencies}
+ * @see {@link withDependencies}
  * @see {@link relative}
  *
  * @example
  * ```ts
- * const { relative } = byDependencies
+ * const { relative } = withDependencies
  *
  * // This filter will match modules having one dependency that is its module ID + 1
  * // And module ID + 1 would have exactly two dependencies: [Any, 2]
- * byDependencies(
+ * withDependencies(
  *   relative.withDependencies(
  *     [null, 2],
  *     1, // Always the next module to the one being compared
@@ -445,12 +447,12 @@ relative.withDependencies = (
 }
 
 /**
- * Warns the developer about a bad `byDependencies` filter using `undefined` in its comparisons.
+ * Warns the developer about a bad `withDependencies` filter using `undefined` in its comparisons.
  *
  * - `undefined` should only be used as a fallback to when a module ID can really not be found.
  * - Use `null` instead to indicate a dynamic dependency.
  */
-function DEBUG_warnBadByDependenciesFilter(
+function DEBUG_warnBadWithDependenciesFilter(
     deps: ComparableDependencyMap,
     index: number,
 ) {
@@ -458,7 +460,7 @@ function DEBUG_warnBadByDependenciesFilter(
     if (__DEBUG_WARNED_BAD_BY_DEPENDENCIES_FILTERS__.has(deps)) return
 
     nativeLoggingHook(
-        `\u001b[33mBad ${byDependencies.name} filter, undefined ID at index ${index} (if intentional, set to null): [${depGenFilterKey(deps)}]\n${getCurrentStack()}\u001b[0m`,
+        `\u001b[33mBad ${withDependencies.name} filter, undefined ID at index ${index} (if intentional, set to null): [${depGenFilterKey(deps)}]\n${getCurrentStack()}\u001b[0m`,
         2,
     )
 }
@@ -477,7 +479,7 @@ function depCompare(
         const compare = b[i]
 
         if (__DEV__ && compare === undefined)
-            DEBUG_warnBadByDependenciesFilter(b, i)
+            DEBUG_warnBadWithDependenciesFilter(b, i)
 
         // Skip dynamic
         if (compare == null) continue
@@ -568,9 +570,9 @@ export type And = FilterGenerator<
  * @example With filter helpers (preferred)
  * ```ts
  * const [SomeModule] = lookupModule(
- *   byProps('x', 'name')
- *     .and(byName('SomeName'))
- *     .and(byDependencies([1, 485, null, 2])),
+ *   withProps('x', 'name')
+ *     .and(withName('SomeName'))
+ *     .and(withDependencies([1, 485, null, 2])),
  * )
  * ```
  *
@@ -578,8 +580,8 @@ export type And = FilterGenerator<
  * ```ts
  * const [SomeModule] = lookupModule(
  *   and(
- *     and(byProps('x', 'name'), byName('SomeName')),
- *     byDependencies([1, 485, null, 2]),
+ *     and(withProps('x', 'name'), withName('SomeName')),
+ *     withDependencies([1, 485, null, 2]),
  *   ),
  * )
  * ```
@@ -615,9 +617,9 @@ export type Or = FilterGenerator<
  * @example With filter helpers (preferred)
  * ```ts
  * const [SomeModule] = lookupModule(
- *   byProps('x', 'name')
- *     .or(byName('SomeName'))
- *     .or(byDependencies([1, 485, null, 2])),
+ *   withProps('x', 'name')
+ *     .or(withName('SomeName'))
+ *     .or(withDependencies([1, 485, null, 2])),
  * )
  * ```
  *
@@ -625,8 +627,8 @@ export type Or = FilterGenerator<
  * ```ts
  * const [SomeModule] = lookupModule(
  *   or(
- *     or(byProps('x', 'name'), byName('SomeName')),
- *     byDependencies([1, 485, null, 2]),
+ *     or(withProps('x', 'name'), withName('SomeName')),
+ *     withDependencies([1, 485, null, 2]),
  *   ),
  * )
  * ```
@@ -664,18 +666,18 @@ export type PreferExports = FilterGenerator<
  * @example With filter helpers (preferred)
  * ```ts
  * const [SomeModule] = lookupModule(
- *   byDependencies([1, 485, null, 2])
- *     .withExports(byProps('x')),
+ *   withDependencies([1, 485, null, 2])
+ *     .withExports(withProps('x')),
  * )
  * ```
  *
  * @example
  * ```ts
- * // will filter byProps('x') for modules with proper exports
- * // and byDependencies([1, 485, null, 2]) for without proper exports (uninitialized or bad)
+ * // will filter withProps('x') for modules with proper exports
+ * // and withDependencies([1, 485, null, 2]) for without proper exports (uninitialized or bad)
  * const [SomeModule] = lookupModule(preferExports(
- *   byProps('x'),
- *   byDependencies([1, 485, null, 2]),
+ *   withProps('x'),
+ *   withDependencies([1, 485, null, 2]),
  * ))
  * ```
  */

@@ -48,16 +48,16 @@ export type GetModulesUnsubscribeFunction = () => void
  *
  * @example
  * ```ts
- * getModules(byProps<typeof import('react')>('createElement'), React => {
+ * getModules(withProps<typeof import('react')>('createElement'), React => {
  *   // Immediately called because React is always initialized when plugins are loaded
  * })
  *
- * getModules(byProps<typeof import('@shopify/flash-list')>('FlashList'), FlashList => {
+ * getModules(withProps<typeof import('@shopify/flash-list')>('FlashList'), FlashList => {
  *   // Called when the module is initialized
  * })
  *
  * // Get multiple modules matching the filter
- * getModules(byProps<ReactNative.AssetsRegistry>('registerAsset'), AssetsRegistry => {
+ * getModules(withProps<ReactNative.AssetsRegistry>('registerAsset'), AssetsRegistry => {
  *   // Called 2 times, once for each module that matches the filter
  * }, { max: 2 })
  * ```

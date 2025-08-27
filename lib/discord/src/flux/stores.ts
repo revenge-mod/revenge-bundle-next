@@ -4,9 +4,9 @@ import {
     waitForModules,
 } from '@revenge-mod/modules/finders'
 import {
-    byName,
     createFilterGenerator,
     FilterFlags,
+    withName,
 } from '@revenge-mod/modules/finders/filters'
 import { getModuleDependencies } from '@revenge-mod/modules/metro/utils'
 import { asap, noop } from '@revenge-mod/utils/callback'
@@ -34,7 +34,7 @@ export const Stores = new Proxy(_stores, {
     get: (target, prop: string) =>
         target[prop] ??
         // @ts-expect-error: This always uses cache
-        lookupModule(byStoreName(prop), { uninitialized: true })[0],
+        lookupModule(withStoreName(prop), { uninitialized: true })[0],
 })
 
 /**
@@ -54,7 +54,7 @@ export function getStore<T>(
         return noop
     }
 
-    return waitForModules(byStoreName<T>(name), callback, { cached: true })
+    return waitForModules(withStoreName<T>(name), callback, { cached: true })
 }
 
 /// STORE FILTERING
@@ -71,15 +71,15 @@ export function getStore<T>(
     ]
 */
 
-const [, _createClassModuleId] = lookupModule(byName('_createClass'))
-const [, _classCallCheckModuleId] = lookupModule(byName('_classCallCheck'))
+const [, _createClassModuleId] = lookupModule(withName('_createClass'))
+const [, _classCallCheckModuleId] = lookupModule(withName('_classCallCheck'))
 const [, _possibleConstructorReturnModuleId] = lookupModule(
-    byName('_possibleConstructorReturn'),
+    withName('_possibleConstructorReturn'),
 )
 const [, _bound_getPrototypeOfModuleId] = lookupModule(
-    byName('bound getPrototypeOf'),
+    withName('bound getPrototypeOf'),
 )
-const [, _inheritsModuleId] = lookupModule(byName('_inherits'))
+const [, _inheritsModuleId] = lookupModule(withName('_inherits'))
 
 const FluxStoreLeadingDeps = [
     _classCallCheckModuleId,
@@ -89,14 +89,14 @@ const FluxStoreLeadingDeps = [
     _inheritsModuleId,
 ]
 
-export type ByStore = FilterGenerator<
+export type WithStore = FilterGenerator<
     <T>() => Filter<DiscordModules.Flux.Store<T>, boolean>
 >
 
 /**
  * A dynamic filter that matches all Flux stores.
  */
-export const byStore = createFilterGenerator(
+export const withStore = createFilterGenerator(
     (_, id, exports) => {
         if (exports) return Boolean(exports._dispatchToken)
         else {
@@ -109,31 +109,31 @@ export const byStore = createFilterGenerator(
             return deps[deps.length - 1] === 2
         }
     },
-    () => 'revenge.discord.byStore',
+    () => 'revenge.discord.store',
     FilterFlags.Any,
-) as ByStore
+) as WithStore
 
-export type ByStoreName = FilterGenerator<
+export type WithStoreName = FilterGenerator<
     <T>(name: string) => Filter<DiscordModules.Flux.Store<T>, true>
 >
 
 /**
  * A with-exports filter that matches a Flux store by its name.
  */
-export const byStoreName = createFilterGenerator(
+export const withStoreName = createFilterGenerator(
     ([name], _, exports) =>
         exports.getName?.length === 0 && exports.getName() === name,
-    ([name]) => `revenge.discord.byStoreName(${name})`,
+    ([name]) => `revenge.discord.storeName(${name})`,
     FilterFlags.RequiresExports,
-) as ByStoreName
+) as WithStoreName
 
 /// STORE CACHING
 
-waitForModules(byStore(), (store, id) => {
+waitForModules(withStore(), (store, id) => {
     const name = store.getName()
     // Cache stores
     cacheFilterResultForId(
-        byStoreName.keyFor([name]),
+        withStoreName.keyFor([name]),
         id,
         FilterResultFlags.Default,
     )
@@ -143,7 +143,7 @@ waitForModules(byStore(), (store, id) => {
 cached.then(cached => {
     if (!cached)
         asap(() => {
-            const lookup = lookupModules(byStore(), {
+            const lookup = lookupModules(withStore(), {
                 uninitialized: true,
             })
 

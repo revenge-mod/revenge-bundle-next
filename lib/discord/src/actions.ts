@@ -1,10 +1,10 @@
 import { lookupModule, lookupModules } from '@revenge-mod/modules/finders'
 import {
     and,
-    byDependencies,
-    byProps,
     preferExports,
+    withDependencies,
     withoutProps,
+    withProps,
 } from '@revenge-mod/modules/finders/filters'
 import {
     ReactJSXRuntimeModuleId,
@@ -15,7 +15,7 @@ import { proxify } from '@revenge-mod/utils/proxy'
 import { DispatcherModuleId } from './common/flux'
 import type { DiscordModules } from './types'
 
-const { relative } = byDependencies
+const { relative } = withDependencies
 
 // modules/action_sheet/native/ActionSheetActionCreators.tsx
 export let ActionSheetActionCreators: DiscordModules.Actions.ActionSheetActionCreators =
@@ -23,11 +23,11 @@ export let ActionSheetActionCreators: DiscordModules.Actions.ActionSheetActionCr
         () => {
             const [module] = lookupModule(
                 preferExports(
-                    byProps<DiscordModules.Actions.ActionSheetActionCreators>(
+                    withProps<DiscordModules.Actions.ActionSheetActionCreators>(
                         'hideActionSheet',
                         'openLazy',
                     ),
-                    byDependencies([
+                    withDependencies([
                         null,
                         ReactModuleId,
                         ReactJSXRuntimeModuleId,
@@ -55,10 +55,10 @@ export let AlertActionCreators: DiscordModules.Actions.AlertActionCreators =
         () => {
             const [module] = lookupModule(
                 preferExports(
-                    byProps<DiscordModules.Actions.AlertActionCreators>(
+                    withProps<DiscordModules.Actions.AlertActionCreators>(
                         'openAlert',
                     ),
-                    byDependencies([
+                    withDependencies([
                         [[], relative(1)],
                         [ReactNativeModuleId, 2],
                         2,
@@ -85,10 +85,12 @@ export let ToastActionCreators: DiscordModules.Actions.ToastActionCreators =
         const generator = lookupModules(
             preferExports(
                 and(
-                    byProps<DiscordModules.Actions.ToastActionCreators>('open'),
+                    withProps<DiscordModules.Actions.ToastActionCreators>(
+                        'open',
+                    ),
                     withoutProps('init'),
                 ),
-                byDependencies([DispatcherModuleId, 2]),
+                withDependencies([DispatcherModuleId, 2]),
             ),
             {
                 uninitialized: true,
