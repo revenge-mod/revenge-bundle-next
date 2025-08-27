@@ -12,7 +12,7 @@ import type { Filter, FilterResult } from './filters'
 import type { LookupModulesOptions } from './lookup'
 import type { WaitForModulesOptions } from './wait'
 
-export type GetModuleOptions<
+export type GetModulesOptions<
     ReturnNamespace extends boolean = boolean,
     Uninitialized extends boolean = boolean,
     All extends boolean = boolean,
@@ -26,16 +26,16 @@ export type GetModuleOptions<
         max?: number
     }
 
-export type GetModuleResult<
+export type GetModulesResult<
     F extends Filter,
-    O extends GetModuleOptions,
+    O extends GetModulesOptions,
 > = O extends RunFilterReturnExportsOptions<true>
     ? MaybeDefaultExportMatched<FilterResult<F>>
     : FilterResult<F>
 
-export type GetModuleCallback<T> = (exports: T, id: Metro.ModuleID) => any
+export type GetModulesCallback<T> = (exports: T, id: Metro.ModuleID) => any
 
-export type GetModuleUnsubscribeFunction = () => void
+export type GetModulesUnsubscribeFunction = () => void
 
 /**
  * Get modules matching the filter.
@@ -64,24 +64,24 @@ export type GetModuleUnsubscribeFunction = () => void
  */
 export function getModules<F extends Filter>(
     filter: F,
-    callback: GetModuleCallback<FilterResult<F>>,
-): GetModuleUnsubscribeFunction
+    callback: GetModulesCallback<FilterResult<F>>,
+): GetModulesUnsubscribeFunction
 
 export function getModules<
     F extends Filter,
     const O extends F extends Filter<any, infer RE>
-        ? If<RE, GetModuleOptions<boolean, boolean, false>, GetModuleOptions>
+        ? If<RE, GetModulesOptions<boolean, boolean, false>, GetModulesOptions>
         : never,
 >(
     filter: F,
-    callback: GetModuleCallback<FilterResult<F>>,
+    callback: GetModulesCallback<FilterResult<F>>,
     options: O,
-): GetModuleUnsubscribeFunction
+): GetModulesUnsubscribeFunction
 
 export function getModules(
     filter: Filter,
-    callback: GetModuleCallback<any>,
-    options?: GetModuleOptions,
+    callback: GetModulesCallback<any>,
+    options?: GetModulesOptions,
 ) {
     let max = options?.max ?? 1
 
@@ -130,8 +130,8 @@ export function getModules(
  */
 export function getModuleByImportedPath<T>(
     path: string,
-    callback: GetModuleCallback<T>,
-): GetModuleUnsubscribeFunction {
+    callback: GetModulesCallback<T>,
+): GetModulesUnsubscribeFunction {
     const [exports, id] = lookupModuleByImportedPath(path)
     if (id !== undefined) {
         callback(exports, id)
