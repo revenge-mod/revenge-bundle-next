@@ -48,29 +48,29 @@ export type GetModuleUnsubscribeFunction = () => void
  *
  * @example
  * ```ts
- * getModule(byProps<typeof import('react')>('createElement'), React => {
+ * getModules(byProps<typeof import('react')>('createElement'), React => {
  *   // Immediately called because React is always initialized when plugins are loaded
  * })
  *
- * getModule(byProps<typeof import('@shopify/flash-list')>('FlashList'), FlashList => {
+ * getModules(byProps<typeof import('@shopify/flash-list')>('FlashList'), FlashList => {
  *   // Called when the module is initialized
  * })
  *
  * // Get multiple modules matching the filter
- * getModule(byProps<ReactNative.AssetsRegistry>('registerAsset'), AssetsRegistry => {
+ * getModules(byProps<ReactNative.AssetsRegistry>('registerAsset'), AssetsRegistry => {
  *   // Called 2 times, once for each module that matches the filter
  * }, { max: 2 })
  * ```
  */
-export function getModule<F extends Filter>(
+export function getModules<F extends Filter>(
     filter: F,
     callback: GetModuleCallback<FilterResult<F>>,
 ): GetModuleUnsubscribeFunction
 
-export function getModule<
+export function getModules<
     F extends Filter,
-    const O extends F extends Filter<any, infer WE>
-        ? If<WE, GetModuleOptions<boolean, boolean, false>, GetModuleOptions>
+    const O extends F extends Filter<any, infer RE>
+        ? If<RE, GetModuleOptions<boolean, boolean, false>, GetModuleOptions>
         : never,
 >(
     filter: F,
@@ -78,7 +78,7 @@ export function getModule<
     options: O,
 ): GetModuleUnsubscribeFunction
 
-export function getModule(
+export function getModules(
     filter: Filter,
     callback: GetModuleCallback<any>,
     options?: GetModuleOptions,

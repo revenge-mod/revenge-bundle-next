@@ -1,6 +1,6 @@
 import { AlertActionCreators } from '@revenge-mod/discord/actions'
 import { Design } from '@revenge-mod/discord/design'
-import { getModule } from '@revenge-mod/modules/finders'
+import { getModules } from '@revenge-mod/modules/finders'
 import { byProps } from '@revenge-mod/modules/finders/filters'
 import { InternalPluginFlags, registerPlugin } from '@revenge-mod/plugins/_'
 import { PluginFlags } from '@revenge-mod/plugins/constants'
@@ -57,7 +57,7 @@ registerPlugin(
     },
     {
         start({ cleanup }) {
-            const unsub = getModule(
+            const unsub = getModules(
                 byProps<{ ProfileBadgeRows: FC<ProfileBadgeRowsProps> }>(
                     'ProfileBadgeRows',
                 ),

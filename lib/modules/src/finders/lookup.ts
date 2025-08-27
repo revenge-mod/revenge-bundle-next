@@ -129,7 +129,7 @@ type LookupNotFoundResult = typeof NotFoundResult
  * Lookup modules.
  *
  * You can lookup uninitialized modules by passing `options.uninitialized` when filtering via exportsless filters (eg. `byDependencies`).
- * Use the `moduleStateAware` helper to filter dynamically based on whether the module is initialized or not.
+ * Use the `preferExports` helper to filter uninitialized modules.
  *
  * @param filter The filter to use.
  * @param options The options to use for the lookup.
@@ -139,7 +139,7 @@ type LookupNotFoundResult = typeof NotFoundResult
  * ```ts
  * const lookup = lookupModules(byProps('x'))
  * // Log all module exports that has exports.x
- * for (const exports of lookup) console.log(exports)
+ * for (const [exports, id] of lookup) console.log(id, exports)
  * ```
  */
 export function lookupModules<F extends Filter>(
@@ -148,9 +148,9 @@ export function lookupModules<F extends Filter>(
 
 export function lookupModules<
     F extends Filter,
-    const O extends F extends Filter<any, infer WE>
+    const O extends F extends Filter<any, infer RE>
         ? If<
-              WE,
+              RE,
               LookupModulesOptions<boolean, false, false>,
               LookupModulesOptions
           >
@@ -286,7 +286,7 @@ export function* lookupModules(filter: Filter, options?: LookupModulesOptions) {
  *
  * @example
  * ```ts
- * const React = lookupModule(byProps<typeof import('react')>('createElement'))
+ * const [React, ReactModuleId] = lookupModule(byProps<typeof import('react')>('createElement'))
  * ```
  */
 export function lookupModule<F extends Filter>(
@@ -295,9 +295,9 @@ export function lookupModule<F extends Filter>(
 
 export function lookupModule<
     F extends Filter,
-    const O extends F extends Filter<any, infer WE>
+    const O extends F extends Filter<any, infer RE>
         ? If<
-              WE,
+              RE,
               LookupModulesOptions<boolean, false, false>,
               LookupModulesOptions
           >

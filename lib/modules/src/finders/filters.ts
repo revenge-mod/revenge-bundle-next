@@ -1,8 +1,26 @@
 import { getCurrentStack } from '@revenge-mod/utils/error'
 import { mInitialized } from '../metro/patches'
-import { getModuleDependencies, isModuleInitialized } from '../metro/utils'
+import { getModuleDependencies } from '../metro/utils'
 import type { If, LogicalOr } from '@revenge-mod/utils/types'
 import type { Metro } from '../types'
+
+export const FilterFlags = {
+    /**
+     * This filter works with and without module exports.
+     * Allowing for both initialized and uninitialized modules to be matched.
+     */
+    Any: 0,
+    /**
+     * This filter requires module exports to work.
+     * Only initialized modules will be matched.
+     */
+    RequiresExports: 1,
+} as const
+
+/**
+ * @see {@link FilterFlags}
+ */
+export type FilterFlags = number
 
 export type FilterResult<F> = F extends Filter<infer R, boolean>
     ? R
@@ -10,13 +28,16 @@ export type FilterResult<F> = F extends Filter<infer R, boolean>
       ? R
       : never
 
-export type IsFilterWithExports<F> = F extends Filter<any, infer WE>
-    ? WE
-    : F extends FilterBase<any, infer WE>
-      ? WE
+export type IsFilterWithExports<F> = F extends Filter<any, infer RE>
+    ? RE
+    : F extends FilterBase<any, infer RE>
+      ? RE
       : never
 
-interface FilterBase<_Inferable = any, WithExports extends boolean = boolean> {
+export interface FilterBase<
+    _Inferable = any,
+    WithExports extends boolean = boolean,
+> {
     (
         ...args: If<
             WithExports,
@@ -25,13 +46,15 @@ interface FilterBase<_Inferable = any, WithExports extends boolean = boolean> {
         >
     ): boolean
     key: string
+    flags: FilterFlags
 }
+
 export type Filter<
     Inferable = any,
     WithExports extends boolean = boolean,
 > = FilterHelpers & FilterBase<Inferable, WithExports>
 
-interface FilterHelpers {
+export interface FilterHelpers {
     /**
      * Manually the key for this filter.
      *
@@ -45,7 +68,12 @@ interface FilterHelpers {
      *
      * @param filter The filter to combine with.
      */
-    and<T extends FilterBase, F extends FilterBase>(
+    and<
+        T extends FilterBase,
+        // If Filter<any, true>, next filter must also be Filter<any, true>
+        // Otherwise, it can be Filter<any, boolean>
+        F extends If<IsFilterWithExports<T>, FilterBase<any, true>, FilterBase>,
+    >(
         this: T,
         filter: F,
     ): Filter<
@@ -55,38 +83,22 @@ interface FilterHelpers {
     /**
      * Combines this filter with another filter, returning a new filter that matches if **either** filter matches.
      *
-     * @param filter
+     * Note that exportsless filters must come first to avoid gotchas with uninitialized modules.
+     *
+     * @param filter The filter to combine with.
      */
-    or<T extends FilterBase, F extends FilterBase>(
+    or<
+        T extends FilterBase,
+        // If Filter<any, true>, next filter must also be Filter<any, true>
+        // Otherwise, it can be Filter<any, boolean>
+        F extends If<IsFilterWithExports<T>, FilterBase<any, true>, FilterBase>,
+    >(
         this: T,
         filter: F,
     ): Filter<
         FilterResult<T> | FilterResult<F>,
         IsFilterWithExports<T> | IsFilterWithExports<F>
     >
-    /**
-     * Combines this filter with another filter that filters by exports, returning a new filter that matches if **both** filters match.
-     *
-     * @see {@link preferExports} for more information on how to use this.
-     */
-    withExports<T extends FilterBase<any, false>>(
-        this: T,
-        withExportsFilter: FilterBase<any, true>,
-        strict?: boolean,
-    ): Filter<
-        FilterResult<typeof withExportsFilter>,
-        IsFilterWithExports<T> | IsFilterWithExports<typeof withExportsFilter>
-    >
-    /**
-     * Combines this filter with another filter that filters by dependencies, returning a new filter that matches if **both** filters match.
-     *
-     * @see {@link byDependencies} for more information on how to use this.
-     */
-    withDependencies<T extends FilterBase<any, true>>(
-        this: T,
-        deps: ComparableDependencyMap,
-        strict?: boolean,
-    ): Filter<FilterResult<T>, false>
 }
 
 export type FilterGenerator<G extends (...args: any[]) => Filter> = G & {
@@ -100,16 +112,10 @@ const Helpers: FilterHelpers = Object.setPrototypeOf(
             return this
         },
         and(filter) {
-            return every(this, filter)
+            return and(this, filter)
         },
         or(filter) {
-            return some(this, filter)
-        },
-        withExports(withExportsFilter, strict) {
-            return preferExports(withExportsFilter, this, strict)
-        },
-        withDependencies(deps, strict) {
-            return preferExports(this, byDependencies(deps), strict)
+            return or(this, filter)
         },
     } satisfies FilterHelpers,
     Function.prototype,
@@ -142,11 +148,13 @@ export function createFilterGenerator<A extends any[]>(
         exports: Metro.ModuleExports,
     ) => boolean,
     keyFor: (args: A) => string,
+    flagsFor: ((args: A) => FilterFlags) | FilterFlags,
 ): FilterGenerator<(...args: A) => Filter<any, true>>
 
 export function createFilterGenerator<A extends any[]>(
     filter: (args: A, id: Metro.ModuleID) => boolean,
     keyFor: (args: A) => string,
+    flagsFor: ((args: A) => FilterFlags) | FilterFlags,
 ): FilterGenerator<(...args: A) => Filter<any, false>>
 
 export function createFilterGenerator<A extends any[]>(
@@ -156,14 +164,18 @@ export function createFilterGenerator<A extends any[]>(
         exports?: Metro.ModuleExports,
     ) => boolean,
     keyFor: (args: A) => string,
+    flagsFor: ((args: A) => FilterFlags) | FilterFlags,
 ): FilterGenerator<(...args: A) => Filter> {
     type GeneratorType = ReturnType<typeof createFilterGenerator<A>>
+
+    const isFlagsStatic = typeof flagsFor === 'number'
 
     const generator: GeneratorType = (...args: A) => {
         const filter_ = ((id: Metro.ModuleID, exports?: Metro.ModuleExports) =>
             filter(args, id, exports)) as ReturnType<GeneratorType>
 
         filter_.key = keyFor(args)
+        filter_.flags = isFlagsStatic ? flagsFor : flagsFor(args)
         return Object.setPrototypeOf(filter_, Helpers)
     }
 
@@ -205,6 +217,7 @@ export const byProps = createFilterGenerator<Parameters<ByProps>>(
         return false
     },
     props => `revenge.props(${props.join(',')})`,
+    FilterFlags.RequiresExports,
 ) as ByProps
 
 export type WithoutProps = FilterGenerator<
@@ -229,6 +242,7 @@ export const withoutProps = createFilterGenerator<Parameters<WithoutProps>>(
         return true
     },
     props => `revenge.withoutProps(${props.join(',')})`,
+    FilterFlags.RequiresExports,
 ) as WithoutProps
 
 export type BySingleProp = FilterGenerator<
@@ -254,6 +268,7 @@ export const bySingleProp = createFilterGenerator<Parameters<BySingleProp>>(
         return false
     },
     ([prop]) => `revenge.singleProp(${prop})`,
+    FilterFlags.RequiresExports,
 ) as BySingleProp
 
 export type ByName = FilterGenerator<
@@ -293,6 +308,7 @@ export type ByName = FilterGenerator<
 export const byName = createFilterGenerator<Parameters<ByName>>(
     ([name], _, exports) => exports.name === name,
     ([name]) => `revenge.name(${name})`,
+    FilterFlags.RequiresExports,
 ) as ByName
 
 export interface ComparableDependencyMap
@@ -356,6 +372,7 @@ const __DEBUG_WARNED_BAD_BY_DEPENDENCIES_FILTERS__ =
 export const byDependencies = createFilterGenerator<Parameters<ByDependencies>>(
     ([deps], id) => depCompare(getModuleDependencies(id)!, deps, id, id),
     deps => `revenge.deps(${depGenFilterKey(deps)})`,
+    FilterFlags.Any,
 ) as ByDependencies
 
 byDependencies.loose = loose
@@ -533,30 +550,18 @@ function depGenRelativeKeyPart(dep: number) {
     return `${prefix}${magnitude},`
 }
 
-export type Every = FilterGenerator<{
+export type And = FilterGenerator<
     <F1 extends FilterBase, F2 extends FilterBase>(
         f1: F1,
         f2: F2,
-    ): Filter<
+    ) => Filter<
         FilterResult<F1> & FilterResult<F2>,
         LogicalOr<IsFilterWithExports<F1>, IsFilterWithExports<F2>>
     >
-    <F1 extends FilterBase, F2 extends FilterBase, F3 extends FilterBase>(
-        f1: F1,
-        f2: F2,
-        f3: F3,
-    ): Filter<
-        FilterResult<F1> & FilterResult<F2> & FilterResult<F3>,
-        LogicalOr<
-            LogicalOr<IsFilterWithExports<F1>, IsFilterWithExports<F2>>,
-            IsFilterWithExports<F3>
-        >
-    >
-    (...filters: FilterBase[]): Filter
-}>
+>
 
 /**
- * Combines multiple filters into one, returning true if **every** filter matches.
+ * Combines two filters into one, returning true if **every** filter matches.
  *
  * @param filters The filters to combine.
  *
@@ -571,14 +576,15 @@ export type Every = FilterGenerator<{
  *
  * @example
  * ```ts
- * const [SomeModule] = lookupModule(every(
- *    byProps('x', 'name'),
- *    byName('SomeName'),
- *    byDependencies([1, 485, null, 2]),
- * ))
+ * const [SomeModule] = lookupModule(
+ *   and(
+ *     and(byProps('x', 'name'), byName('SomeName')),
+ *     byDependencies([1, 485, null, 2]),
+ *   ),
+ * )
  * ```
  */
-export const every = createFilterGenerator<[...filters: Filter[]]>(
+export const and = createFilterGenerator(
     (filters, id, exports) => {
         for (const filter of filters) {
             if (filter(id, exports)) continue
@@ -587,32 +593,22 @@ export const every = createFilterGenerator<[...filters: Filter[]]>(
 
         return true
     },
-    filters => `revenge.every(${filtersToKey(filters)})`,
-) as Every
+    filters => `revenge.and(${filtersToKey(filters)})`,
+    filters => filters.reduce((a, b) => a | b.flags, 0),
+) as And
 
-export type Some = FilterGenerator<{
+export type Or = FilterGenerator<
     <F1 extends FilterBase, F2 extends FilterBase>(
         f1: F1,
         f2: F2,
-    ): Filter<
+    ) => Filter<
         FilterResult<F1> | FilterResult<F2>,
         IsFilterWithExports<F1> | IsFilterWithExports<F2>
     >
-    <F1 extends FilterBase, F2 extends FilterBase, F3 extends FilterBase>(
-        f1: F1,
-        f2: F2,
-        f3: F3,
-    ): Filter<
-        FilterResult<F1> | FilterResult<F2> | FilterResult<F3>,
-        | IsFilterWithExports<F1>
-        | IsFilterWithExports<F2>
-        | IsFilterWithExports<F3>
-    >
-    (...filters: FilterBase[]): Filter
-}>
+>
 
 /**
- * Combines multiple filters into one, returning true if **some** filters match.
+ * Combines two filters into one, returning true if **some** filters match.
  *
  * @param filters The filters to combine.
  *
@@ -627,20 +623,22 @@ export type Some = FilterGenerator<{
  *
  * @example
  * ```ts
- * const [SomeModule] = lookupModule(some(
- *   byProps('x', 'name'),
- *   byName('SomeName'),
- *   byDependencies([1, 485, null, 2]),
- * ))
+ * const [SomeModule] = lookupModule(
+ *   or(
+ *     or(byProps('x', 'name'), byName('SomeName')),
+ *     byDependencies([1, 485, null, 2]),
+ *   ),
+ * )
  * ```
  */
-export const some = createFilterGenerator<[...filters: FilterBase[]]>(
+export const or = createFilterGenerator(
     (filters, id, exports) => {
         for (const filter of filters) if (filter(id, exports)) return true
         return false
     },
-    filters => `revenge.some(${filtersToKey(filters)})`,
-) as Some
+    filters => `revenge.or(${filtersToKey(filters)})`,
+    filters => filters.reduce((a, b) => a & b.flags, 0),
+) as Or
 
 function filtersToKey(filters: FilterBase[]): string {
     let s = ''
@@ -648,51 +646,10 @@ function filtersToKey(filters: FilterBase[]): string {
     return s.substring(0, s.length - 1)
 }
 
-export type ModuleStateAware = FilterGenerator<
-    <IF extends FilterBase>(
-        initializedFilter: IF,
-        uninitializedFilter: FilterBase<any, false>,
-        strict?: boolean,
-    ) => Filter<FilterResult<IF>, false>
->
-
-/**
- * Filter modules depending on their initialized state. **Initialized modules with bad exports are skipped.**
- *
- * @param initializedFilter The filter to use for initialized modules.
- * @param uninitializedFilter The filter to use for uninitialized modules.
- * @param strict Whether to also filter with `uninitializedFilter` after `initializedFilter` passes, confirming the module is definitely the correct module. Defaults to `false`.
- *
- * @example
- * ```ts
- * // will filter byProps('x') for initialized modules
- * // and byDependencies([1, 485, null, 2]) for uninitialized modules
- * const [SomeModule] = lookupModule(moduleStateAware(
- *   byProps('x'),
- *   byDependencies([1, 485, null, 2]),
- * ))
- * ```
- */
-export const moduleStateAware = createFilterGenerator<
-    Parameters<ModuleStateAware>
->(
-    ([initializedFilter, uninitializedFilter, strict], id, exports) => {
-        if (isModuleInitialized(id)) {
-            if (mInitialized.has(id) && initializedFilter(id, exports))
-                return strict ? uninitializedFilter(id) : true
-            return false
-        }
-
-        return uninitializedFilter(id)
-    },
-    ([f1, f2]) => `revenge.moduleStateAware(${f1.key},${f2.key})`,
-) as ModuleStateAware
-
 export type PreferExports = FilterGenerator<
     <WEF extends FilterBase>(
-        withExportsFilter: WEF,
-        exportslessFilter: FilterBase<any, false>,
-        strict?: boolean,
+        filter: WEF,
+        fallbackFilter: FilterBase<any, false>,
     ) => Filter<FilterResult<WEF>, false>
 >
 
@@ -701,11 +658,8 @@ export type PreferExports = FilterGenerator<
  *
  * @see {@link isModuleExportsBad} for more information on what is considered bad module exports.
  *
- * @see {@link moduleStateAware} for an alternative that filters based on the module's initialized state.
- *
- * @param withExportsFilter The filter to use for modules with proper exports.
- * @param exportslessFilter The filter to use for modules without proper exports (uninitialized or bad).
- * @param strict Whether to also filter with `exportslessFilter` after `withExportsFilter` passes, confirming the module is definitely the correct module. Defaults to `false`.
+ * @param filter The filter to use for modules with proper exports.
+ * @param fallbackFilter The filter to use for modules without proper exports (uninitialized or bad).
  *
  * @example With filter helpers (preferred)
  * ```ts
@@ -726,14 +680,12 @@ export type PreferExports = FilterGenerator<
  * ```
  */
 export const preferExports = createFilterGenerator<Parameters<PreferExports>>(
-    ([withExportsFilter, exportslessFilter, strict], id, exports) => {
-        if (mInitialized.has(id)) {
-            if (withExportsFilter(id, exports))
-                return strict ? exportslessFilter(id) : true
-            return false
-        }
+    ([filter, fallbackFilter], id, exports) => {
+        if (mInitialized.has(id))
+            return filter(id, exports) && fallbackFilter(id)
 
-        return exportslessFilter(id)
+        return fallbackFilter(id)
     },
     ([f1, f2]) => `revenge.preferExports(${f1.key},${f2.key})`,
+    FilterFlags.Any,
 ) as PreferExports

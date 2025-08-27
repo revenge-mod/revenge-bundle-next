@@ -3,8 +3,8 @@ import {
     byDependencies,
     byProps,
     bySingleProp,
+    or,
     preferExports,
-    some,
 } from '@revenge-mod/modules/finders/filters'
 import {
     ReactJSXRuntimeModuleId,
@@ -24,7 +24,7 @@ export let Design: Design = proxify(
         const [module] = lookupModule(
             preferExports(
                 byProps<Design>('TableRow', 'Button'),
-                some(
+                or(
                     byDependencies(
                         loose([
                             null,

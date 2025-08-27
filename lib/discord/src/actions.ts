@@ -1,8 +1,8 @@
 import { lookupModule, lookupModules } from '@revenge-mod/modules/finders'
 import {
+    and,
     byDependencies,
     byProps,
-    every,
     preferExports,
     withoutProps,
 } from '@revenge-mod/modules/finders/filters'
@@ -84,7 +84,7 @@ export let ToastActionCreators: DiscordModules.Actions.ToastActionCreators =
 
         const generator = lookupModules(
             preferExports(
-                every(
+                and(
                     byProps<DiscordModules.Actions.ToastActionCreators>('open'),
                     withoutProps('init'),
                 ),
