@@ -110,6 +110,7 @@ declare global {
     var __turboModuleProxy: ((name: string) => unknown) | undefined
     function nativeLoggingHook(str: string, level: number): void
     function alert(message: unknown): void
+    function queueMicrotask(cb: () => void): void
 
     var nativePerformanceNow: typeof performance.now
     var performance: {

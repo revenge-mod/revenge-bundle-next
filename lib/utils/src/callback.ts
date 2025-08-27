@@ -25,7 +25,10 @@ export const asap = (cb: (...args: any[]) => any) => {
     ;(HermesInternal.useEngineQueue()
         ? // @ts-expect-error
           HermesInternal.enqueueJob
-        : (globalThis.setImmediate ?? globalThis.setTimeout ?? now))(cb, 0)
+        : (globalThis.queueMicrotask ??
+              globalThis.setImmediate ??
+              globalThis.setTimeout ??
+              now))(cb, 0)
 }
 
 export const noop = () => {}
