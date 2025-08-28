@@ -4,7 +4,7 @@
   "type": "module",
   "exports": {
     "./finders/filters": {
-      "default": "./src/finders/filters.ts"
+      "default": "./src/finders/filters/index.ts"
     },
     "./finders": {
       "default": "./src/finders/index.ts"

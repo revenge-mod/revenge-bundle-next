@@ -1,6 +1,5 @@
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
-    preferExports,
     withDependencies,
     withProps,
 } from '@revenge-mod/modules/finders/filters'
@@ -19,8 +18,7 @@ export interface RootNavigationRef {
 export let RootNavigationRef: RootNavigationRef = proxify(
     () => {
         const [module] = lookupModule(
-            preferExports(
-                withProps<RootNavigationRef>('getRootNavigationRef'),
+            withProps<RootNavigationRef>('getRootNavigationRef').and(
                 withDependencies([
                     loose([[], loose([relative(1), relative(2)])]),
                     2,

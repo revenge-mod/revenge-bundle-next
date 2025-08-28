@@ -1,6 +1,5 @@
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
-    preferExports,
     withDependencies,
     withName,
     withProps,
@@ -17,8 +16,7 @@ export let ReactNavigationNative: typeof import('@react-navigation/native') =
     proxify(
         () => {
             const [module] = lookupModule(
-                preferExports(
-                    withProps<typeof ReactNavigationNative>('useLinkTo'),
+                withProps<typeof ReactNavigationNative>('useLinkTo').and(
                     withDependencies(
                         loose([
                             [],
@@ -44,8 +42,7 @@ export let ReactNavigationStack: typeof import('@react-navigation/stack') =
     proxify(
         () => {
             const [module] = lookupModule(
-                preferExports(
-                    withProps<typeof ReactNavigationStack>('StackView'),
+                withProps<typeof ReactNavigationStack>('StackView').and(
                     withDependencies(
                         loose([
                             relative.withDependencies(

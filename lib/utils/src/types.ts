@@ -6,6 +6,11 @@ export type LogicalOr<T1, T2> = T1 extends true
     : T2 extends true
       ? true
       : false
+export type LogicalAnd<T1, T2> = T1 extends true
+    ? T2 extends true
+        ? true
+        : false
+    : false
 export type DeepPartial<T> = {
     [K in keyof T]?: T[K] extends AnyObject ? DeepPartial<T[K]> : T[K]
 }

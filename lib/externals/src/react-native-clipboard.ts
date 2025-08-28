@@ -1,6 +1,5 @@
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
-    preferExports,
     withDependencies,
     withProps,
 } from '@revenge-mod/modules/finders/filters'
@@ -24,8 +23,7 @@ let ClipboardModule: typeof import('@react-native-clipboard/clipboard') =
             // r5 = [27, 4793];
 
             const [module] = lookupModule(
-                preferExports(
-                    withProps<typeof ClipboardModule>('useClipboard'),
+                withProps<typeof ClipboardModule>('useClipboard').and(
                     withDependencies([
                         relative.withDependencies(
                             [ReactModuleId, relative(2, true)],

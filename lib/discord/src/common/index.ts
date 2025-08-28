@@ -1,6 +1,5 @@
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
-    preferExports,
     withDependencies,
     withName,
     withProps,
@@ -43,9 +42,7 @@ export let ConstantsModuleId: Metro.ModuleID | undefined
 export let Constants: DiscordModules.Constants = proxify(
     () => {
         const [module, id] = lookupModule(
-            preferExports(
-                withProps<DiscordModules.Constants>('ME'),
-
+            withProps<DiscordModules.Constants>('ME').and(
                 // ID:   1236
                 // Deps: 26, 1237, 1238, 1239, 1240, ...
                 // Every module has only one dependency, which is the import tracker

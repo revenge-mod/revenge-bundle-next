@@ -1,6 +1,5 @@
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
-    preferExports,
     withDependencies,
     withName,
 } from '@revenge-mod/modules/finders/filters'
@@ -17,10 +16,9 @@ const [, _classCallCheckModuleId] = lookupModule(withName('_classCallCheck'))
 export let TypedEventEmitter: typeof DiscordModules.Utils.TypedEventEmitter =
     proxify(() => {
         const [module] = lookupModule(
-            preferExports(
-                withName<typeof DiscordModules.Utils.TypedEventEmitter>(
-                    'TypedEventEmitter',
-                ),
+            withName<typeof DiscordModules.Utils.TypedEventEmitter>(
+                'TypedEventEmitter',
+            ).and(
                 withDependencies([
                     _classCallCheckModuleId,
                     _createClassModuleId,

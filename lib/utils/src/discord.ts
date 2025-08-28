@@ -3,7 +3,6 @@ import { TokensModuleId } from '@revenge-mod/discord/common'
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
     createFilterGenerator,
-    FilterFlags,
     withDependencies,
 } from '@revenge-mod/modules/finders/filters'
 import {
@@ -11,6 +10,7 @@ import {
     ReactModuleId,
     ReactNativeModuleId,
 } from '@revenge-mod/react'
+import { FilterFlag } from '#modules/src/finders/filters/constants'
 import type {
     Filter,
     FilterGenerator,
@@ -118,7 +118,7 @@ export const withGeneratedIconComponent = createFilterGenerator<
         return false
     },
     names => `revenge.utils.discord.generatedIconComponent(${names.join(',')})`,
-    FilterFlags.Any,
+    FilterFlag.Dynamic,
 ) as WithGeneratedIconComponent
 
 /**

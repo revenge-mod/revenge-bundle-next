@@ -1,6 +1,5 @@
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
-    preferExports,
     withDependencies,
     withProps,
 } from '@revenge-mod/modules/finders/filters'
@@ -21,8 +20,7 @@ export type SettingListRenderer =
 export let SettingListRenderer: SettingListRenderer = proxify(
     () => {
         const [module] = lookupModule(
-            preferExports(
-                withProps<SettingListRenderer>('SettingsList'),
+            withProps<SettingListRenderer>('SettingsList').and(
                 withDependencies(
                     loose([
                         ReactModuleId,

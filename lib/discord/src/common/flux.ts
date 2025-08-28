@@ -1,6 +1,5 @@
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
-    preferExports,
     withDependencies,
     withProps,
 } from '@revenge-mod/modules/finders/filters'
@@ -12,8 +11,7 @@ const { relative } = withDependencies
 // ../discord_common/js/packages/flux
 
 export const [Dispatcher, DispatcherModuleId] = lookupModule(
-    preferExports(
-        withProps<DiscordModules.Flux.Dispatcher>('_interceptors'),
+    withProps<DiscordModules.Flux.Dispatcher>('_interceptors').and(
         withDependencies([relative(1), null, null, null, null, 2]),
     ),
     {

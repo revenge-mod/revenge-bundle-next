@@ -129,7 +129,6 @@ type LookupNotFoundResult = typeof NotFoundResult
  * Lookup modules.
  *
  * You can lookup uninitialized modules by passing `options.uninitialized` when filtering via exportsless filters (eg. `withDependencies`).
- * Use the `preferExports` helper to filter uninitialized modules.
  *
  * @param filter The filter to use.
  * @param options The options to use for the lookup.

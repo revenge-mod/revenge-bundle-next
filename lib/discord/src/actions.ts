@@ -1,7 +1,5 @@
 import { lookupModule, lookupModules } from '@revenge-mod/modules/finders'
 import {
-    and,
-    preferExports,
     withDependencies,
     withoutProps,
     withProps,
@@ -22,11 +20,10 @@ export let ActionSheetActionCreators: DiscordModules.Actions.ActionSheetActionCr
     proxify(
         () => {
             const [module] = lookupModule(
-                preferExports(
-                    withProps<DiscordModules.Actions.ActionSheetActionCreators>(
-                        'hideActionSheet',
-                        'openLazy',
-                    ),
+                withProps<DiscordModules.Actions.ActionSheetActionCreators>(
+                    'hideActionSheet',
+                    'openLazy',
+                ).and(
                     withDependencies([
                         null,
                         ReactModuleId,
@@ -54,10 +51,9 @@ export let AlertActionCreators: DiscordModules.Actions.AlertActionCreators =
     proxify(
         () => {
             const [module] = lookupModule(
-                preferExports(
-                    withProps<DiscordModules.Actions.AlertActionCreators>(
-                        'openAlert',
-                    ),
+                withProps<DiscordModules.Actions.AlertActionCreators>(
+                    'openAlert',
+                ).and(
                     withDependencies([
                         [[], relative(1)],
                         [ReactNativeModuleId, 2],
@@ -83,15 +79,9 @@ export let ToastActionCreators: DiscordModules.Actions.ToastActionCreators =
         // [Dispatcher, ImportTracker]
 
         const generator = lookupModules(
-            preferExports(
-                and(
-                    withProps<DiscordModules.Actions.ToastActionCreators>(
-                        'open',
-                    ),
-                    withoutProps('init'),
-                ),
-                withDependencies([DispatcherModuleId, 2]),
-            ),
+            withProps<DiscordModules.Actions.ToastActionCreators>('open')
+                .and(withoutProps('init'))
+                .and(withDependencies([DispatcherModuleId, 2])),
             {
                 uninitialized: true,
             },

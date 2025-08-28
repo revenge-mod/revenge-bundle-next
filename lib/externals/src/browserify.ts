@@ -1,6 +1,5 @@
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
-    preferExports,
     withDependencies,
     withProps,
 } from '@revenge-mod/modules/finders/filters'
@@ -11,8 +10,7 @@ const { loose, relative } = withDependencies
 export let nodeUtil: typeof import('node:util') = proxify(
     () => {
         const [module] = lookupModule(
-            preferExports(
-                withProps<typeof nodeUtil>('inspect'),
+            withProps<typeof nodeUtil>('inspect').and(
                 withDependencies([
                     loose([relative(2, true), relative(4, true)]),
                     [],

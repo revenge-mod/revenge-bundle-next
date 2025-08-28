@@ -5,13 +5,13 @@ import {
 } from '@revenge-mod/modules/finders'
 import {
     createFilterGenerator,
-    FilterFlags,
     withName,
 } from '@revenge-mod/modules/finders/filters'
 import { getModuleDependencies } from '@revenge-mod/modules/metro/utils'
 import { asap, noop } from '@revenge-mod/utils/callback'
 import { cached, cacheFilterResultForId } from '#modules/src/caches'
 import { FilterResultFlags } from '#modules/src/finders/_internal'
+import { FilterFlag } from '#modules/src/finders/filters/constants'
 import type {
     Filter,
     FilterGenerator,
@@ -110,7 +110,7 @@ export const withStore = createFilterGenerator(
         }
     },
     () => 'revenge.discord.store',
-    FilterFlags.Any,
+    FilterFlag.Dynamic,
 ) as WithStore
 
 export type WithStoreName = FilterGenerator<
@@ -124,7 +124,7 @@ export const withStoreName = createFilterGenerator(
     ([name], _, exports) =>
         exports.getName?.length === 0 && exports.getName() === name,
     ([name]) => `revenge.discord.storeName(${name})`,
-    FilterFlags.RequiresExports,
+    FilterFlag.RequiresExports,
 ) as WithStoreName
 
 /// STORE CACHING
