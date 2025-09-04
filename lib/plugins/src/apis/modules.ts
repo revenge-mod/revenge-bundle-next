@@ -3,6 +3,7 @@ import * as PluginApiModulesFindersFilters from '@revenge-mod/modules/finders/fi
 import * as PluginApiModulesMetroSubscriptions from '@revenge-mod/modules/metro/subscriptions'
 import * as PluginApiModulesMetroUtils from '@revenge-mod/modules/metro/utils'
 import * as PluginApiModulesNative_ from '@revenge-mod/modules/native'
+import * as PluginApiModulesNativeFileSystem from '@revenge-mod/modules/native/fs'
 import { spreadDescriptors } from '.'
 
 export interface PluginApiModules {
@@ -11,7 +12,9 @@ export interface PluginApiModules {
     native: PluginApiModulesNative
 }
 
-export type PluginApiModulesNative = typeof PluginApiModulesNative_
+export type PluginApiModulesNative = typeof PluginApiModulesNative_ & {
+    fs: typeof PluginApiModulesNativeFileSystem
+}
 
 export type PluginApiModulesMetro =
     // biome-ignore format: Don't
@@ -30,5 +33,7 @@ export const modules: PluginApiModules = {
         PluginApiModulesMetroUtils,
         spreadDescriptors(PluginApiModulesMetroSubscriptions, {}),
     ),
-    native: PluginApiModulesNative_,
+    native: spreadDescriptors(PluginApiModulesNative_, {
+        fs: PluginApiModulesNativeFileSystem,
+    }),
 }

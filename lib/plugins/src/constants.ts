@@ -22,6 +22,11 @@ export const PluginFlags = {
 }
 
 /**
+ * A bitmask of {@link PluginFlags} that are persisted to storage.
+ */
+export const PersistentPluginFlags = PluginFlags.Enabled
+
+/**
  * The plugin status.
  */
 export const PluginStatus = {
