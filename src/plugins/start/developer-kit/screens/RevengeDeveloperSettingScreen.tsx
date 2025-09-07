@@ -36,6 +36,7 @@ export default function RevengeDeveloperSettingScreen() {
                         label: 'Tools',
                         settings: [
                             Setting.EvalJS,
+                            Setting.UpdateBundle,
                             Setting.AssetBrowser,
                             Setting.TestErrorBoundary,
                         ],

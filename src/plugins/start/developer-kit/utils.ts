@@ -12,6 +12,7 @@ import RDTDisconnectSetting from './definitions/RDTDisconnectSetting'
 import RDTVersionSetting from './definitions/RDTVersionSetting'
 import RevengeDeveloperSetting from './definitions/RevengeDeveloperSetting'
 import TestErrorBoundarySetting from './definitions/TestErrorBoundarySetting'
+import UpdateBundle from './definitions/UpdateBundle'
 
 export function register() {
     api.cleanup(
@@ -22,6 +23,7 @@ export function register() {
             [Setting.RDTConnect]: RDTConnectSetting,
             [Setting.RDTDisconnect]: RDTDisconnectSetting,
             [Setting.EvalJS]: EvalJSSetting,
+            [Setting.UpdateBundle]: UpdateBundle,
             [Setting.AssetBrowser]: AssetBrowserSetting,
             [Setting.TestErrorBoundary]: TestErrorBoundarySetting,
         }),
