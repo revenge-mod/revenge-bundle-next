@@ -1,7 +1,7 @@
 import { getCurrentStack } from '@revenge-mod/utils/error'
 import { cacheFilterResultForId } from '../caches'
-import { metroRequire } from '../metro/custom'
 import { mInitialized } from '../metro/patches'
+import { metroRequire } from '../metro/runtime'
 import { isModuleExportBad } from '../metro/utils'
 import { FilterFlag } from './filters'
 import type { If } from '@revenge-mod/utils/types'

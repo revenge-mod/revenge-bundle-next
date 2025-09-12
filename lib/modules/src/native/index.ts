@@ -45,16 +45,22 @@ function makePayload(name: string, args: any[]): object {
  * @param args The arguments to pass to the native method.
  * @returns A promise that resolves with the result of the native method call.
  */
-export async function callMethod<T>(name: string, args: any[]): Promise<T> {
-    const result = await BridgePromise.readAsDataURL(makePayload(name, args))
+export async function callBridgeMethod<N extends MethodName>(
+    name: N,
+    args: MethodArgs<N>,
+): Promise<MethodResult<N>> {
+    try {
+        const result = await BridgePromise.readAsDataURL(
+            makePayload(name, args),
+        )
 
-    if ('error' in result)
-        throw new Error(`Call failed: ${result.error as string}`)
-    if ('result' in result) return result.result as T
+        if ('error' in result) throw result.error
+        if ('result' in result) return result.result as MethodResult<N>
 
-    throw new Error(
-        'Call failed: The module did not return a valid result. The native hook must have failed.',
-    )
+        throw 'The module did not return a valid result. The native hook must have failed.'
+    } catch (error) {
+        throw new Error(`Call failed: ${error}`)
+    }
 }
 
 /**
@@ -66,17 +72,46 @@ export async function callMethod<T>(name: string, args: any[]): Promise<T> {
  * @param args The arguments to pass to the native method.
  * @returns The result of the native method call.
  */
-export function callMethodSync<T>(name: string, args: any[]): T {
+export function callBridgeMethodSync<N extends MethodName>(
+    name: N,
+    args: MethodArgs<N>,
+): MethodResult<N> {
     try {
         const result = Bridge.getBBox(0, makePayload(name, args))
 
         if ('error' in result) throw result.error
-        if ('result' in result) return result.result as T
+        if ('result' in result) return result.result as MethodResult<N>
 
         throw 'The module did not return a valid result. The native hook must have failed.'
     } catch (error) {
-        throw new Error(
-            `Call failed: ${error instanceof Error ? error.message : String(error)}`,
-        )
+        throw new Error(`Call failed: ${error}`)
     }
+}
+
+/**
+ * Get the bridge information.
+ */
+export function getBridgeInfo(): BridgeInfo | null {
+    try {
+        return callBridgeMethodSync('revenge.info', [])
+    } catch (e) {
+        nativeLoggingHook(
+            `\u001b[31mFailed to get native bridge info: ${e}\u001b[0m`,
+            2,
+        )
+        return null
+    }
+}
+
+export interface BridgeInfo {
+    name: string
+    version: number
+}
+
+export type MethodName = Extract<keyof Methods, string>
+export type MethodArgs<T extends MethodName> = Methods[T][0]
+export type MethodResult<T extends MethodName> = Methods[T][1]
+
+export interface Methods {
+    'revenge.info': [[], BridgeInfo]
 }

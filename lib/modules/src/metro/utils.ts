@@ -1,6 +1,6 @@
 import { isProxy } from '@revenge-mod/utils/proxy'
-import { Initialized } from './custom'
 import { mDeps, mList } from './patches'
+import { Initialized } from './runtime'
 import type { Metro } from '../types'
 
 /**

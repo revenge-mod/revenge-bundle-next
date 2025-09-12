@@ -1,8 +1,16 @@
 import { TypedEventEmitter } from '@revenge-mod/discord/common/utils'
+import {
+    callBridgeMethod,
+    callBridgeMethodSync,
+} from '@revenge-mod/modules/native'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import { sleepReject } from '@revenge-mod/utils/promise'
 import { pUnscopedApi as uapi } from '../apis'
-import { PluginFlags as Flag, PluginStatus as Status } from '../constants'
+import {
+    PluginFlags as Flag,
+    PersistentPluginFlags,
+    PluginStatus as Status,
+} from '../constants'
 import {
     addPluginApiDecorator,
     decoratePluginApi,
@@ -83,13 +91,30 @@ export const pEmitter = new TypedEventEmitter<{
 export const pList = new Map<PluginManifest['id'], AnyPlugin>()
 export const pMetadata = new WeakMap<AnyPlugin, InternalPluginMeta>()
 
+const { flags: PersistedFlags }: PersistedPluginStates = callBridgeMethodSync(
+    'revenge.plugins.states.read',
+    [],
+) ?? {
+    flags: {},
+}
+
+pEmitter.on('flagUpdate', plugin => {
+    PersistedFlags[plugin.manifest.id] = plugin.flags & PersistentPluginFlags
+    callBridgeMethod('revenge.plugins.states.write', [PersistedFlags])
+})
+
 /**
  * Registers a new plugin with the system.
+ *
+ * @param manifest The manifest of the plugin.
+ * @param options The options for the plugin.
+ * @param defflags The default flags for the plugin.
+ * @param iflags The internal flags for the plugin.
  */
 export function registerPlugin<O extends PluginApiExtensionsOptions>(
     manifest: PluginManifest,
     options: PluginOptions<O>,
-    flags: number,
+    defflags: number,
     iflags: number,
 ) {
     // TODO(plugins): verify plugin manifest
@@ -127,7 +152,7 @@ export function registerPlugin<O extends PluginApiExtensionsOptions>(
         dependents: [],
         handleError: e => handlePluginError(e, plugin),
         options,
-        flags,
+        flags: PersistedFlags[manifest.id] ?? defflags,
     }
 
     pMetadata.set(plugin, meta)
@@ -299,7 +324,6 @@ export async function disablePlugin(plugin: AnyPlugin) {
     if (plugin.status && !(plugin.status & Status.Stopping))
         await stopPlugin(plugin)
 
-    // TODO(plugins): write to storage
     plugin.flags &= ~Flag.Enabled
     pEmitter.emit('disabled', plugin)
 }
@@ -317,9 +341,7 @@ export async function enablePlugin(plugin: AnyPlugin) {
         }),
     )
 
-    // TODO(plugins): write to storage
     plugin.flags |= Flag.Enabled
-
     pEmitter.emit('enabled', plugin)
 }
 
@@ -556,4 +578,19 @@ async function cleanupPlugin(plugin: AnyPlugin, meta: InternalPluginMeta) {
         }
 
     await Promise.all(proms)
+}
+
+declare module '@revenge-mod/modules/native' {
+    interface Methods {
+        'revenge.plugins.states.read': [[], PersistedPluginStates | null]
+        'revenge.plugins.states.write': [[statuses: PersistedPluginFlags], void]
+    }
+}
+
+interface PersistedPluginStates {
+    flags: PersistedPluginFlags
+}
+
+interface PersistedPluginFlags {
+    [id: PluginManifest['id']]: number
 }

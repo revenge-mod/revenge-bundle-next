@@ -19,7 +19,10 @@
       "default": "./src/metro/utils.ts"
     },
     "./native": {
-      "default": "./src/native.ts"
+      "default": "./src/native/index.ts"
+    },
+    "./native/fs": {
+      "default": "./src/native/fs.ts"
     },
     "./types": {
       "types": "./src/types.ts"

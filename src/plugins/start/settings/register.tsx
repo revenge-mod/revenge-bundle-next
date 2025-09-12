@@ -4,6 +4,7 @@ import {
 } from '@revenge-mod/discord/modules/settings'
 import { Setting } from './constants'
 import HermesVersionSetting from './definitions/HermesVersionSetting'
+import LoaderVersionSetting from './definitions/LoaderVersionSetting'
 import ReactNativeVersionSetting from './definitions/ReactNativeVersionSetting'
 import ReactVersionSetting from './definitions/ReactVersionSetting'
 import ReloadSetting from './definitions/ReloadSetting'
@@ -25,6 +26,7 @@ registerSettingsItems({
     [Setting.ReactVersion]: ReactVersionSetting,
     [Setting.ReactNativeVersion]: ReactNativeVersionSetting,
     [Setting.HermesVersion]: HermesVersionSetting,
+    [Setting.LoaderVersion]: LoaderVersionSetting,
 })
 
 registerSettingsSection('REVENGE', {

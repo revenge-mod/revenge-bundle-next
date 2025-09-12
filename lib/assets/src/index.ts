@@ -48,7 +48,7 @@ export function* getCustomAssets(): Generator<CustomAsset> {
  * Yields all registered packager assets, including ones with same name but different types.
  */
 export function* getPackagerAssets(): Generator<PackagerAsset> {
-    for (const reg of Object.values(cache))
+    for (const reg of Object.values(cache.data))
         for (const moduleId of Object.values(reg))
             yield AssetsRegistry.getAssetByID(metroRequire(moduleId))
 }
@@ -77,7 +77,7 @@ export function getAssetByName(
 export function getAssetsByName(
     name: string,
 ): Record<Asset['type'], Asset> | undefined {
-    const reg = cache[name]
+    const reg = cache.data[name]
     if (!reg) return
 
     return Object.entries(reg).reduce(
@@ -106,7 +106,7 @@ export function getAssetIdByName(
     name: string,
     type?: Asset['type'],
 ): AssetId | undefined {
-    const reg = cache[name]
+    const reg = cache.data[name]
     if (!reg) return
 
     if (type !== undefined) {
@@ -127,7 +127,7 @@ export function getAssetIdByName(
  * @returns The asset ID.
  */
 export function registerAsset(asset: RegisterableAsset): AssetId {
-    if (cache[asset.name]?.[asset.type] !== undefined)
+    if (cache.data[asset.name]?.[asset.type] !== undefined)
         throw new Error(
             `Asset with name ${asset.name} and type ${asset.type} already exists!`,
         )

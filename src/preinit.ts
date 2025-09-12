@@ -5,8 +5,9 @@ import {
     onModuleFirstRequired,
     onModuleInitialized,
 } from '@revenge-mod/modules/metro/subscriptions'
+import { callBridgeMethod } from '@revenge-mod/modules/native'
 import { getErrorStack } from '@revenge-mod/utils/error'
-import { BuildEnvironment, FullVersion } from './constants'
+import { BuildEnvironment, FullVersion } from '~constants'
 
 const IndexModuleId = 0
 
@@ -49,19 +50,19 @@ onModuleFirstRequired(IndexModuleId, function onIndexRequired() {
     }
 })
 
-export function onError(e: unknown) {
-    // TODO(init): Move to use native provided alert function, which will accept a string stack trace
-    // Above will reduce the need for runCatching() to exist, as the code won't be able to be deduped any further
-    const { ClientInfoModule, DeviceModule } =
-        require('@revenge-mod/discord/native') as typeof import('@revenge-mod/discord/native')
+export function onError(error: unknown) {
+    const stack = getErrorStack(error) ?? String(error)
 
-    const Client = ClientInfoModule.getConstants()
-    const Device = DeviceModule.getConstants()
+    callBridgeMethod('revenge.alertError', [
+        stack,
+        `${FullVersion} (${BuildEnvironment})`,
+    ])
 
-    alert(
-        `Failed to load Revenge (${FullVersion} (${BuildEnvironment}))\n` +
-            `Discord: ${Client.Version} (${Client.Build})\n` +
-            `Device: ${Device.deviceManufacturer} ${Device.deviceModel}\n\n` +
-            getErrorStack(e),
-    )
+    nativeLoggingHook(`\u001b[31m${stack}\u001b[0m`, 2)
+}
+
+declare module '@revenge-mod/modules/native' {
+    export interface Methods {
+        'revenge.alertError': [[error: string, title?: string], void]
+    }
 }
