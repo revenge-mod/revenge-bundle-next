@@ -54,7 +54,7 @@ function EvalJSAlert() {
                             try {
                                 if (!api) {
                                     alert(
-                                        'Unable to provide plugin API. Running snippet in a second...',
+                                        'Unable to provide plugin API. Running snippet in a second...'
                                     )
 
                                     await sleep(1000)
@@ -118,18 +118,18 @@ function EvalJSAlert() {
                         <TableRow
                             label="Inspect depth"
                             subLabel="The depth of the object to inspect."
-                            trailing={<Text>{inspectDepth}</Text>}
-                        />
-                        <Slider
-                            endIcon={<Text>10</Text>}
-                            maximumValue={10}
-                            minimumValue={1}
-                            onValueChange={setInspectDepth}
-                            startIcon={<Text>1</Text>}
-                            step={1}
-                            value={inspectDepth}
+                            trailing={<Text variant="text-sm/normal">{inspectDepth}</Text>}
                         />
                     </TableRowGroup>
+                    <Slider
+                        endIcon={<Text variant="text-sm/normal">10</Text>}
+                        maximumValue={10}
+                        minimumValue={1}
+                        onValueChange={setInspectDepth}
+                        startIcon={<Text variant="text-sm/normal">1</Text>}
+                        step={1}
+                        value={inspectDepth}
+                    />
                 </Stack>
             }
             title="Evaluate JavaScript"
