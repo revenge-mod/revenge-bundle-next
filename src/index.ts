@@ -1,4 +1,4 @@
-import { callBridgeMethod } from '@revenge-mod/modules/native'
+import { callNativeMethod } from '@revenge-mod/modules/native'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import { BuildEnvironment, FullVersion } from '~constants'
 import type { Metro } from '@revenge-mod/modules/types'
@@ -27,7 +27,7 @@ Object.defineProperty(globalThis, '__c', {
 export function onError(error: unknown) {
     const stack = getErrorStack(error)
 
-    callBridgeMethod('revenge.alertError', [
+    callNativeMethod('revenge.alertError', [
         stack,
         `${FullVersion} (${BuildEnvironment})`,
     ])

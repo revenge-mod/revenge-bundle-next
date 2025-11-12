@@ -1,7 +1,7 @@
 import { TypedEventEmitter } from '@revenge-mod/discord/common/utils'
 import {
-    callBridgeMethod,
-    callBridgeMethodSync,
+    callNativeMethod,
+    callNativeMethodSync,
 } from '@revenge-mod/modules/native'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import { sleepReject } from '@revenge-mod/utils/promise'
@@ -92,7 +92,7 @@ export const pEmitter = new TypedEventEmitter<{
 export const pList = new Map<PluginManifest['id'], AnyPlugin>()
 const pMetadata = new WeakMap<AnyPlugin, InternalPluginMeta>()
 
-const { flags: PersistedFlags }: PersistedPluginStates = callBridgeMethodSync(
+const { flags: PersistedFlags }: PersistedPluginStates = callNativeMethodSync(
     'revenge.plugins.states.read',
     [],
 ) ?? {
@@ -101,7 +101,7 @@ const { flags: PersistedFlags }: PersistedPluginStates = callBridgeMethodSync(
 
 pEmitter.on('flagUpdate', plugin => {
     PersistedFlags[plugin.manifest.id] = plugin.flags & PersistentPluginFlags
-    callBridgeMethod('revenge.plugins.states.write', [PersistedFlags])
+    callNativeMethod('revenge.plugins.states.write', [PersistedFlags])
 })
 
 /**

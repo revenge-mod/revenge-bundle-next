@@ -107,6 +107,12 @@ declare global {
 
 declare global {
     var nativeModuleProxy: Record<string, unknown>
+    /**
+     * Provides access to TurboModules.
+     *
+     * @since React Native TurboModules
+     * @deprecated Since React Native Bridgeless
+     */
     var __turboModuleProxy: ((name: string) => unknown) | undefined
     function nativeLoggingHook(str: string, level: number): void
     function alert(message: unknown): void
@@ -116,4 +122,17 @@ declare global {
     var performance: {
         now(): number
     }
+
+    /**
+     * Registers a callable module that can be called from native code.
+     *
+     * @since React Native Bridgeless
+     *
+     * @param moduleName The name of the module.
+     * @param getModule A function that returns an object containing the methods to expose.
+     */
+    const RN$registerCallableModule: (
+        moduleName: string,
+        getModule: () => Record<string, AnyFunction>,
+    ) => void
 }

@@ -1,6 +1,6 @@
 import {
-    callBridgeMethod,
-    callBridgeMethodSync,
+    callNativeMethod,
+    callNativeMethodSync,
 } from '@revenge-mod/modules/native'
 import { debounce } from '@revenge-mod/utils/callback'
 import type { Metro } from '@revenge-mod/modules/types'
@@ -17,7 +17,7 @@ export const Uncached: Cache = {
 
 // In-memory cache
 export let cache: Cache =
-    callBridgeMethodSync('revenge.caches.modules.read', []) ?? Uncached
+    callNativeMethodSync('revenge.caches.modules.read', []) ?? Uncached
 
 if (cache.version !== ExpectedCacheVersion) {
     // TODO: Alert to user to update build
@@ -37,7 +37,7 @@ export interface Cache {
 }
 
 const save = debounce(() => {
-    callBridgeMethod('revenge.caches.modules.write', [
+    callNativeMethod('revenge.caches.modules.write', [
         cache.blacklist,
         cache.finds,
     ])

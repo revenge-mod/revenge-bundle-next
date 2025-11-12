@@ -1,46 +1,46 @@
 import {
-    callBridgeMethod,
-    callBridgeMethodSync,
+    callNativeMethod,
+    callNativeMethodSync,
 } from '@revenge-mod/modules/native'
 
 export function readFile(path: string) {
-    return callBridgeMethod('revenge.fs.read', [path])
+    return callNativeMethod('revenge.fs.read', [path])
 }
 
 export function writeFile(path: string, data: string) {
-    return callBridgeMethod('revenge.fs.write', [path, data])
+    return callNativeMethod('revenge.fs.write', [path, data])
 }
 
 export function exists(path: string) {
-    return callBridgeMethod('revenge.fs.exists', [path])
+    return callNativeMethod('revenge.fs.exists', [path])
 }
 
 export function rm(path: string) {
-    return callBridgeMethod('revenge.fs.delete', [path])
+    return callNativeMethod('revenge.fs.delete', [path])
 }
 
 export function existsSync(path: string) {
-    return callBridgeMethodSync('revenge.fs.exists', [path])
+    return callNativeMethodSync('revenge.fs.exists', [path])
 }
 
 export function readFileSync(path: string) {
-    return callBridgeMethodSync('revenge.fs.read', [path])
+    return callNativeMethodSync('revenge.fs.read', [path])
 }
 
 export function writeFileSync(path: string, data: string) {
-    return callBridgeMethodSync('revenge.fs.write', [path, data])
+    return callNativeMethodSync('revenge.fs.write', [path, data])
 }
 
 export function rmSync(path: string) {
-    return callBridgeMethodSync('revenge.fs.exists', [path])
+    return callNativeMethodSync('revenge.fs.exists', [path])
 }
 
 export function deleteFileSync(path: string) {
-    return callBridgeMethodSync('revenge.fs.delete', [path])
+    return callNativeMethodSync('revenge.fs.delete', [path])
 }
 
 export function getConstants() {
-    return callBridgeMethodSync('revenge.fs.getConstants', [])
+    return callNativeMethodSync('revenge.fs.getConstants', [])
 }
 
 declare module '@revenge-mod/modules/native' {
