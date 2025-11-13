@@ -125,7 +125,8 @@ function patchSettingsOverviewScreen(exports: any) {
             const unpatchMemo = instead(React, 'useMemo', (args, orig) => {
                 if (sRefresher.overviewScreen) args[1] = undefined
 
-                let sections = Reflect.apply(orig, React, args)
+                const node = Reflect.apply(orig, React, args)
+                const sections = node.sections
 
                 // Add our custom sections here, and only do this per instance!
                 if (sectionsInst !== sections) {
@@ -138,11 +139,11 @@ function patchSettingsOverviewScreen(exports: any) {
                 }
 
                 if (sRefresher.overviewScreen) {
-                    sections = sectionsInst = [...sections]
+                    node.sections = sectionsInst = [...sections]
                     sRefresher.overviewScreen = false
                 }
 
-                return sections
+                return node
             })
 
             const el = Reflect.apply(orig, undefined, args)

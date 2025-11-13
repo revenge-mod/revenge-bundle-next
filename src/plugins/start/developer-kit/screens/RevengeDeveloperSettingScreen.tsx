@@ -35,41 +35,47 @@ export default function RevengeDeveloperSettingScreen() {
                 <View>
                     <SettingListRenderer.SettingsList
                         containerStyle={listStyles.container}
-                        ListHeaderComponent={DTAddrSetting}
-                        sections={[
-                            {
-                                settings: [
-                                    Setting.DTAutoConnect,
-                                    Setting.DTConnect,
-                                    Setting.DTDisconnect,
-                                ],
-                            },
-                        ]}
+                        node={{
+                            type: 'list',
+                            ListHeaderComponent: DTAddrSetting,
+                            sections: [
+                                {
+                                    settings: [
+                                        Setting.DTAutoConnect,
+                                        Setting.DTConnect,
+                                        Setting.DTDisconnect,
+                                    ],
+                                },
+                            ],
+                        }}
                     />
                 </View>
                 <View>
                     <SettingListRenderer.SettingsList
                         containerStyle={listStyles.container}
-                        ListHeaderComponent={
-                            RDTContext.active ? RDTAddrSetting : undefined
-                        }
-                        sections={[
-                            {
-                                settings: [
-                                    Setting.RDTAutoConnect,
-                                    Setting.RDTConnect,
-                                    Setting.RDTDisconnect,
-                                ],
-                            },
-                            {
-                                label: 'Tools',
-                                settings: [
-                                    Setting.EvalJS,
-                                    Setting.AssetBrowser,
-                                    Setting.TestErrorBoundary,
-                                ],
-                            },
-                        ]}
+                        node={{
+                            type: 'list',
+                            ListHeaderComponent: RDTContext.active
+                                ? RDTAddrSetting
+                                : undefined,
+                            sections: [
+                                {
+                                    settings: [
+                                        Setting.RDTAutoConnect,
+                                        Setting.RDTConnect,
+                                        Setting.RDTDisconnect,
+                                    ],
+                                },
+                                {
+                                    label: 'Tools',
+                                    settings: [
+                                        Setting.EvalJS,
+                                        Setting.AssetBrowser,
+                                        Setting.TestErrorBoundary,
+                                    ],
+                                },
+                            ],
+                        }}
                     />
                 </View>
             </Design.Stack>

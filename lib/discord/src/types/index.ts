@@ -620,13 +620,16 @@ export namespace DiscordModules {
             export interface SettingsListProps {
                 containerStyle?: StyleProp<ViewStyle>
                 initialSetting?: string
-                ListHeaderComponent?: ComponentType
-                ListFooterComponent?: ComponentType
-                sections: Array<{
-                    label?: string | ReactNode
-                    settings: string[]
-                    subLabel?: string | ReactNode
-                }>
+                node: {
+                    type: 'list'
+                    ListHeaderComponent?: ComponentType
+                    ListFooterComponent?: ComponentType
+                    sections: Array<{
+                        label?: string | ReactNode
+                        settings: string[]
+                        subLabel?: string | ReactNode
+                    }>
+                }
             }
 
             export type SettingsList = FC<SettingsListProps>
@@ -651,6 +654,7 @@ export namespace DiscordModules {
 
             export interface PressableSettingsItem extends BaseSettingsItem {
                 type: 'pressable'
+                withArrow?: boolean
                 onPress?: () => void
             }
 
