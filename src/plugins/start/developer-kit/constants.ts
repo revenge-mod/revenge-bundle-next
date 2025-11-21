@@ -21,5 +21,6 @@ export const Setting = {
 export const RouteNames = {
     [Setting.RevengeDeveloper]: 'Revenge Developer',
     [Setting.AssetBrowser]: 'Asset Browser',
+    [Setting.EvalJS]: 'Evaluate JavaScript',
     [Setting.TestErrorBoundary]: 'Test ErrorBoundary',
 } as const
