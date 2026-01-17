@@ -1,20 +1,10 @@
-import {
-    sImportedPath,
-    sInitialize,
-    sInitializeAny,
-    sRequire,
-    sRequireAny,
-} from './_internal'
+import { sInitialize, sInitializeAny, sRequire, sRequireAny } from './_internal'
 import type { Metro } from '../../types'
 
 export type ModuleFirstRequiredCallback = (id: Metro.ModuleID) => void
 export type ModuleInitializedCallback = (
     id: Metro.ModuleID,
     exports: Metro.ModuleExports,
-) => void
-export type ModuleFinishedImportingCallback = (
-    id: Metro.ModuleID,
-    path: string,
 ) => void
 
 /**
@@ -57,23 +47,6 @@ export function onModuleInitialized(
     set.add(callback)
     return () => {
         set.delete(callback)
-    }
-}
-
-/**
- * Registers a callback to be called when a module with a specific import path is initialized.
- *
- * @see {@link initializedModuleHasBadExports} to avoid bad module exports.
- *
- * @param callback The callback to be called.
- * @returns A function that unregisters the callback.
- */
-export function onModuleFinishedImporting(
-    callback: ModuleFinishedImportingCallback,
-) {
-    sImportedPath.add(callback)
-    return () => {
-        sImportedPath.delete(callback)
     }
 }
 

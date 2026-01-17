@@ -39,8 +39,20 @@
     "./modules/settings/renderer": {
       "default": "./src/modules/settings/renderer.ts"
     },
+    "./utils/types": {
+      "types": "./src/utils/types.ts"
+    },
+    "./utils/modules/finders": {
+      "default": "./src/utils/modules/finders.ts"
+    },
+    "./utils/modules/metro/subscriptions": {
+      "default": "./src/utils/modules/metro/subscriptions.ts"
+    },
     "./types": {
       "types": "./src/types/index.ts"
+    },
+    "./types/api": {
+      "types": "./src/types/api.ts"
     },
     "./_/modules/settings": {
       "default": "./src/modules/settings/_internal.ts"

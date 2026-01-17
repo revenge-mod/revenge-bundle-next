@@ -17,4 +17,5 @@ export const [AppStartPerformance] = lookupModule(
 
 AppStartPerformance.mark('👊', 'Pre-init')
 
+import './patches/import-tracker'
 import './patches/flux'

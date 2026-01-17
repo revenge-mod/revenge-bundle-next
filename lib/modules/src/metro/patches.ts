@@ -5,9 +5,7 @@ import {
     metroImportDefault,
     metroRequire,
 } from './runtime'
-import { onModuleInitialized } from './subscriptions'
 import {
-    executeImportedPathSubscriptions,
     executeInitializeSubscriptions,
     executeRequireSubscriptions,
 } from './subscriptions/_internal'
@@ -19,7 +17,6 @@ export const mUninitialized = new Set<Metro.ModuleID>()
 /** Initialized IDs (not blacklisted) */
 export const mInitialized = new Set<Metro.ModuleID>()
 
-export const mImportedPaths = new Map<string, Metro.ModuleID>()
 export const mDeps = new Map<Metro.ModuleID, Metro.DependencyMap>()
 
 export const mList: RevengeMetro.ModuleList = new Map()
@@ -142,15 +139,3 @@ function handleFactoryCall(
 // Restore blacklists
 if (cache !== Uncached)
     for (const id of cache.blacklist) mUninitialized.delete(id)
-
-const ImportTrackerModuleId = 2
-
-onModuleInitialized(ImportTrackerModuleId, (_, exports) => {
-    const orig = exports.fileFinishedImporting
-    exports.fileFinishedImporting = (path: string) => {
-        orig(path)
-        const id = mInitializingId!
-        mImportedPaths.set(path, id)
-        executeImportedPathSubscriptions(id, path)
-    }
-})

@@ -1,9 +1,7 @@
 import { sRefresher, sSections } from '@revenge-mod/discord/_/modules/settings'
 import { onSettingsModulesLoaded } from '@revenge-mod/discord/modules/settings'
-import {
-    waitForModules,
-    waitForModuleWithImportedPath,
-} from '@revenge-mod/modules/finders'
+import { waitForModuleWithImportedPath } from '@revenge-mod/discord/utils/modules/finders'
+import { waitForModules } from '@revenge-mod/modules/finders'
 import { withName } from '@revenge-mod/modules/finders/filters'
 import { instead } from '@revenge-mod/patcher'
 import { InternalPluginFlags, registerPlugin } from '@revenge-mod/plugins/_'

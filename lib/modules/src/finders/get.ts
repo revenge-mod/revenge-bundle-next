@@ -1,10 +1,6 @@
 import { asap, noop } from '@revenge-mod/utils/callback'
-import {
-    lookupModule,
-    lookupModules,
-    lookupModuleWithImportedPath,
-} from './lookup'
-import { waitForModules, waitForModuleWithImportedPath } from './wait'
+import { lookupModule, lookupModules } from './lookup'
+import { waitForModules } from './wait'
 import type { Metro } from '../types'
 import type { Filter, FilterResult } from './filters'
 import type { LookupModulesOptions } from './lookup'
@@ -97,39 +93,6 @@ export function getModules(
         },
         options!,
     )
-
-    return unsub
-}
-
-/**
- * Get a single module by its imported path.
- * Once a module is found, unsubscription happens automatically, since imported paths are unique.
- *
- * @param path The path to find the module by.
- * @param options The options to use for the find.
- * @returns A promise that resolves to the module's exports or rejects if the find is aborted before the module is found.
- *
- * @example
- * ```ts
- * getModuleWithImportedPath('modules/main_tabs_v2/native/settings/SettingsConstants.tsx', SettingsConstants => {
- *   console.log('Settings page opened') // Logs once the module is initialized
- * })
- * ```
- */
-export function getModuleWithImportedPath<T>(
-    path: string,
-    callback: GetModulesCallback<T>,
-): GetModulesUnsubscribeFunction {
-    const [exports, id] = lookupModuleWithImportedPath(path)
-    if (id !== undefined) {
-        callback(exports, id)
-        return noop
-    }
-
-    const unsub = waitForModuleWithImportedPath(path, (exports, id) => {
-        unsub()
-        callback(exports, id)
-    })
 
     return unsub
 }

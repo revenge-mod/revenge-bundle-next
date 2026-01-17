@@ -11,7 +11,7 @@ import {
     defineLazyProperties,
     defineLazyProperty,
 } from '@revenge-mod/utils/object'
-import type { PluginApiDiscord } from '@revenge-mod/discord/types'
+import type { PluginApiDiscord } from '@revenge-mod/discord/types/api'
 
 registerPlugin(
     {
@@ -46,6 +46,12 @@ registerPlugin(
                             }),
                         },
                     ),
+                    utils: {
+                        finders: require('@revenge-mod/discord/utils/modules/finders'),
+                        metro: {
+                            subscriptions: require('@revenge-mod/discord/utils/modules/metro/subscriptions'),
+                        },
+                    },
                 } as PluginApiDiscord),
                 {
                     actions: () => {

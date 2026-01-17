@@ -1,9 +1,5 @@
 import type { Metro } from '../../types'
-import type {
-    ModuleFinishedImportingCallback,
-    ModuleFirstRequiredCallback,
-    ModuleInitializedCallback,
-} from '.'
+import type { ModuleFirstRequiredCallback, ModuleInitializedCallback } from '.'
 
 export const sRequireAny = new Set<ModuleFirstRequiredCallback>()
 export const sRequire = new Map<
@@ -15,7 +11,6 @@ export const sInitialize = new Map<
     Metro.ModuleID,
     Set<ModuleInitializedCallback>
 >()
-export const sImportedPath = new Set<ModuleFinishedImportingCallback>()
 
 export function executeRequireSubscriptions(id: Metro.ModuleID) {
     for (const cb of sRequireAny)
@@ -50,14 +45,4 @@ export function executeInitializeSubscriptions(
 
         sInitialize.delete(id)
     }
-}
-
-export function executeImportedPathSubscriptions(
-    id: Metro.ModuleID,
-    path: string,
-) {
-    for (const cb of sImportedPath)
-        try {
-            cb(id, path)
-        } catch {}
 }

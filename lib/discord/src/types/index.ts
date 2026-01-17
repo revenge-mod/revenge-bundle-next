@@ -25,7 +25,6 @@ import type {
 
 export * from './native'
 export * from './polyfills'
-export * from './revenge'
 
 export namespace DiscordModules {
     export namespace Flux {
@@ -693,8 +692,7 @@ export namespace DiscordModules {
         }
 
         export class TypedEventEmitter<
-            T extends
-                TypedEventEmitter.EventMap<T> = TypedEventEmitter.DefaultEventMap,
+            T extends Record<string, any[]> = Record<string, any[]>,
         > extends EventEmitter<T> {}
     }
 }

@@ -3,7 +3,6 @@ import { getFilterMatches } from '../caches'
 import { mInitialized } from '../metro/patches'
 import {
     onAnyModuleInitialized,
-    onModuleFinishedImporting,
     onModuleInitialized,
 } from '../metro/subscriptions'
 import {
@@ -163,44 +162,6 @@ export function waitForModules(
                   }
               },
     )
-}
-
-/**
- * Wait for a module to initialize by its imported path. **Callback won't be called if the module is already initialized!**
- *
- * Once callback is called, the subscription will be removed automatically, because modules have unique imported paths.
- *
- * Think of it as if you are doing `import * as exports from path`, and you are also waiting for the app to initialize the module by itself.
- *
- * @param path The path to wait for.
- * @param callback The callback to call once the module is initialized.
- * @returns A function to unsubscribe.
- *
- * @example
- * ```ts
- * waitForModuleWithImportedPath(
- *   'utils/PlatformUtils.tsx',
- *   (exports, id) => {
- *      // Do something with the module...
- *   }
- * )
- * ```
- */
-export function waitForModuleWithImportedPath<T = any>(
-    path: string,
-    callback: WaitForModulesCallback<T>,
-): WaitForModulesUnsubscribeFunction {
-    const unsub = onModuleFinishedImporting((id, cmpPath) => {
-        if (path === cmpPath) {
-            unsub()
-            // Module is not fully initialized yet, so we need to wait for it
-            onModuleInitialized(id, (id, exports) => {
-                callback(exports, id)
-            })
-        }
-    })
-
-    return unsub
 }
 
 /**

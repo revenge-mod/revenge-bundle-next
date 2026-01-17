@@ -1,12 +1,7 @@
 import { getCurrentStack } from '@revenge-mod/utils/error'
 import { proxify } from '@revenge-mod/utils/proxy'
 import { cacheFilterNotFound, getFilterMatches } from '../caches'
-import {
-    mImportedPaths,
-    mInitialized,
-    mList,
-    mUninitialized,
-} from '../metro/patches'
+import { mInitialized, mList, mUninitialized } from '../metro/patches'
 import { metroRequire } from '../metro/runtime'
 import {
     getInitializedModuleExports,
@@ -66,9 +61,9 @@ type InitializedLookupFilterResult<
     ? MaybeDefaultExportMatched<FilterResult<F>>
     : FilterResult<F>
 
-const NotFoundResult: readonly [] = Object.freeze([])
+export const NotFoundResult: readonly [] = Object.freeze([])
 
-type LookupNotFoundResult = typeof NotFoundResult
+export type LookupNotFoundResult = typeof NotFoundResult
 
 /**
  * Lookup modules.
@@ -334,28 +329,6 @@ export function lookupModule(filter: Filter, options?: LookupModulesOptions) {
     if (__BUILD_FLAG_DEBUG_MODULE_LOOKUPS__) DEBUG_warnLookupNoMatch(filter.key)
 
     return NotFoundResult
-}
-
-/**
- * Lookup an initialized module by its imported path.
- *
- * Think of it as if you are doing a `import * as exports from path`, the app must have already initialized the module or this will return `undefined`.
- *
- * @param path The path to lookup the module by.
- * @returns The module exports if the module is initialized, or `undefined` if the module is not found or not initialized.
- *
- * @example
- * ```ts
- * const [{ default: Logger }] = lookupModuleWithImportedPath<{ default: typeof DiscordModules.Logger }>('modules/debug/Logger.tsx')
- * ```
- */
-export function lookupModuleWithImportedPath<T = any>(
-    path: string,
-): [exports: T, id: Metro.ModuleID] | LookupNotFoundResult {
-    const id = mImportedPaths.get(path)
-    return id === undefined
-        ? NotFoundResult
-        : [getInitializedModuleExports(id), id]
 }
 
 const __DEBUG_TRACER_IGNORE_LIST__ = __BUILD_FLAG_DEBUG_MODULE_LOOKUPS__

@@ -7,6 +7,7 @@ export interface PluginApiDiscord {
     flux: PluginApiDiscord.Flux
     modules: PluginApiDiscord.Modules
     native: PluginApiDiscord.Native
+    utils: PluginApiDiscord.Utils
 }
 
 export namespace PluginApiDiscord {
@@ -15,6 +16,13 @@ export namespace PluginApiDiscord {
     export type Design = typeof import('@revenge-mod/discord/design')
     export type Flux = typeof import('@revenge-mod/discord/flux')
     export type Native = typeof import('@revenge-mod/discord/native')
+
+    export interface Utils {
+        finders: typeof import('@revenge-mod/discord/utils/modules/finders')
+        metro: {
+            subscriptions: typeof import('@revenge-mod/discord/utils/modules/metro/subscriptions')
+        }
+    }
 
     export interface Modules {
         mainTabsV2: typeof import('@revenge-mod/discord/modules/main_tabs_v2')
