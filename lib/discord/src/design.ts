@@ -10,6 +10,7 @@ import {
     ReactNativeModuleId,
 } from '@revenge-mod/react'
 import { proxify } from '@revenge-mod/utils/proxy'
+import { ImportTrackerModuleId } from './common'
 import type { DiscordModules } from './types'
 
 const { loose, relative } = withDependencies
@@ -26,9 +27,12 @@ export let Design: Design = proxify(
                         loose([
                             null,
                             null,
-                            withDependencies([ReactNativeModuleId, 2]),
-                            withDependencies([2]),
-                            2,
+                            withDependencies([
+                                ReactNativeModuleId,
+                                ImportTrackerModuleId,
+                            ]),
+                            withDependencies([ImportTrackerModuleId]),
+                            ImportTrackerModuleId,
                         ]),
                     ),
                 )
@@ -63,8 +67,7 @@ export let FormSwitch: DiscordModules.Components.FormSwitch = proxify(() => {
                 // Checkmark and X icons
                 relative(1),
                 relative(2),
-                // Import tracker
-                2,
+                ImportTrackerModuleId,
             ]),
         ),
     )

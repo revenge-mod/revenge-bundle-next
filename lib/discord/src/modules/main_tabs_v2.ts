@@ -4,6 +4,7 @@ import {
     withProps,
 } from '@revenge-mod/modules/finders/filters'
 import { proxify } from '@revenge-mod/utils/proxy'
+import { ImportTrackerModuleId } from '../common'
 import type { NavigationContainerRef } from '@react-navigation/core'
 
 const { loose, relative } = withDependencies
@@ -28,7 +29,8 @@ export let RootNavigationRef: RootNavigationRef = proxify(
                                 2,
                             ),
                         ]),
-                        2,
+                        // TODO: Decouple?
+                        ImportTrackerModuleId,
                     ]),
                 )
                 .keyAs('revenge.discord.modules.mainTabsV2.RootNavigationRef'),

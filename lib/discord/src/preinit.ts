@@ -11,7 +11,7 @@ const { relative } = withDependencies
 // ../discord_common/js/packages/app-start-performance/AppStartPerformance.tsx
 export const [AppStartPerformance] = lookupModule(
     withProps<DiscordModules.AppStartPerformance>('markAndLog').and(
-        withDependencies([relative(-1), null, null, 2]),
+        withDependencies([relative(-1), null, null, null]),
     ),
 ) as [DiscordModules.AppStartPerformance, Metro.ModuleID]
 

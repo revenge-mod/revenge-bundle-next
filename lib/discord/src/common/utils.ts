@@ -4,6 +4,7 @@ import {
     withName,
 } from '@revenge-mod/modules/finders/filters'
 import { proxify } from '@revenge-mod/utils/proxy'
+import { ImportTrackerModuleId } from '../patches/import-tracker'
 import type { DiscordModules } from '../types'
 
 // ../discord_common/js/shared/utils/TypedEventEmitter.tsx
@@ -20,7 +21,7 @@ export let TypedEventEmitter: typeof DiscordModules.Utils.TypedEventEmitter =
                     withName('_classCallCheck'),
                     withName('_createClass'),
                     [],
-                    2,
+                    ImportTrackerModuleId,
                 ]),
             ),
         )

@@ -10,6 +10,7 @@ import {
     ReactNativeModuleId,
 } from '@revenge-mod/react'
 import { proxify } from '@revenge-mod/utils/proxy'
+import { ImportTrackerModuleId } from './common'
 import { DispatcherModuleId } from './common/flux'
 import type { DiscordModules } from './types'
 
@@ -31,7 +32,7 @@ export let ActionSheetActionCreators: DiscordModules.Actions.ActionSheetActionCr
                         DispatcherModuleId,
                         relative(1),
                         relative(2),
-                        2,
+                        ImportTrackerModuleId,
                     ]),
                 ),
             )
@@ -53,8 +54,8 @@ export let AlertActionCreators: DiscordModules.Actions.AlertActionCreators =
                 ).and(
                     withDependencies([
                         [relative(1), relative(2)],
-                        [ReactNativeModuleId, 2],
-                        2,
+                        [ReactNativeModuleId, ImportTrackerModuleId],
+                        ImportTrackerModuleId,
                     ]),
                 ),
             )
@@ -75,7 +76,12 @@ export let ToastActionCreators: DiscordModules.Actions.ToastActionCreators =
         const generator = lookupModules(
             withProps<DiscordModules.Actions.ToastActionCreators>('open')
                 .and(withoutProps('init'))
-                .and(withDependencies([DispatcherModuleId, 2])),
+                .and(
+                    withDependencies([
+                        DispatcherModuleId,
+                        ImportTrackerModuleId,
+                    ]),
+                ),
         )
 
         for (const [module] of generator)

@@ -11,7 +11,11 @@ export type ModuleFinishedImportingCallback = (
 export const sImportedPath = new Set<ModuleFinishedImportingCallback>()
 export const mImportedPaths = new Map<string, Metro.ModuleID>()
 
-getModules(withProps('fileFinishedImporting'), exports => {
+export let ImportTrackerModuleId: Metro.ModuleID
+
+getModules(withProps('fileFinishedImporting'), (exports, id) => {
+    ImportTrackerModuleId = id
+
     const orig = exports.fileFinishedImporting
     exports.fileFinishedImporting = (path: string) => {
         orig(path)

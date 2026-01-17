@@ -1,3 +1,4 @@
+import { ImportTrackerModuleId } from '@revenge-mod/discord/common'
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
     withDependencies,
@@ -23,7 +24,8 @@ export let FlashList: typeof import('@shopify/flash-list') = proxify(
                     null,
                     null,
                     null,
-                    2,
+                    // TODO: Decouple?
+                    ImportTrackerModuleId,
                     null,
                 ]),
             ),

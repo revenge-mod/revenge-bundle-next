@@ -5,6 +5,7 @@ import {
     withProps,
 } from '@revenge-mod/modules/finders/filters'
 import { proxify } from '@revenge-mod/utils/proxy'
+import { ImportTrackerModuleId } from '../patches/import-tracker'
 import type { Metro } from '@revenge-mod/modules/types'
 import type { DiscordModules } from '../types'
 
@@ -47,10 +48,10 @@ export let Constants: DiscordModules.Constants = proxify(
                 withDependencies(
                     loose([
                         null,
-                        relative.withDependencies([2], 1),
-                        relative.withDependencies([2], 2),
-                        relative.withDependencies([2], 3),
-                        relative.withDependencies([2], 4),
+                        relative.withDependencies([ImportTrackerModuleId], 1),
+                        relative.withDependencies([ImportTrackerModuleId], 2),
+                        relative.withDependencies([ImportTrackerModuleId], 3),
+                        relative.withDependencies([ImportTrackerModuleId], 4),
                     ]),
                 ),
             ),
@@ -63,3 +64,5 @@ export let Constants: DiscordModules.Constants = proxify(
     },
     { hint: {} },
 )!
+
+export { ImportTrackerModuleId } from '../patches/import-tracker'
