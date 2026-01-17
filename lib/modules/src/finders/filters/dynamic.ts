@@ -124,20 +124,21 @@ const RelativeBitMask = ~(RelativeSignBit | RelativeBit | RelativeRootBit)
 /**
  * Marks this dependency to compare relatively to the module ID being compared.
  *
- * @param id The dependency ID to mark as relative.
+ * @param magnitude The relative magnitude to use when comparing module IDs. Positive values mean the dependency's module ID is greater than the module being compared, negative values mean it's less.
  * @param root Marks this dependency to compare relatively to the root (returning) module ID being compared. Useful for nested comparisons where you want to compare by the root module ID instead of the parent's module ID of the nested dependency.
  */
-function relative(id: Metro.ModuleID, root?: boolean) {
-    id = (id < 0 ? -id | RelativeSignBit : id) | RelativeBit
-    if (root) id |= RelativeRootBit
-    return id
+function relative(magnitude: Metro.ModuleID, root?: boolean) {
+    magnitude =
+        (magnitude < 0 ? -magnitude | RelativeSignBit : magnitude) | RelativeBit
+    if (root) magnitude |= RelativeRootBit
+    return magnitude
 }
 
 /**
  * Marks this dependency to compare relatively to the module ID being compared, with an additional dependencies check.
  *
  * @param deps The dependency map to add the relative dependency to. This permanently modifies the array.
- * @param id The dependency ID to mark as relative.
+ * @param magnitude The relative magnitude to use when comparing module IDs. Positive values mean the dependency's module ID is greater than the module being compared, negative values mean it's less.
  * @param root Whether to use {@link relative.toRoot} instead of {@link relative}. Defaults to `false`.
  * @returns The modified dependency map.
  *
@@ -161,10 +162,10 @@ function relative(id: Metro.ModuleID, root?: boolean) {
  */
 relative.withDependencies = (
     deps: ComparableDependencyMap,
-    id: Metro.ModuleID,
+    magnitude: Metro.ModuleID,
     root?: boolean,
 ) => {
-    deps.r = relative(id, root)
+    deps.r = relative(magnitude, root)
     return deps
 }
 
