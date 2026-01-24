@@ -182,8 +182,10 @@ function DEBUG_warnBadWithDependenciesFilter(
     // already warned
     if (__DEBUG_WARNED_BAD_BY_DEPENDENCIES_FILTERS__.has(deps)) return
 
+    __DEBUG_WARNED_BAD_BY_DEPENDENCIES_FILTERS__.add(deps)
+
     nativeLoggingHook(
-        `\u001b[33mBad ${withDependencies.name} filter, undefined ID at index ${index} (if intentional, set to null): [${depGenFilterKey(deps)}]\n${getCurrentStack()}\u001b[0m`,
+        `\u001b[33mBad withDependencies filter, undefined ID at index ${index} (if intentional, set to null): [${depGenFilterKey(deps)}]\n${getCurrentStack()}\u001b[0m`,
         2,
     )
 }
