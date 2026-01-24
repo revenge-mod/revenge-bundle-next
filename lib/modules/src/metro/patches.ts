@@ -1,3 +1,6 @@
+import { callBridgeMethodSync } from '@revenge-mod/modules/native'
+import { getErrorStack } from '@revenge-mod/utils/error'
+import { FullVersion } from '~constants'
 import { cache, cacheBlacklistedModule, Uncached } from '../caches'
 import {
     global,
@@ -128,6 +131,15 @@ function handleFactoryCall(
         }
 
         executeInitializeSubscriptions(mInitializingId, exports)
+    } catch (e) {
+        if (__DEV__) {
+            callBridgeMethodSync('revenge.alertError', [
+                `Module ${mInitializingId} failed to initialize:\n\n${getErrorStack(e)}`,
+                FullVersion,
+            ])
+        } else {
+            throw e
+        }
     } finally {
         mUninitialized.delete(mInitializingId)
         mInitializingId = prevId
