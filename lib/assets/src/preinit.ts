@@ -110,6 +110,7 @@ export let AssetsRegistry: ReactNative.AssetsRegistry = proxify(() => {
     throw new Error('assets-registry not found')
 })
 
+// TODO: Native overrides?
 // Asset overrides
 const unsubRAS = waitForModules(
     withName<{
@@ -134,3 +135,8 @@ const unsubRAS = waitForModules(
     },
     cachedOnly,
 )
+
+if (cache === Uncached) {
+    // Initialize the module immediately, so we can cache assets ASAP
+    AssetsRegistry.getAssetByID(0)
+}
