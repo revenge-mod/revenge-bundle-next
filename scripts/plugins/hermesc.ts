@@ -35,7 +35,7 @@ export default function hermesCPlugin({
             if (before) before(ver)
 
             const file = bundle['revenge.js'] as OutputChunk
-            if (!file || !file.code) throw new Error('No code to compile')
+            if (!file) throw new Error('No code to compile')
 
             // TODO(scripts/build): Remove this when we have a better way to add sourceURL
             file.code += `//# sourceURL=Revenge`
