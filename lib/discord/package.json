@@ -39,9 +39,6 @@
     "./modules/settings/renderer": {
       "default": "./src/modules/settings/renderer.ts"
     },
-    "./utils/types": {
-      "types": "./src/utils/types.ts"
-    },
     "./utils/modules/finders": {
       "default": "./src/utils/modules/finders.ts"
     },

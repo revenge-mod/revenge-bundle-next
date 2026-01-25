@@ -210,6 +210,9 @@ const Libraries = [
         'modules/settings/renderer',
         'native',
         'types',
+        'types/api',
+        'utils/modules/finders',
+        'utils/modules/metro/subscriptions',
     ]),
     library(externals, [
         'browserify',
@@ -224,6 +227,7 @@ const Libraries = [
         ['metro/subscriptions', 'metro'],
         ['metro/utils', 'metro'],
         'native',
+        'native/fs',
         'types',
     ]),
     library(patcher, ['', 'types']),
