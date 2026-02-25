@@ -81,14 +81,14 @@ const withDependencies_ = createFilterGenerator<Parameters<WithDependencies>>(
 ) as WithDependencies
 
 export const withDependencies = __DEV__
-    ? ((<T>(deps: ComparableDependencyMap) => {
+    ? (((deps: ComparableDependencyMap) => {
           // Warn about using undefined in deps, which is likely a mistake
           for (let i = 0; i < deps.length; i++) {
               if (deps[i] === undefined)
                   DEBUG_warnBadWithDependenciesFilter(deps, i)
           }
 
-          return withDependencies_<T>(deps)
+          return withDependencies_(deps)
       }) as WithDependencies)
     : withDependencies_
 
