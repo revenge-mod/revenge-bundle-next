@@ -22,9 +22,6 @@ export interface ComparableDependencyMap
     r?: number
 }
 
-const __DEBUG_WARNED_BAD_BY_DEPENDENCIES_FILTERS__ =
-    new Set<ComparableDependencyMap>()
-
 /**
  * Filter modules by their dependency map.
  *
@@ -76,14 +73,24 @@ const __DEBUG_WARNED_BAD_BY_DEPENDENCIES_FILTERS__ =
  * )
  * ```
  */
-export const withDependencies = createFilterGenerator<
-    Parameters<WithDependencies>
->(
+const withDependencies_ = createFilterGenerator<Parameters<WithDependencies>>(
     ([deps], id) => depCompare(getModuleDependencies(id)!, deps, id, id),
     deps => `revenge.deps(${depGenFilterKey(deps)})`,
     FilterFlag.Dynamic,
     FilterScopes.Uninitialized | FilterScopes.Initialized,
 ) as WithDependencies
+
+export const withDependencies = __DEV__
+    ? ((<T>(deps: ComparableDependencyMap) => {
+          // Warn about using undefined in deps, which is likely a mistake
+          for (let i = 0; i < deps.length; i++) {
+              if (deps[i] === undefined)
+                  DEBUG_warnBadWithDependenciesFilter(deps, i)
+          }
+
+          return withDependencies_<T>(deps)
+      }) as WithDependencies)
+    : withDependencies_
 
 withDependencies.loose = loose
 withDependencies.relative = relative
@@ -179,11 +186,6 @@ function DEBUG_warnBadWithDependenciesFilter(
     deps: ComparableDependencyMap,
     index: number,
 ) {
-    // already warned
-    if (__DEBUG_WARNED_BAD_BY_DEPENDENCIES_FILTERS__.has(deps)) return
-
-    __DEBUG_WARNED_BAD_BY_DEPENDENCIES_FILTERS__.add(deps)
-
     nativeLoggingHook(
         `\u001b[33mBad withDependencies filter, undefined ID at index ${index} (if intentional, set to null): [${depGenFilterKey(deps)}]\n${getCurrentStack()}\u001b[0m`,
         2,
