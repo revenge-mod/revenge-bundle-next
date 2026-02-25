@@ -41,20 +41,45 @@ export let ConstantsModuleId: Metro.ModuleID | undefined
 export let Constants: DiscordModules.Constants = proxify(
     () => {
         const [module, id] = lookupModule(
-            withProps<DiscordModules.Constants>('ME').and(
-                // ID:   1236
-                // Deps: 26, 1237, 1238, 1239, 1240, ...
-                // Every module has only one dependency, which is the import tracker
-                withDependencies(
-                    loose([
-                        null,
-                        relative.withDependencies([ImportTrackerModuleId], 1),
-                        relative.withDependencies([ImportTrackerModuleId], 2),
-                        relative.withDependencies([ImportTrackerModuleId], 3),
-                        relative.withDependencies([ImportTrackerModuleId], 4),
-                    ]),
-                ),
-            ),
+            withProps<DiscordModules.Constants>('ME')
+                .and(
+                    // TODO: Remove this once stable is >319201
+                    // ID:   1236
+                    // Deps: 26, 1237, 1238, 1239, 1240, ...
+                    // Every module has only one dependency, which is the import tracker
+                    withDependencies(
+                        loose([
+                            null,
+                            relative.withDependencies(
+                                [ImportTrackerModuleId],
+                                1,
+                            ),
+                            relative.withDependencies(
+                                [ImportTrackerModuleId],
+                                2,
+                            ),
+                            relative.withDependencies(
+                                [ImportTrackerModuleId],
+                                3,
+                            ),
+                            relative.withDependencies(
+                                [ImportTrackerModuleId],
+                                4,
+                            ),
+                        ]),
+                    ).or(
+                        withDependencies(
+                            loose([
+                                null,
+                                relative.withDependencies(
+                                    loose([relative(2, true)]),
+                                    1,
+                                ),
+                            ]),
+                        ),
+                    ),
+                )
+                .keyAs('revenge.discord.common.Constants'),
         )
 
         if (module) {
