@@ -1,7 +1,6 @@
 import { ToastActionCreators } from '@revenge-mod/discord/actions'
 import { TypedEventEmitter } from '@revenge-mod/discord/common/utils'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
-import { getErrorStack } from '@revenge-mod/utils/error'
 import { useReRender } from '@revenge-mod/utils/react'
 import { useEffect } from 'react'
 import { api } from '.'
@@ -40,23 +39,20 @@ export function connect() {
         events.emit('connect')
     })
 
-    ws.addEventListener('close', () => {
+    ws.addEventListener('close', e_ => {
         cleanup()
         events.emit('disconnect')
-    })
 
-    ws.addEventListener('error', e => {
-        cleanup()
-        events.emit('errored', e)
+        const e = e_ as CloseEvent
+        if (!e.wasClean) {
+            api.logger.error('React DevTools error:', e.reason)
 
-        const err = (e as { message: string }).message ?? getErrorStack(e)
-        api.logger.error('React DevTools error:', err)
-
-        ToastActionCreators.open({
-            key: 'REACT_DEVTOOLS_ERROR',
-            IconComponent: CircleErrorIcon,
-            content: err,
-        })
+            ToastActionCreators.open({
+                key: 'REACT_DEVTOOLS_ERROR',
+                IconComponent: CircleErrorIcon,
+                content: e.reason,
+            })
+        }
     })
 
     __REACT_DEVTOOLS__!.exports.connectToDevTools({
