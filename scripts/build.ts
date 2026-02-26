@@ -49,6 +49,9 @@ export default async function build(dev = Dev, log = true) {
             },
             pifeForModuleWrappers: true,
         },
+        experimental: {
+            lazyBarrel: true,
+        },
         preserveEntrySignatures: false,
         transform: {
             define: {
@@ -123,13 +126,32 @@ export default async function build(dev = Dev, log = true) {
     })
 
     await bundle.write({
-        minify: 'dce-only',
+        minify: dev
+            ? 'dce-only'
+            : {
+                  codegen: {
+                      removeWhitespace: false,
+                  },
+                  mangle: {
+                      keepNames: true,
+                  },
+                  compress: {
+                      joinVars: true,
+                      keepNames: {
+                          class: true,
+                          function: true,
+                      },
+                      unused: true,
+                  },
+              },
         esModule: false,
         minifyInternalExports: true,
         hoistTransitiveImports: false,
         file: 'dist/revenge.js',
         format: 'iife',
         keepNames: true,
+        postFooter: `//# sourceURL=Revenge`,
+        topLevelVar: true,
     })
 
     if (log)

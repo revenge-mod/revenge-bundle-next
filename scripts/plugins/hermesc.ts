@@ -37,9 +37,6 @@ export default function hermesCPlugin({
             const file = bundle['revenge.js'] as OutputChunk
             if (!file) throw new Error('No code to compile')
 
-            // TODO(scripts/build): Remove this when we have a better way to add sourceURL
-            file.code += `//# sourceURL=Revenge`
-
             const cmdlist = [binPath, '-emit-binary', ...(flags ?? [])]
 
             const cmd = Bun.spawnSync<'pipe', 'pipe'>(cmdlist, {
