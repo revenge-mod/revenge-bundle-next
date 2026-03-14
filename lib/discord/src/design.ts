@@ -1,9 +1,9 @@
-import { lookupModule } from '@revenge-mod/modules/finders'
+import { lookupModule, lookupModules } from '@revenge-mod/modules/finders'
 import {
     withDependencies,
     withProps,
-    withSingleProp,
 } from '@revenge-mod/modules/finders/filters'
+import { getModuleDependencies } from '@revenge-mod/modules/metro/utils'
 import {
     ReactJSXRuntimeModuleId,
     ReactModuleId,
@@ -13,7 +13,7 @@ import { proxify } from '@revenge-mod/utils/proxy'
 import { ImportTrackerModuleId } from './common'
 import type { DiscordModules } from './types'
 
-const { loose, relative } = withDependencies
+const { loose } = withDependencies
 
 // design/native.tsx
 export let Design: Design = proxify(
@@ -48,31 +48,36 @@ export let Design: Design = proxify(
 
 // design/components/Forms/native/FormSwitch.native.tsx
 export let FormSwitch: DiscordModules.Components.FormSwitch = proxify(() => {
-    const [module] = lookupModule(
-        withSingleProp<{
-            FormSwitch: DiscordModules.Components.FormSwitch
-        }>('FormSwitch').and(
-            withDependencies([
+    // TODO: Possibly come up with a better dependency fingerprinting API
+    // to not have to deal with this bullshit
+
+    for (const [, id] of lookupModules(
+        withDependencies(
+            loose([
                 null,
                 ReactModuleId,
                 ReactNativeModuleId,
                 ReactJSXRuntimeModuleId,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                // Checkmark and X icons
-                relative(1),
-                relative(2),
-                ImportTrackerModuleId,
             ]),
-        ),
-    )
+        ).keyAs('revenge.discord.design.FormSwitch'),
+        {
+            initialize: false,
+        },
+    )) {
+        const deps = getModuleDependencies(id)!
+        console.log(id, deps.at(-4), deps.at(-5))
+        if (deps.at(-1) !== ImportTrackerModuleId) continue
 
-    if (module) return (FormSwitch = module.FormSwitch)
+        if (
+            // TODO: Remove once stable > 321203
+            (deps.at(-2) === id + 2 && deps.at(-3) === id + 1) ||
+            // 321203+
+            (deps.at(-4) === id + 2 && deps.at(-5) === id + 1)
+        ) {
+            const FormSwitch_ = __r(id)!.FormSwitch
+            if (FormSwitch_) return (FormSwitch = FormSwitch_)
+        }
+    }
 })!
 
 export interface Design {
