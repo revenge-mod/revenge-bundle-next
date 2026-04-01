@@ -47,19 +47,18 @@ export type LookupModulesResult<
     O extends LookupModulesOptions,
 > = [exports: LookupFilterResult<F, O>, id: Metro.ModuleID]
 
-type LookupFilterResult<
-    F extends Filter,
-    O extends LookupModulesOptions,
-> = O extends LookupModulesOptions<any, false>
-    ? InitializedLookupFilterResult<F, O> | undefined
-    : InitializedLookupFilterResult<F, O>
+type LookupFilterResult<F extends Filter, O extends LookupModulesOptions> =
+    O extends LookupModulesOptions<any, false>
+        ? InitializedLookupFilterResult<F, O> | undefined
+        : InitializedLookupFilterResult<F, O>
 
 type InitializedLookupFilterResult<
     F extends Filter,
     O extends LookupModulesOptions,
-> = O extends RunFilterReturnExportsOptions<true>
-    ? MaybeDefaultExportMatched<FilterResult<F>>
-    : FilterResult<F>
+> =
+    O extends RunFilterReturnExportsOptions<true>
+        ? MaybeDefaultExportMatched<FilterResult<F>>
+        : FilterResult<F>
 
 export const NotFoundResult: readonly [] = Object.freeze([])
 
@@ -92,6 +91,11 @@ export function* lookupModules(filter: Filter, options?: LookupModulesOptions) {
     let notFound = true
     let cached: Set<Metro.ModuleID> | undefined
 
+    const scopes = filter.scopes
+    const includeAll = scopes & FilterScopes.All
+    const includeInit = includeAll || scopes & FilterScopes.Initialized
+    const includeUninit = includeAll || scopes & FilterScopes.Uninitialized
+
     if (options?.cached ?? true) {
         const notInit = !(options?.initialize ?? true)
 
@@ -107,12 +111,15 @@ export function* lookupModules(filter: Filter, options?: LookupModulesOptions) {
                 const id = Number(sId)
                 let exports: Metro.ModuleExports | undefined
 
-                if (isModuleInitialized(id))
+                if (includeInit && isModuleInitialized(id))
                     exports = getInitializedModuleExports(id)
-                else {
-                    if (notInit) continue
+                else if (includeUninit) {
+                    if (notInit) {
+                        yield [undefined, id]
+                        continue
+                    }
                     exports = metroRequire(id)
-                }
+                } else continue
 
                 cached.add(id)
 
@@ -123,9 +130,6 @@ export function* lookupModules(filter: Filter, options?: LookupModulesOptions) {
             }
         }
     }
-
-    const scopes = filter.scopes
-    const includeAll = scopes & FilterScopes.All
 
     if (includeAll) {
         for (const id of mList.keys()) {
@@ -156,9 +160,6 @@ export function* lookupModules(filter: Filter, options?: LookupModulesOptions) {
             }
         }
     } else {
-        const includeInit = scopes & FilterScopes.Initialized
-        const includeUninit = scopes & FilterScopes.Uninitialized
-
         if (includeInit)
             for (const id of mInitialized) {
                 // biome-ignore lint/complexity/useOptionalChain: Hot path should be optimized
@@ -233,6 +234,11 @@ export function lookupModule<
 >(filter: F, options: O): LookupModulesResult<F, O> | LookupNotFoundResult
 
 export function lookupModule(filter: Filter, options?: LookupModulesOptions) {
+    const scopes = filter.scopes
+    const includeAll = scopes & FilterScopes.All
+    const includeInit = includeAll || scopes & FilterScopes.Initialized
+    const includeUninit = includeAll || scopes & FilterScopes.Uninitialized
+
     if (options?.cached ?? true) {
         const notInit = !(options?.initialize ?? true)
 
@@ -246,12 +252,12 @@ export function lookupModule(filter: Filter, options?: LookupModulesOptions) {
                 const id = Number(sId)
                 let exports: Metro.ModuleExports | undefined
 
-                if (isModuleInitialized(id))
+                if (includeInit && isModuleInitialized(id))
                     exports = getInitializedModuleExports(id)
-                else {
-                    if (notInit) continue
+                else if (includeUninit) {
+                    if (notInit) return [undefined, id]
                     exports = metroRequire(id)
-                }
+                } else continue
 
                 if (__BUILD_FLAG_DEBUG_MODULE_LOOKUPS__)
                     DEBUG_logLookupMatched(filter.key, flag, id, true)
@@ -259,9 +265,6 @@ export function lookupModule(filter: Filter, options?: LookupModulesOptions) {
                 return [exportsFromFilterResultFlag(flag, exports, options), id]
             }
     }
-
-    const scopes = filter.scopes
-    const includeAll = scopes & FilterScopes.All
 
     if (includeAll) {
         for (const id of mList.keys()) {
@@ -287,9 +290,6 @@ export function lookupModule(filter: Filter, options?: LookupModulesOptions) {
             }
         }
     } else {
-        const includeInit = scopes & FilterScopes.Initialized
-        const includeUninit = scopes & FilterScopes.Uninitialized
-
         if (includeInit)
             for (const id of mInitialized) {
                 const exports = getInitializedModuleExports(id)
