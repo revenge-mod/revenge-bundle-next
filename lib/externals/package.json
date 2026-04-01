@@ -9,6 +9,9 @@
     "./react-native-clipboard": {
       "default": "./src/react-native-clipboard.ts"
     },
+    "./react-native-safe-area-context": {
+      "default": "./src/react-native-safe-area-context.ts"
+    },
     "./react-navigation": {
       "default": "./src/react-navigation.ts"
     },
