@@ -6,6 +6,7 @@
  */
 
 import { mList } from './patches'
+import { executeInitializeSubscriptions } from './subscriptions/_internal'
 import type { Metro } from '../types'
 
 export const Initialized = 1 << 0
@@ -40,6 +41,8 @@ export const metroRequire = (moduleId => {
         factory!()
 
         mod.flags = (flags & NotInitializedOrInitializingMask) | Initialized
+
+        executeInitializeSubscriptions(moduleId, moduleObject.exports)
 
         return moduleObject.exports
     } catch (e) {

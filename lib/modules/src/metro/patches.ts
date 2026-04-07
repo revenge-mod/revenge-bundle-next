@@ -8,10 +8,7 @@ import {
     metroImportDefault,
     metroRequire,
 } from './runtime'
-import {
-    executeInitializeSubscriptions,
-    executeRequireSubscriptions,
-} from './subscriptions/_internal'
+import { executeRequireSubscriptions } from './subscriptions/_internal'
 import type { Metro, RevengeMetro } from '../types'
 
 export let mInitializingId: Metro.ModuleID | undefined
@@ -129,8 +126,6 @@ function handleFactoryCall(
                     cacheBlacklistedModule(mInitializingId)
             }
         }
-
-        executeInitializeSubscriptions(mInitializingId, exports)
     } catch (e) {
         if (__DEV__) {
             callBridgeMethodSync('revenge.alertError', [
