@@ -65,15 +65,8 @@ export let FormSwitch: DiscordModules.Components.FormSwitch = proxify(() => {
         },
     )) {
         const deps = getModuleDependencies(id)!
-        console.log(id, deps.at(-4), deps.at(-5))
         if (deps.at(-1) !== ImportTrackerModuleId) continue
-
-        if (
-            // TODO: Remove once stable > 321203
-            (deps.at(-2) === id + 2 && deps.at(-3) === id + 1) ||
-            // 321203+
-            (deps.at(-4) === id + 2 && deps.at(-5) === id + 1)
-        ) {
+        if (deps.at(-4) === id + 2 && deps.at(-5) === id + 1) {
             const FormSwitch_ = __r(id)!.FormSwitch
             if (FormSwitch_) return (FormSwitch = FormSwitch_)
         }
