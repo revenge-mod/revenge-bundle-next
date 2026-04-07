@@ -1,4 +1,5 @@
 import { getInternalPluginMeta, getPluginDependencies } from '../_internal'
+import { pApis } from './decorators'
 import type { AnyPlugin } from '../_internal'
 
 /// PLUGIN DEPENDENCY GRAPHING
@@ -25,7 +26,14 @@ export const pPending = new Set<AnyPlugin>()
 export function computePendingNodes() {
     for (const plugin of pPending) resolvePluginGraph(plugin)
 
-    for (const plugin of pLeafOrSingleNodes) pListOrdered.unshift(plugin)
+    const apis: AnyPlugin[] = []
+
+    for (const plugin of pLeafOrSingleNodes) {
+        if (pApis.has(plugin)) apis.push(plugin)
+        else pListOrdered.unshift(plugin)
+    }
+
+    for (const plugin of apis) pListOrdered.unshift(plugin)
 
     const stack = [...pRootNodes]
     while (stack.length) {
