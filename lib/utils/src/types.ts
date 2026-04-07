@@ -28,10 +28,10 @@ export interface PreInitPluginApiUtils {
     promise: typeof import('@revenge-mod/utils/promise')
     proxy: typeof import('@revenge-mod/utils/proxy')
     tree: typeof import('@revenge-mod/utils/tree')
+    react: typeof import('@revenge-mod/utils/react')
 }
 
 export interface PluginApiUtils extends PreInitPluginApiUtils {
-    react: typeof import('@revenge-mod/utils/react')
     discord: typeof import('@revenge-mod/utils/discord')
 }
 

@@ -1,4 +1,6 @@
 import type { FunctionComponent } from 'react'
+import type { PluginApiDiscord } from './apis/discord'
+import type { PluginApiExternals } from './apis/externals'
 import type { PluginApiModules } from './apis/modules'
 import type { PluginApiPlugins } from './apis/plugins'
 import type { PluginApiReact } from './apis/react'
@@ -19,6 +21,10 @@ export interface UnscopedPreInitPluginApi<
     patcher: typeof import('@revenge-mod/patcher')
     plugins: PluginApiPlugins
     react: PluginApiReact
+    assets: typeof import('@revenge-mod/assets')
+    externals: PluginApiExternals
+    components: typeof import('@revenge-mod/components')
+    discord: PluginApiDiscord
 }
 
 /**
@@ -27,9 +33,7 @@ export interface UnscopedPreInitPluginApi<
  */
 export interface UnscopedInitPluginApi<
     O extends PluginApiExtensionsOptions = PluginApiExtensionsOptions,
-> extends UnscopedPreInitPluginApi<O> {
-    assets: typeof import('@revenge-mod/assets')
-}
+> extends UnscopedPreInitPluginApi<O> {}
 
 /**
  * The unscoped plugin API. This API is available as a global for plugins.
@@ -112,7 +116,6 @@ export interface PreInitPluginApi<
  * The plugin API (limited).
  * Available in the `init` phase.
  */
-// @ts-expect-error
 export interface InitPluginApi<
     O extends PluginApiExtensionsOptions = PluginApiExtensionsOptions,
 > extends PreInitPluginApi<O> {
@@ -125,7 +128,6 @@ export interface InitPluginApi<
  * The plugin API.
  * Available in the `start` and `stop` phase.
  */
-// @ts-expect-error
 export interface PluginApi<
     O extends PluginApiExtensionsOptions = PluginApiExtensionsOptions,
 > extends InitPluginApi<O> {

@@ -26,11 +26,11 @@ registerPlugin(
                 promise: UtilsPromise,
                 proxy: UtilsProxy,
                 tree: UtilsTree,
+                react: UtilsReact,
             }
         },
         init({ unscoped: { utils } }) {
             utils.discord = UtilsDiscord
-            utils.react = UtilsReact
         },
     },
     PluginFlags.Enabled,

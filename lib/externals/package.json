@@ -17,9 +17,6 @@
     },
     "./shopify": {
       "default": "./src/shopify.ts"
-    },
-    "./types": {
-      "types": "./src/types.ts"
     }
   }
 }
