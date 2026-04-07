@@ -5,6 +5,7 @@ import { instead } from '@revenge-mod/patcher'
 import { InternalPluginFlags, registerPlugin } from '@revenge-mod/plugins/_'
 import { PluginFlags } from '@revenge-mod/plugins/constants'
 import { noop } from '@revenge-mod/utils/callback'
+import { getCurrentStack } from '@revenge-mod/utils/error'
 
 const cachedOnly = {
     cached: true,
@@ -110,7 +111,10 @@ registerPlugin(
                 Object.defineProperty(globalThis, '__SENTRY__', {
                     configurable: false,
                     get: getFakeCarrier,
-                    set: getFakeCarrier,
+                    set: () => {
+                        if (__DEV__) warnSetSentry(getCurrentStack())
+                        return getFakeCarrier()
+                    },
                 })
 
             cleanup(unsubSU, unsubSIU, unsubSentryInst)
