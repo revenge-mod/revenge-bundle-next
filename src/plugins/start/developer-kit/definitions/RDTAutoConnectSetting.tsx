@@ -7,7 +7,7 @@ import type { SettingsItem } from '@revenge-mod/discord/modules/settings'
 const RDTAutoConnectSetting: SettingsItem = {
     parent: Setting.RevengeDeveloper,
     IconComponent: () => <TableRowAssetIcon name="LinkIcon" />,
-    title: () => 'Auto-connect to React DevTools',
+    useTitle: () => 'Auto-connect to React DevTools',
     useDescription: () =>
         'Automatically connect to React DevTools during startup.',
     usePredicate: () => RDTContext.active,

@@ -10,7 +10,7 @@ const HermesVersionSetting: SettingsItem = CopyableSetting(
     {
         parent: Setting.Revenge,
         IconComponent: () => <TableRowAssetIcon name="TranscriptOutlineIcon" />,
-        title: () => 'Hermes',
+        useTitle: () => 'Hermes',
     },
     () => `${props['Bytecode Version']} (${props.Build})`,
 )

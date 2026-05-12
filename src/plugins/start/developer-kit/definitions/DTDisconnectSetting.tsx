@@ -7,7 +7,7 @@ const DTDisconnectSetting: SettingsItem = {
     parent: Setting.RevengeDeveloper,
     IconComponent: () => <TableRowAssetIcon name="DenyIcon" variant="danger" />,
     variant: 'danger',
-    title: () => 'Disconnect from DevTools',
+    useTitle: () => 'Disconnect from DevTools',
     usePredicate: useIsConnected,
     onPress: disconnect,
     type: 'pressable',

@@ -6,7 +6,7 @@ import type { SettingsItem } from '@revenge-mod/discord/modules/settings'
 const RevengeDiscordSetting: SettingsItem = {
     parent: Setting.Revenge,
     IconComponent: () => <TableRowAssetIcon name="Discord" />,
-    title: () => 'Discord Server',
+    useTitle: () => 'Discord Server',
     useDescription: () => __BUILD_DISCORD_SERVER_URL__,
     onPress: () => {
         Linking.openURL(__BUILD_DISCORD_SERVER_URL__)

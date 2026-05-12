@@ -7,7 +7,7 @@ const AssetBrowserSetting: SettingsItem = {
     parent: Setting.RevengeDeveloper,
     type: 'route',
     IconComponent: () => <TableRowAssetIcon name="ImageIcon" />,
-    title: () => 'Asset Browser',
+    useTitle: () => 'Asset Browser',
     screen: {
         route: RouteNames[Setting.AssetBrowser],
         getComponent: () => AssetBrowserSettingScreen.default,

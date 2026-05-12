@@ -10,7 +10,7 @@ const TestErrorBoundarySetting: SettingsItem = {
     IconComponent: () => (
         <TableRowAssetIcon name="ScreenXIcon" variant="danger" />
     ),
-    title: () => 'Test ErrorBoundary',
+    useTitle: () => 'Test ErrorBoundary',
     screen: {
         route: RouteNames[Setting.TestErrorBoundary],
         getComponent: () => TestErrorBoundarySettingScreen.default,

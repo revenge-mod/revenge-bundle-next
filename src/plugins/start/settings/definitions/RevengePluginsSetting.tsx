@@ -10,7 +10,7 @@ const RevengePluginsSetting: SettingsItem = {
     parent: null,
     type: 'route',
     IconComponent: () => <TableRowAssetIcon name="PuzzlePieceIcon" />,
-    title: () => 'Plugins',
+    useTitle: () => 'Plugins',
     useTrailing: () => `${useEnabledPluginCount()} enabled`,
     screen: {
         route: RouteNames[Setting.RevengePlugins],

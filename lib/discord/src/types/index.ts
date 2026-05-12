@@ -640,7 +640,7 @@ export namespace DiscordModules {
             }
 
             interface BaseSettingsItem {
-                title: () => string
+                useTitle: () => string
                 parent: string | null
                 unsearchable?: boolean
                 variant?: Components.TableRowProps['variant']

@@ -12,7 +12,7 @@ const ReactNativeVersionSetting: SettingsItem = CopyableSetting(
     {
         parent: Setting.Revenge,
         IconComponent: () => <TableRowAssetIcon name="ScienceIcon" />,
-        title: () => 'React Native',
+        useTitle: () => 'React Native',
     },
     // slice "for RN " off the version string
     () => ossReleaseVersion.slice(7),

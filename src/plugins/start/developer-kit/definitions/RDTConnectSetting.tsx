@@ -6,7 +6,7 @@ import type { SettingsItem } from '@revenge-mod/discord/modules/settings'
 const RDTConnectSetting: SettingsItem = {
     parent: Setting.RevengeDeveloper,
     IconComponent: () => <TableRowAssetIcon name="LinkIcon" />,
-    title: () => 'Connect to React DevTools',
+    useTitle: () => 'Connect to React DevTools',
     useDescription: () => `Version: ${globalThis.__REACT_DEVTOOLS__?.version}`,
     usePredicate: () => !useIsConnected() && RDTContext.active,
     onPress: connect,

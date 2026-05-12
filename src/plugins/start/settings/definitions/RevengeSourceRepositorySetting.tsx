@@ -6,7 +6,7 @@ import type { SettingsItem } from '@revenge-mod/discord/modules/settings'
 const RevengeSourceRepositorySetting: SettingsItem = {
     parent: Setting.Revenge,
     IconComponent: () => <TableRowAssetIcon name="PaperIcon" />,
-    title: () => 'Source Code',
+    useTitle: () => 'Source Code',
     useDescription: () => __BUILD_SOURCE_REPOSITORY_URL__,
     onPress: () => {
         Linking.openURL(__BUILD_SOURCE_REPOSITORY_URL__)

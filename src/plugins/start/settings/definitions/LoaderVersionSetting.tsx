@@ -10,7 +10,7 @@ const LoaderVersionSetting: SettingsItem = CopyableSetting(
     {
         parent: Setting.Revenge,
         IconComponent: () => <TableRowAssetIcon name="SendMessageIcon" />,
-        title: () => 'Loader',
+        useTitle: () => 'Loader',
         usePredicate: () => Boolean(bridgeInfo),
     },
     () => `${bridgeInfo!.name} (${bridgeInfo!.version})`,

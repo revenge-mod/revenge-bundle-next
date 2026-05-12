@@ -7,7 +7,7 @@ import type { SettingsItem } from '@revenge-mod/discord/modules/settings'
 const DTConnectSetting: SettingsItem = {
     parent: Setting.RevengeDeveloper,
     IconComponent: () => <TableRowAssetIcon name="LinkIcon" />,
-    title: () => 'Connect to DevTools',
+    useTitle: () => 'Connect to DevTools',
     useDescription: () => `Version: ${DevToolsClient.version}`,
     usePredicate: () => !useIsConnected(),
     onPress: connect,

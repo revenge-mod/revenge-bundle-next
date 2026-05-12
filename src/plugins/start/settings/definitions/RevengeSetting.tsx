@@ -9,7 +9,7 @@ const RevengeSetting: SettingsItem = {
     parent: null,
     type: 'route',
     IconComponent: () => <TableRowAssetIcon id={RevengeIcon} />,
-    title: () => 'Revenge',
+    useTitle: () => 'Revenge',
     useTrailing: () => FullVersion,
     screen: {
         route: RouteNames[Setting.Revenge],

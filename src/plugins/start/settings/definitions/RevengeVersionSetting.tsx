@@ -9,7 +9,7 @@ const RevengeVersionSetting: SettingsItem = CopyableSetting(
     {
         parent: Setting.Revenge,
         IconComponent: () => <TableRowAssetIcon id={RevengeIcon} />,
-        title: () => 'Revenge',
+        useTitle: () => 'Revenge',
     },
     () => `${FullVersion} (${BuildEnvironment})`,
 )

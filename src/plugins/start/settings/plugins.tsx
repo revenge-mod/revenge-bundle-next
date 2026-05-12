@@ -52,7 +52,7 @@ pEmitter.on('started', plugin => {
                 IconComponent: plugin.manifest.icon
                     ? () => <TableRowAssetIcon name={plugin.manifest.icon!} />
                     : undefined,
-                title: () => plugin.manifest.name,
+                useTitle: () => plugin.manifest.name,
                 screen: {
                     route: plugin.manifest.id,
                     getComponent: () => PluginSettings,

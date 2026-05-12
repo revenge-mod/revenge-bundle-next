@@ -7,7 +7,7 @@ const EvalJSSetting: SettingsItem = {
     parent: Setting.RevengeDeveloper,
     type: 'route',
     IconComponent: () => <TableRowAssetIcon name="FileIcon" />,
-    title: () => 'Evaluate JavaScript',
+    useTitle: () => 'Evaluate JavaScript',
     useDescription: () => 'Runs a JavaScript code snippet.',
     screen: {
         route: RouteNames[Setting.EvalJS],

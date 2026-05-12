@@ -7,7 +7,7 @@ const RevengeDeveloperSetting: SettingsItem = {
     parent: null,
     type: 'route',
     IconComponent: () => <TableRowAssetIcon name="WrenchIcon" />,
-    title: () => 'Developer',
+    useTitle: () => 'Developer',
     screen: {
         route: RouteNames[Setting.RevengeDeveloper],
         getComponent: () => RevengeDeveloperSettingScreen.default,

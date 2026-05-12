@@ -10,7 +10,7 @@ import type { SettingsItem } from '@revenge-mod/discord/modules/settings'
 const RevengeLicenseSetting: SettingsItem = {
     parent: Setting.Revenge,
     IconComponent: () => <TableRowAssetIcon name="FileIcon" />,
-    title: () => 'License',
+    useTitle: () => 'License',
     onPress: () => {
         AlertActionCreators.openAlert('revenge-license', <LicenseAlert />)
     },

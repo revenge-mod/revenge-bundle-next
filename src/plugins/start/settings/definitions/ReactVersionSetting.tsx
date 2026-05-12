@@ -8,7 +8,7 @@ const ReactVersionSetting: SettingsItem = CopyableSetting(
     {
         parent: Setting.Revenge,
         IconComponent: () => <TableRowAssetIcon name="ScienceIcon" />,
-        title: () => 'React',
+        useTitle: () => 'React',
     },
     () => version,
 )

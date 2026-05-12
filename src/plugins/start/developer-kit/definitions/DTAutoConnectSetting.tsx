@@ -6,7 +6,7 @@ import type { SettingsItem } from '@revenge-mod/discord/modules/settings'
 const DTAutoConnectSetting: SettingsItem = {
     parent: Setting.RevengeDeveloper,
     IconComponent: () => <TableRowAssetIcon name="LinkIcon" />,
-    title: () => 'Auto-connect to DevTools',
+    useTitle: () => 'Auto-connect to DevTools',
     useDescription: () => 'Automatically connect to DevTools during startup.',
     useValue: () =>
         api.storage.use(s => s.devTools?.autoConnect !== undefined)!.devTools

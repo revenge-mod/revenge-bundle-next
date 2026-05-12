@@ -7,7 +7,7 @@ const RDTDisconnectSetting: SettingsItem = {
     parent: Setting.RevengeDeveloper,
     IconComponent: () => <TableRowAssetIcon name="DenyIcon" variant="danger" />,
     variant: 'danger',
-    title: () => 'Disconnect from React DevTools',
+    useTitle: () => 'Disconnect from React DevTools',
     usePredicate: useIsConnected,
     onPress: disconnect,
     type: 'pressable',
