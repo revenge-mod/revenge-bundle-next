@@ -185,7 +185,25 @@ registerPlugin(
                 },
             )
 
-            cleanup(unsubTI, unsubATAC)
+            // ../discord_common/js/packages/http-utils/HTTPUtils.tsx
+            const unsubHTTPUtils = waitForModules(
+                withProps('HTTP', 'post'),
+                HTTPUtils => {
+                    unsubHTTPUtils()
+
+                    logger.log('Patching HTTPUtils...')
+
+                    // Block analytics requests
+                    instead(HTTPUtils.HTTP, 'post', (args, original) => {
+                        const [{ url }] = args
+                        if (url === '/science') return Promise.resolve()
+
+                        return original.apply(this, args)
+                    })
+                },
+            )
+
+            cleanup(unsubTI, unsubATAC, unsubHTTPUtils)
         },
         stop({ plugin }) {
             plugin.flags |= PluginFlags.ReloadRequired
