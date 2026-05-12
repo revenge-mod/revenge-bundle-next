@@ -3,10 +3,16 @@ import { Tokens } from '@revenge-mod/discord/common'
 import { Design } from '@revenge-mod/discord/design'
 import { ClientInfoModule } from '@revenge-mod/discord/native'
 import { Clipboard } from '@revenge-mod/externals/react-native-clipboard'
+import { ReactNativeSafeAreaContext } from '@revenge-mod/externals/react-native-safe-area-context'
 import { getErrorStack } from '@revenge-mod/utils/error'
-import { SafeAreaView, ScrollView, StyleSheet, View } from 'react-native'
+import { ScrollView, StyleSheet, View } from 'react-native'
 import { FullVersion } from '~/constants'
 import type { ComponentProps } from 'react'
+
+// TODO(PalmDevs): Rolldown 1.0.0-beta.34 breaks destructuring with quoted keys, revert to original when this is fixed
+const ossReleaseVersion =
+    // @ts-expect-error
+    HermesInternal.getRuntimeProperties()['OSS Release Version']
 
 const { createStyles, Button, Card, Stack, Text } = Design
 
@@ -52,7 +58,9 @@ export default function ErrorBoundaryScreen({
     const Client = ClientInfoModule.getConstants()
 
     return (
-        <SafeAreaView style={errorBoundaryStyles.view}>
+        <ReactNativeSafeAreaContext.SafeAreaView
+            style={errorBoundaryStyles.view}
+        >
             <View style={additionalStyles.headerContainer}>
                 <Text variant="display-lg">Error!</Text>
                 <Text variant="text-md/normal">
@@ -60,7 +68,8 @@ export default function ErrorBoundaryScreen({
                     be caused by plugins, Revenge or Discord.
                 </Text>
                 <Text variant="text-sm/semibold" color="text-muted">
-                    {Client.Version} ({Client.Build}) • {FullVersion}
+                    {Client.Version} ({Client.Build}) • RN{' '}
+                    {ossReleaseVersion.slice(7)} • {FullVersion}
                 </Text>
             </View>
             <LabeledCard label="Error" rawContent={getErrorStack(error)}>
@@ -127,7 +136,7 @@ export default function ErrorBoundaryScreen({
                     onPress={reload}
                 />
             </Stack>
-        </SafeAreaView>
+        </ReactNativeSafeAreaContext.SafeAreaView>
     )
 }
 
