@@ -18,6 +18,12 @@ export namespace Metro {
         dependencyMap: DependencyMap,
     ) => void
 
+    export type RegisterSegmentFn = (
+        segmentId: number,
+        moduleDefiner: (moduleId: ModuleID) => void,
+        moduleIds?: ReadonlyArray<ModuleID> | null,
+    ) => void
+
     export type ModuleID = number
 
     export interface ModuleDefinition<Initialized = boolean> {

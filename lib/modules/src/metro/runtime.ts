@@ -5,7 +5,7 @@
  * Also avoids cloning exports, allowing for patches to be applied directly without checking for clones.
  */
 
-import { mList } from './patches'
+import { loadModuleFromSegment, mList } from './patches'
 import { executeInitializeSubscriptions } from './subscriptions/_internal'
 import type { Metro } from '../types'
 
@@ -21,7 +21,12 @@ const NotInitializedOrInitializingMask = ~InitializedOrInitializing
 export const global = globalThis
 
 export const metroRequire = (moduleId => {
-    const mod = mList.get(moduleId)!
+    let mod = mList.get(moduleId)
+
+    // Module isn't registered yet, maybe it's in another segment that hasn't been loaded yet.
+    if (!mod) mod = loadModuleFromSegment(moduleId)
+    if (!mod) throw new Error(`Requiring unknown module: ${moduleId}`)
+
     let { flags, module: moduleObject } = mod
 
     if (flags & InitializedOrInitializing) return moduleObject!.exports
@@ -59,10 +64,12 @@ export const metroRequire = (moduleId => {
 global.__r = metroRequire
 
 export const metroImportDefault: Metro.RequireFn = moduleId => {
+    const exports = metroRequire(moduleId)
+
+    // metroRequire may have lazily registered the module via a segment, so we
+    // look up the definition after the require call.
     const mod = mList.get(moduleId)!
     if (mod.flags & HasImportedDefault) return mod.importedDefault
-
-    const exports = metroRequire(moduleId)
 
     mod.flags |= HasImportedDefault
 
@@ -72,10 +79,11 @@ export const metroImportDefault: Metro.RequireFn = moduleId => {
 }
 
 export const metroImportAll: Metro.RequireFn = moduleId => {
+    const exports = metroRequire(moduleId)
+
     const mod = mList.get(moduleId)!
     if (mod.flags & HasImportedAll) return mod.importedAll
 
-    const exports = metroRequire(moduleId)
     // Our implementation doesn't match Metro's because we modify the exports directly instead of cloning
     // But this is why ours is superior, it allows patching the exports without needing to do it more than a single time
     if (!exports?.__esModule) exports.default = exports

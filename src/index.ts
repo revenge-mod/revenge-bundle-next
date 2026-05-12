@@ -11,13 +11,13 @@ globalThis.ErrorUtils = {
     reportFatalError: onError,
 }
 
-Object.defineProperty(globalThis, '__c', {
+Object.defineProperty(globalThis, '__registerSegment', {
     configurable: true,
-    set(clear: Metro.ClearFn) {
+    set(registerSegment: Metro.RegisterSegmentFn) {
         // @ts-expect-error
         // biome-ignore lint/performance/noDelete: Prevent infinite set loop
-        delete globalThis.__c
-        globalThis.__c = clear
+        delete globalThis.__registerSegment
+        globalThis.__registerSegment = registerSegment
 
         // @as-require
         import('./preinit')

@@ -51,7 +51,6 @@ declare global {
 /// HERMES PROMISES
 
 declare global {
-    // biome-ignore lint/correctness/noUnusedVariables: Type parameter names must match
     interface Promise<T> {
         /// PROMISE POLYFILLS FROM: https://github.com/then/promise
         /// AND: https://github.com/facebook/hermes/blob/main/lib/InternalBytecode/01-Promise.js
@@ -101,6 +100,7 @@ declare global {
         importAll: Metro.ImportAllFn
     }
     var __c: Metro.ClearFn
+    var __registerSegment: Metro.RegisterSegmentFn
 }
 
 /// REACT NATIVE
