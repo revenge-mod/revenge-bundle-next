@@ -54,6 +54,7 @@ export let AlertActionCreators: DiscordModules.Actions.AlertActionCreators =
                     'openAlert',
                 ).and(
                     withDependencies([
+                        null,
                         [relative(1), relative(2)],
                         [ReactNativeModuleId, ImportTrackerModuleId],
                         ImportTrackerModuleId,
