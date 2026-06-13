@@ -60,6 +60,7 @@ registerPlugin<{ storage: Storage }>(
             const settings = await api.storage.get()
 
             dt.DTContext.addr = settings.devTools.address
+            dt.DTContext.alias = settings.devTools.alias ?? ''
             rdt.RDTContext.addr = settings.reactDevTools.address
 
             if (settings.devTools.autoConnect) dt.connect()
