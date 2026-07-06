@@ -3,8 +3,12 @@ import {
     refreshSettingsNavigator,
     refreshSettingsOverviewScreen,
 } from '@revenge-mod/discord/modules/settings'
-import { InternalPluginFlags, registerPlugin } from '@revenge-mod/plugins/_'
-import { PluginFlags } from '@revenge-mod/plugins/constants'
+import {
+    InternalPluginFlags,
+    isPluginEnabledLate,
+    PluginFlags,
+    registerPlugin,
+} from '@revenge-mod/plugins/_'
 import pluginSettings from '../settings'
 import * as dt from './devtools'
 import defer * as rdt from './react-devtools'
@@ -52,7 +56,7 @@ registerPlugin<{ storage: Storage }>(
 
             onSettingsModulesLoaded(utils.register)
 
-            if (api_.plugin.flags & PluginFlags.EnabledLate) {
+            if (isPluginEnabledLate(api_.plugin)) {
                 refreshSettingsOverviewScreen()
                 refreshSettingsNavigator()
             }

@@ -10,8 +10,10 @@ import {
     getInternalPluginMeta,
     InternalPluginFlags,
     isPluginEssential,
+    isPluginInternal,
+    PluginFlags,
 } from '@revenge-mod/plugins/_'
-import { PluginFlags, PluginStatus } from '@revenge-mod/plugins/constants'
+import { PluginStatus } from '@revenge-mod/plugins/constants'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import { Pressable } from 'react-native'
@@ -20,6 +22,7 @@ import { handleDisablePlugin, handleEnablePlugin } from '../utils/actions'
 import {
     openPluginSettings,
     showPluginClearDataConfirmation,
+    showPluginUninstallConfirmation,
 } from '../utils/alerts'
 import { PluginInfo } from './PluginCard'
 import { usePluginEnabled, usePluginStatus } from './PluginStateProvider'
@@ -39,6 +42,7 @@ const { ActionSheet, IconButton, TableRowGroup, TableRow, Stack } = Design
 
 const FileWarningIcon = getAssetIdByName('FileWarningIcon', 'png')!
 const SettingsIcon = getAssetIdByName('SettingsIcon', 'png')!
+const TrashIcon = getAssetIdByName('TrashIcon', 'png')!
 
 export default function PluginOptionsActionSheet({
     plugin,
@@ -179,6 +183,7 @@ function PluginActions({
     const enabled = usePluginEnabled(plugin)
     const enableTooltip = useEnablePluginTooltip()
     const settingsRef = useClickOutsideTooltip(useEnablePluginTooltip, () => {})
+    const meta = getInternalPluginMeta(plugin)
 
     return (
         <Stack
@@ -195,6 +200,17 @@ function PluginActions({
                     showPluginClearDataConfirmation(plugin, closeSheet)
                 }}
             />
+            {!isPluginInternal(meta) && (
+                <IconButton
+                    variant="destructive"
+                    size="lg"
+                    icon={TrashIcon}
+                    label="Uninstall"
+                    onPress={() => {
+                        showPluginUninstallConfirmation(plugin, closeSheet)
+                    }}
+                />
+            )}
             {plugin.SettingsComponent && (
                 <Pressable
                     onPress={() => {

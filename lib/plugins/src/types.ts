@@ -4,7 +4,7 @@ import type { PluginApiExternals } from './apis/externals'
 import type { PluginApiModules } from './apis/modules'
 import type { PluginApiPlugins } from './apis/plugins'
 import type { PluginApiReact } from './apis/react'
-import type { PluginFlags, PluginStatus } from './constants'
+import type { PluginStatus } from './constants'
 
 // biome-ignore lint/suspicious/noEmptyInterface: To be extended by actual extensions
 export interface PluginApiExtensionsOptions {}
@@ -201,6 +201,16 @@ export interface PluginOptions<
 }
 
 /**
+ * A factory that lazily creates the plugin options.
+ *
+ * Only passed when the options (and lifecycles) must only be created right before the plugin runs,
+ * for example to avoid evaluating external plugin code until it is actually used.
+ */
+export type PluginOptionsFactory<
+    O extends PluginApiExtensionsOptions = PluginApiExtensionsOptions,
+> = () => PluginOptions<O>
+
+/**
  * The plugin lifecycles.
  */
 export interface PluginLifecycles<
@@ -248,10 +258,6 @@ export interface Plugin<
     lifecycles: PluginLifecycles<O>
 
     /**
-     * @see {@link PluginFlags}
-     */
-    flags: number
-    /**
      * @see {@link PluginStatus}
      */
     status: number
@@ -271,6 +277,10 @@ export interface Plugin<
      * Stop the plugin.
      */
     stop(this: Plugin<O, S>): Promise<void>
+    /**
+     * Marks this plugin as requiring a reload to apply changes.
+     */
+    requireReload(this: Plugin<O, S>): void
 
     /**
      * The plugin API.

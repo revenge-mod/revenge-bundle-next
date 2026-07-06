@@ -4,8 +4,7 @@ import {
     refreshSettingsNavigator,
     registerSettingsItem,
 } from '@revenge-mod/discord/modules/settings'
-import { pEmitter, pList } from '@revenge-mod/plugins/_'
-import { PluginFlags } from '@revenge-mod/plugins/constants'
+import { PluginFlags, pEmitter, pList } from '@revenge-mod/plugins/_'
 import { useLayoutEffect } from 'react'
 import defer * as NavigatorHeaderWithIcon from './components/NavigatorHeaderWithIcon'
 import PluginsFailedToStartAlert from './components/PluginsFailedToStartAlert'

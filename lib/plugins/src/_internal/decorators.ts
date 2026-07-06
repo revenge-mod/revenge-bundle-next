@@ -1,5 +1,5 @@
 import { getInternalPluginMeta, getPluginDependencies } from '.'
-import type { Plugin, PluginApiDecorator } from '../types'
+import type { PluginApiDecorator } from '../types'
 import type { AnyPlugin, InternalPluginMeta } from '.'
 
 export type PluginApiDecoratorStore<T extends 'PreInit' | 'Init' | 'Start'> =
@@ -29,7 +29,7 @@ export function addPluginApiDecorator(
 
 export function decoratePluginApi(
     store: PluginApiDecoratorStore<any>,
-    plugin: Plugin<any, any>,
+    plugin: AnyPlugin,
     meta: InternalPluginMeta,
 ) {
     // Don't decorate API plugins with API plugins...

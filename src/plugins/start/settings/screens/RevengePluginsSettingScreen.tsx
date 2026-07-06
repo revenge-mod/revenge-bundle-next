@@ -5,17 +5,25 @@ import Page from '@revenge-mod/components/Page'
 import SearchInput from '@revenge-mod/components/SearchInput'
 import { ActionSheetActionCreators } from '@revenge-mod/discord/actions'
 import { Design } from '@revenge-mod/discord/design'
+import { callBridgeMethod } from '@revenge-mod/modules/native'
 import {
     getInternalPluginMeta,
     InternalPluginFlags,
     isPluginEnabled,
     isPluginEssential,
     isPluginInternal,
+    PluginFlags,
+    pEmitter,
     pList,
 } from '@revenge-mod/plugins/_'
-import { PluginFlags } from '@revenge-mod/plugins/constants'
 import { debounce } from '@revenge-mod/utils/callback'
-import { useCallback, useMemo, useState } from 'react'
+import {
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useState,
+} from 'react'
 import { View } from 'react-native'
 import { ClickOutsideProvider } from 'react-native-click-outside'
 import RevengeIcon from '~assets/RevengeIcon'
@@ -30,9 +38,10 @@ import type { ReactNavigationParamList } from '@revenge-mod/externals/react-navi
 import type { FilterAndSortActionSheetProps } from '../components/FilterAndSortActionSheet'
 import type { RouteNames, Setting } from '../constants'
 
-const { Stack, IconButton, LayerScope } = Design
+const { Stack, IconButton, LayerScope, ContextMenu } = Design
 
 const FiltersHorizontalIcon = getAssetIdByName('FiltersHorizontalIcon', 'png')!
+const MoreHorizontalIcon = getAssetIdByName('MoreHorizontalIcon')!
 
 export default function RevengePluginsSettingScreen() {
     return (
@@ -98,6 +107,39 @@ const Sorts = {
     ],
 } satisfies FilterAndSortActionSheetProps['sorts']
 
+function HeaderContextMenu() {
+    return (
+        <ContextMenu
+            title="More options"
+            align="below"
+            items={[
+                {
+                    label: 'Install from file',
+                    action: () =>
+                        callBridgeMethod(
+                            'revenge.plugins.loader.installPlugin',
+                            [],
+                        ),
+                },
+            ]}
+        >
+            {props => (
+                <IconButton
+                    {...props}
+                    icon={MoreHorizontalIcon}
+                    variant="tertiary"
+                />
+            )}
+        </ContextMenu>
+    )
+}
+
+function snapshotPlugins() {
+    return [...pList.values()].map(
+        plugin => [plugin, getInternalPluginMeta(plugin)!] as const,
+    )
+}
+
 function Screen() {
     const navigation = useNavigation()
     const route =
@@ -114,18 +156,30 @@ function Screen() {
         [],
     )
 
+    useLayoutEffect(() => {
+        navigation.setOptions({
+            headerRight: () => <HeaderContextMenu />,
+        })
+    }, [navigation])
+
     const filter = route.params?.filter ?? DefaultFilters
     const matchAll = route.params?.matchAll ?? true
     const reverse = route.params?.reverse ?? false
     const sort = route.params?.sort ?? DefaultSort
 
-    const allPlugins = useMemo(
-        () =>
-            [...pList.values()].map(
-                plugin => [plugin, getInternalPluginMeta(plugin)!] as const,
-            ),
-        [],
-    )
+    const [allPlugins, setAllPlugins] = useState(snapshotPlugins)
+
+    useEffect(() => {
+        const handleUpdate = () => setAllPlugins(snapshotPlugins())
+
+        pEmitter.on('register', handleUpdate)
+        pEmitter.on('unregister', handleUpdate)
+
+        return () => {
+            pEmitter.off('register', handleUpdate)
+            pEmitter.off('unregister', handleUpdate)
+        }
+    }, [])
 
     const plugins = useMemo(
         () =>

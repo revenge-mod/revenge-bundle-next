@@ -4,8 +4,11 @@ import { waitForModuleWithImportedPath } from '@revenge-mod/discord/utils/module
 import { waitForModules } from '@revenge-mod/modules/finders'
 import { withName } from '@revenge-mod/modules/finders/filters'
 import { instead } from '@revenge-mod/patcher'
-import { InternalPluginFlags, registerPlugin } from '@revenge-mod/plugins/_'
-import { PluginFlags } from '@revenge-mod/plugins/constants'
+import {
+    InternalPluginFlags,
+    PluginFlags,
+    registerPlugin,
+} from '@revenge-mod/plugins/_'
 import { React } from '@revenge-mod/react'
 import { asap, noop } from '@revenge-mod/utils/callback'
 import { getCurrentStack } from '@revenge-mod/utils/error'

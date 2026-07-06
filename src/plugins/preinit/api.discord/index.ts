@@ -1,5 +1,8 @@
-import { InternalPluginFlags, registerPlugin } from '@revenge-mod/plugins/_'
-import { PluginFlags } from '@revenge-mod/plugins/constants'
+import {
+    InternalPluginFlags,
+    PluginFlags,
+    registerPlugin,
+} from '@revenge-mod/plugins/_'
 import { defineLazyProperty } from '@revenge-mod/utils/object'
 
 registerPlugin(

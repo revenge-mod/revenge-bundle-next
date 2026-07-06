@@ -3,8 +3,11 @@ import { getStore, Stores } from '@revenge-mod/discord/flux'
 import { getModules } from '@revenge-mod/modules/finders'
 import { withProps } from '@revenge-mod/modules/finders/filters'
 import { instead } from '@revenge-mod/patcher'
-import { InternalPluginFlags, registerPlugin } from '@revenge-mod/plugins/_'
-import { PluginFlags } from '@revenge-mod/plugins/constants'
+import {
+    InternalPluginFlags,
+    PluginFlags,
+    registerPlugin,
+} from '@revenge-mod/plugins/_'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import type { DiscordModules } from '@revenge-mod/discord/types'
 

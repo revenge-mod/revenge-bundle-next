@@ -1,17 +1,17 @@
-import { InternalPluginFlags, registerPlugin } from '@revenge-mod/plugins/_'
 import {
+    InternalPluginFlags,
     PluginFlags,
-    PluginsStorageDirectory,
-} from '@revenge-mod/plugins/constants'
+    registerPlugin,
+} from '@revenge-mod/plugins/_'
+import { PluginsStorageDirectory } from '@revenge-mod/plugins/constants'
 import * as storage from '@revenge-mod/storage'
 import { getStorage } from '@revenge-mod/storage'
 import { defineLazyProperty } from '@revenge-mod/utils/object'
-import type { AnyPlugin } from '@revenge-mod/plugins/_'
 import type { InitPluginApi, Plugin } from '@revenge-mod/plugins/types'
 import type { StorageOptions } from '@revenge-mod/storage'
 import type { AnyObject } from '@revenge-mod/utils/types'
 
-const storageOptions = new WeakMap<AnyPlugin, StorageOptions>()
+const storageOptions = new WeakMap<Plugin<any, any>, StorageOptions>()
 
 registerPlugin(
     {
@@ -55,11 +55,11 @@ registerPlugin(
     InternalPluginFlags.API,
 )
 
-function getStoragePathForPlugin(plugin: AnyPlugin) {
+function getStoragePathForPlugin(plugin: Plugin<any, any>) {
     return `${PluginsStorageDirectory}/${plugin.manifest.id}.json`
 }
 
-export async function deleteStorageForPlugin(plugin: AnyPlugin) {
+export async function deleteStorageForPlugin(plugin: Plugin<any, any>) {
     const api = plugin.api as InitPluginApi<{ storage: AnyObject }> | undefined
     const storage = api?.storage ?? getStorage(getStoragePathForPlugin(plugin))
     console.log(api?.storage, storage, getStoragePathForPlugin(plugin))

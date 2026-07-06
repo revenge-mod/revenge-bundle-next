@@ -1,6 +1,9 @@
 import { AppStartPerformance } from '@revenge-mod/discord/preinit'
-import { InternalPluginFlags, registerPlugin } from '@revenge-mod/plugins/_'
-import { PluginFlags } from '@revenge-mod/plugins/constants'
+import {
+    InternalPluginFlags,
+    PluginFlags,
+    registerPlugin,
+} from '@revenge-mod/plugins/_'
 import { BuildEnvironment, FullVersion } from '~/constants'
 
 if (__DEV__) {
