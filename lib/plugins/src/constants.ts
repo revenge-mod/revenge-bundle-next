@@ -11,4 +11,5 @@ export const PluginStatus = {
     Stopping: 1 << 6,
 }
 
-export const PluginsStorageDirectory = 'revenge/plugins/storage'
+export const pluginStoragePathFor = (id: string) =>
+    `revenge/plugins/storage/${id}/storage.json`

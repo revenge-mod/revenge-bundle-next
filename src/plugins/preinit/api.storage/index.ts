@@ -3,7 +3,7 @@ import {
     PluginFlags,
     registerPlugin,
 } from '@revenge-mod/plugins/_'
-import { PluginsStorageDirectory } from '@revenge-mod/plugins/constants'
+import { pluginStoragePathFor } from '@revenge-mod/plugins/constants'
 import * as storage from '@revenge-mod/storage'
 import { getStorage } from '@revenge-mod/storage'
 import { defineLazyProperty } from '@revenge-mod/utils/object'
@@ -31,7 +31,7 @@ registerPlugin(
         },
         init({ decorate }) {
             const makePluginStorage = (plugin: Plugin, opts?: StorageOptions) =>
-                getStorage(getStoragePathForPlugin(plugin), {
+                getStorage(pluginStoragePathFor(plugin.manifest.id), {
                     ...opts,
                     directory: 'documents',
                 })
@@ -55,13 +55,9 @@ registerPlugin(
     InternalPluginFlags.API,
 )
 
-function getStoragePathForPlugin(plugin: Plugin<any, any>) {
-    return `${PluginsStorageDirectory}/${plugin.manifest.id}.json`
-}
-
 export async function deleteStorageForPlugin(plugin: Plugin<any, any>) {
     const api = plugin.api as InitPluginApi<{ storage: AnyObject }> | undefined
-    const storage = api?.storage ?? getStorage(getStoragePathForPlugin(plugin))
-    console.log(api?.storage, storage, getStoragePathForPlugin(plugin))
+    const storage =
+        api?.storage ?? getStorage(pluginStoragePathFor(plugin.manifest.id))
     if (await storage.exists()) await storage.delete()
 }
