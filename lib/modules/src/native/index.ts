@@ -1,3 +1,5 @@
+import { getCurrentStack, getErrorStack } from '@revenge-mod/utils/error'
+
 const turboModuleProxy = globalThis.__turboModuleProxy
 
 /**
@@ -103,6 +105,61 @@ export function getBridgeInfo(): BridgeInfo | null {
     }
 }
 
+type AnyFunction = (...args: any[]) => any
+
+const CallableReturnNativeMethodName = 'revenge.__callableReturn' as const
+const CallableModuleName = 'RevengeBridge'
+const ExposedJSMethods: {
+    [methodName: string]: AnyFunction
+} = {}
+
+/**
+ * Registers a JS method that can be called from native code.
+ *
+ * @param name The name of the method to register.
+ * @param method The method implementation.
+ */
+export function registerJSMethod(name: string, method: AnyFunction) {
+    if (__DEV__ && ExposedJSMethods[name])
+        nativeLoggingHook(
+            `\u001b[33mWarning: Overwriting existing registered JS method: ${name}\n${getCurrentStack()}\u001b[0m`,
+            1,
+        )
+
+    ExposedJSMethods[name] = _wrapJSMethod(method)
+}
+
+function _wrapJSMethod(method: AnyFunction) {
+    return (...args: any[]) => {
+        try {
+            const ret = method(...args)
+            _returnJSCall({ result: ret ?? null })
+        } catch (error) {
+            _returnJSCall({ error: getErrorStack(error) })
+        }
+    }
+}
+
+function _returnJSCall(payload: object) {
+    callBridgeMethodSync(CallableReturnNativeMethodName, [payload])
+}
+
+RN$registerCallableModule(
+    CallableModuleName,
+    () =>
+        new Proxy(ExposedJSMethods, {
+            get(target, prop: string) {
+                const method = target[prop]
+                if (!method)
+                    return () => {
+                        // Can't catch this native side, this will crash the app
+                        throw new Error(`JS method not found: ${prop}`)
+                    }
+                return method
+            },
+        }),
+)
+
 export interface BridgeInfo {
     name: string
     version: number
@@ -114,4 +171,5 @@ export type MethodResult<T extends MethodName> = Methods[T][1]
 
 export interface Methods {
     'revenge.info': [[], BridgeInfo]
+    [CallableReturnNativeMethodName]: [[payload: object], void]
 }
