@@ -133,7 +133,12 @@ function _wrapJSMethod(method: AnyFunction) {
     return (...args: any[]) => {
         try {
             const ret = method(...args)
-            _returnJSCall({ result: ret ?? null })
+            if (ret instanceof Promise)
+                ret.then(
+                    result => _returnJSCall({ result: result ?? null }),
+                    error => _returnJSCall({ error: getErrorStack(error) }),
+                )
+            else _returnJSCall({ result: ret ?? null })
         } catch (error) {
             _returnJSCall({ error: getErrorStack(error) })
         }
