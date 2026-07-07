@@ -3,7 +3,11 @@ import { styles } from '@revenge-mod/components/_'
 import FormSwitch from '@revenge-mod/components/FormSwitch'
 import { Tokens } from '@revenge-mod/discord/common'
 import { Design } from '@revenge-mod/discord/design'
-import { isPluginEssential } from '@revenge-mod/plugins/_'
+import {
+    isPluginEssential,
+    isPluginPendingUpdate,
+    isPluginStartable,
+} from '@revenge-mod/plugins/_'
 import { memo } from 'react'
 import { Image, Pressable } from 'react-native'
 import { handleDisablePlugin, handleEnablePlugin } from '../utils/actions'
@@ -144,6 +148,10 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
     } = plugin
 
     const essential = isPluginEssential(meta)
+    const startable = isPluginStartable(plugin)
+    const pendingUpdate = isPluginPendingUpdate(plugin)
+
+    const toggleDisabled = essential || pendingUpdate
 
     const enableTooltip = useEnablePluginTooltip()
     const essentialTooltip = useEssentialPluginTooltip()
@@ -175,13 +183,13 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
                     />
                     {plugin.SettingsComponent && (
                         <Pressable
+                            disabled={!startable}
                             onPress={() => {
-                                if (!enabled)
-                                    requestAnimationFrame(() => {
-                                        enableTooltip.targetRef.current =
-                                            settingsRef.current
-                                        enableTooltip.setVisible(true)
-                                    })
+                                requestAnimationFrame(() => {
+                                    enableTooltip.targetRef.current =
+                                        settingsRef.current
+                                    enableTooltip.setVisible(true)
+                                })
                             }}
                         >
                             <IconButton
@@ -189,27 +197,27 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
                                 size="sm"
                                 variant="secondary"
                                 icon={SettingsIcon}
+                                disabled={!startable}
                                 onPress={() => {
                                     openPluginSettings(plugin)
                                 }}
-                                disabled={!enabled}
                             />
                         </Pressable>
                     )}
                     <Pressable
+                        disabled={toggleDisabled}
                         onPress={() => {
-                            if (essential)
-                                requestAnimationFrame(() => {
-                                    essentialTooltip.targetRef.current =
-                                        switchRef.current
-                                    essentialTooltip.setVisible(true)
-                                })
+                            requestAnimationFrame(() => {
+                                essentialTooltip.targetRef.current =
+                                    switchRef.current
+                                essentialTooltip.setVisible(true)
+                            })
                         }}
                         ref={switchRef}
                     >
                         <FormSwitch
                             key={plugin.manifest.id}
-                            disabled={essential}
+                            disabled={toggleDisabled}
                             onValueChange={enabled => {
                                 if (enabled) handleEnablePlugin(plugin)
                                 else handleDisablePlugin(plugin)

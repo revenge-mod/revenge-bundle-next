@@ -9,11 +9,13 @@ import {
     disablePlugin,
     InternalPluginFlags,
     isPluginEnabled,
+    isPluginPendingReload,
     PluginFlags,
     pEmitter,
     pList,
     registerPlugin,
     runPluginLate,
+    stopPlugin,
 } from '.'
 import type { PluginManifest, PluginOptionsFactory } from '../types'
 import type { AnyPlugin } from '.'
@@ -24,13 +26,64 @@ interface ExternalPlugin {
     internal?: boolean
     essential?: boolean
     enabledByDefault?: boolean
+    /** Errors the native side already hit (eg. at boot before JS was up, after faulty update). */
+    errors?: string[]
 }
+
+type PluginInstallResult =
+    | { error: false; plugin: ExternalPlugin }
+    | { error: string }
 
 export function registerExternalPlugins() {
     registerJSMethod(
+        'revenge.plugins.loader.stopPlugin',
+        async function stopHandler(id: string) {
+            const plugin = pList.get(id)
+            if (plugin?.status) await stopPlugin(plugin)
+        },
+    )
+
+    registerJSMethod(
         'revenge.plugins.loader.pluginInstalled',
-        (external: ExternalPlugin) => {
-            loadExternalPlugin(external)
+        async function installedHandler(result: PluginInstallResult) {
+            if (result.error !== false) {
+                pEmitter.emit('install', { error: result.error })
+                return
+            }
+
+            const { plugin } = result
+            const existing = pList.get(plugin.manifest.id)
+
+            try {
+                if (existing?.status) {
+                    // Should already be stopped by this point, but just in case the native side didn't await
+                    await stopPlugin(existing)
+                }
+
+                const pendingReload =
+                    existing !== undefined && isPluginPendingReload(existing)
+
+                if (existing) pList.delete(plugin.manifest.id)
+
+                if (pendingReload) {
+                    // Since reload is required to (un)apply changes, we don't load the new plugin yet
+                    // We'll do the next time the app is started
+                    const registered = pList.get(
+                        registerExternalPlugin(plugin).id,
+                    )!
+
+                    registered.flags |= PluginFlags.PendingUpdate
+                } else await loadExternalPlugin(plugin)
+            } catch (e) {
+                pEmitter.emit('install', { error: getErrorStack(e) })
+                return
+            }
+
+            pEmitter.emit('install', {
+                error: false,
+                manifest: plugin.manifest,
+                updated: existing !== undefined,
+            })
         },
     )
 
@@ -53,20 +106,26 @@ export function registerExternalPlugins() {
         }
 }
 
-export function registerExternalPlugin({
-    manifest,
-    script,
-    internal,
-    essential,
-    enabledByDefault,
-}: ExternalPlugin) {
-    return registerPlugin(
+export function registerExternalPlugin(external: ExternalPlugin) {
+    const { manifest, script, internal, essential, enabledByDefault, errors } =
+        external
+
+    const dep = registerPlugin(
         manifest,
         createOptionsFactory(script),
         essential || enabledByDefault ? PluginFlags.Enabled : 0,
         (internal ? InternalPluginFlags.Internal : 0) |
             (essential ? InternalPluginFlags.Essential : 0),
     )
+
+    // Sync errors the native side already caught
+    if (errors?.length) {
+        const plugin = pList.get(dep.id)!
+        plugin.errors.push(...errors)
+        plugin.flags |= PluginFlags.Errored
+    }
+
+    return dep
 }
 
 export async function loadExternalPlugin(external: ExternalPlugin) {
@@ -79,7 +138,7 @@ export async function loadExternalPlugin(external: ExternalPlugin) {
 export async function uninstallExternalPlugin(plugin: AnyPlugin) {
     if (isPluginEnabled(plugin)) await disablePlugin(plugin)
 
-    callBridgeMethod('revenge.plugins.loader.uninstallPlugin', [
+    await callBridgeMethod('revenge.plugins.loader.uninstallPlugin', [
         plugin.manifest.id,
     ])
 

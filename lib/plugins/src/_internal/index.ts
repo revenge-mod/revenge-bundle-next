@@ -46,9 +46,14 @@ const MaxWaitTime = 5000
 // This is never used in bridge, but still used internally by JS.
 export const PluginFlags = {
     Enabled: 1 << 0,
-    ReloadRequired: 1 << 1,
+    PendingReload: 1 << 1,
     Errored: 1 << 2,
     EnabledLate: 1 << 3,
+    /**
+     * Marks the plugin as pending an update. Set when {@link PluginFlags.PendingReload} is set when stopping the plugin to update.
+     * This means for the update to be applied safely, the updated plugin can only be started after a reload.
+     */
+    PendingUpdate: 1 << 4,
 }
 
 const Flag = PluginFlags
@@ -101,7 +106,12 @@ export const pEmitter = new TypedEventEmitter<{
     stopped: [AnyPlugin]
     errored: [AnyPlugin, unknown]
     flagUpdate: [AnyPlugin]
+    install: [PluginInstallEvent]
 }>()
+
+export type PluginInstallEvent =
+    | { error: false; manifest: PluginManifest; updated: boolean }
+    | { error: string }
 
 export const pList = new Map<PluginManifest['id'], AnyPlugin>()
 const pMetadata = new WeakMap<AnyPlugin, InternalPluginMeta>()
@@ -122,7 +132,7 @@ registerJSMethod('revenge.plugins.states.update', (id, state) => {
 function pluginStateToFlags(state: PluginStateObject): number {
     return (
         (state.enabled ? Flag.Enabled : 0) |
-        (state.reloadRequired ? Flag.ReloadRequired : 0) |
+        (state.pendingReload ? Flag.PendingReload : 0) |
         (state.errored ? Flag.Errored : 0) |
         (state.enabledLate ? Flag.EnabledLate : 0)
     )
@@ -181,7 +191,7 @@ export function registerPlugin<O extends PluginApiExtensionsOptions>(
         disable: () => disablePlugin(plugin),
         stop: () => stopPlugin(plugin),
         requireReload: () => {
-            plugin.flags |= Flag.ReloadRequired
+            plugin.flags |= Flag.PendingReload
         },
         api: undefined,
         set flags(flags: number) {
@@ -257,16 +267,12 @@ export function getPluginDependencies(plugin: AnyPlugin): AnyPlugin[] {
     return (meta.dependencies = deps)
 }
 
-export function isPluginEnabled(plugin: Plugin<any, any>): boolean {
+export function isPluginEnabled(plugin: AnyPlugin): boolean {
     return Boolean((plugin as AnyPlugin).flags & Flag.Enabled)
 }
 
-export function isPluginEnabledLate(plugin: Plugin<any, any>): boolean {
+export function isPluginEnabledLate(plugin: AnyPlugin): boolean {
     return Boolean((plugin as AnyPlugin).flags & Flag.EnabledLate)
-}
-
-export function isPluginReloadRequired(plugin: Plugin<any, any>): boolean {
-    return Boolean((plugin as AnyPlugin).flags & Flag.ReloadRequired)
 }
 
 export function isPluginEssential({ iflags }: InternalPluginMeta): boolean {
@@ -277,13 +283,45 @@ export function isPluginInternal({ iflags }: InternalPluginMeta): boolean {
     return Boolean(iflags & InternalPluginFlags.Internal)
 }
 
-export function isPluginErrored(plugin: Plugin<any, any>): boolean {
+export function isPluginErrored(plugin: AnyPlugin): boolean {
     return Boolean((plugin as AnyPlugin).flags & Flag.Errored)
 }
 
-function guardPluginEnabled(plugin: AnyPlugin) {
+export function isPluginPendingReload(plugin: AnyPlugin): boolean {
+    return Boolean((plugin as AnyPlugin).flags & Flag.PendingReload)
+}
+
+export function isPluginPendingUpdate(plugin: AnyPlugin): boolean {
+    return Boolean((plugin as AnyPlugin).flags & Flag.PendingUpdate)
+}
+
+/**
+ * Requires that the plugin is in a state where it can be started, all of:
+ * - Enabled
+ * - Not pending an update
+ */
+function requirePluginStartableState(plugin: AnyPlugin) {
     if (!isPluginEnabled(plugin))
         throw new Error(`Plugin "${plugin.manifest.id}" is not enabled`)
+
+    if (isPluginPendingUpdate(plugin))
+        throw new Error(
+            `Plugin "${plugin.manifest.id}" is pending an update and cannot be started`,
+        )
+}
+
+/**
+ * Checks if a plugin is startable.
+ *
+ * @see {@link requirePluginStartableState}.
+ */
+export function isPluginStartable(plugin: AnyPlugin): boolean {
+    try {
+        requirePluginStartableState(plugin)
+        return true
+    } catch {
+        return false
+    }
 }
 
 /**
@@ -394,7 +432,7 @@ function tryPreparePluginStart(plugin: AnyPlugin) {
  * Disables a plugin, as well as all its dependents.
  */
 export async function disablePlugin(plugin: AnyPlugin) {
-    guardPluginEnabled(plugin)
+    requirePluginStartableState(plugin)
 
     const meta = getInternalPluginMeta(plugin)!
 
@@ -415,13 +453,13 @@ export async function disablePlugin(plugin: AnyPlugin) {
     if (plugin.status && !(plugin.status & Status.Stopping))
         await stopPlugin(plugin)
 
-    plugin.flags &= ~Flag.Enabled
-    pEmitter.emit('disabled', plugin)
-
-    callBridgeMethod('revenge.plugins.states.setEnabled', [
+    await callBridgeMethod('revenge.plugins.states.setEnabled', [
         plugin.manifest.id,
         false,
     ])
+
+    plugin.flags &= ~Flag.Enabled
+    pEmitter.emit('disabled', plugin)
 }
 
 /**
@@ -437,17 +475,17 @@ export async function enablePlugin(plugin: AnyPlugin) {
         }),
     )
 
-    plugin.flags |= Flag.Enabled
-    pEmitter.emit('enabled', plugin)
-
-    callBridgeMethod('revenge.plugins.states.setEnabled', [
+    await callBridgeMethod('revenge.plugins.states.setEnabled', [
         plugin.manifest.id,
         true,
     ])
+
+    plugin.flags |= Flag.Enabled
+    pEmitter.emit('enabled', plugin)
 }
 
 export async function runPluginLate(plugin: AnyPlugin) {
-    guardPluginEnabled(plugin)
+    requirePluginStartableState(plugin)
 
     if (plugin.status & Status.Started)
         throw new Error(`Plugin "${plugin.manifest.id}" is already started`)
@@ -466,7 +504,7 @@ export async function runPluginLate(plugin: AnyPlugin) {
 
                 // Plugin would already be started native-side if it was not started late
                 // But on late starts (enable, fresh install), we must start the native side too
-                callBridgeMethod('revenge.plugins.loader.start', [
+                await callBridgeMethod('revenge.plugins.loader.start', [
                     plugin.manifest.id,
                 ])
 
@@ -482,7 +520,7 @@ export async function runPluginLate(plugin: AnyPlugin) {
  * Runs the preInit lifecycle of a plugin.
  */
 export async function preInitPlugin(plugin: AnyPlugin) {
-    guardPluginEnabled(plugin)
+    requirePluginStartableState(plugin)
 
     const {
         manifest: { id },
@@ -526,7 +564,7 @@ export async function preInitPlugin(plugin: AnyPlugin) {
  * Runs the init lifecycle of a plugin.
  */
 export async function initPlugin(plugin: AnyPlugin) {
-    guardPluginEnabled(plugin)
+    requirePluginStartableState(plugin)
 
     const {
         manifest: { id },
@@ -571,7 +609,7 @@ export async function initPlugin(plugin: AnyPlugin) {
  * Starts a plugin by running its start lifecycle.
  */
 export async function startPlugin(plugin: AnyPlugin) {
-    guardPluginEnabled(plugin)
+    requirePluginStartableState(plugin)
 
     const {
         manifest: { id },
@@ -615,7 +653,7 @@ export async function startPlugin(plugin: AnyPlugin) {
  * Stops a plugin by running its stop lifecycle and cleanup functions.
  */
 export async function stopPlugin(plugin: AnyPlugin) {
-    guardPluginEnabled(plugin)
+    requirePluginStartableState(plugin)
 
     const {
         manifest: { id },
@@ -641,7 +679,7 @@ export async function stopPlugin(plugin: AnyPlugin) {
                 'Plugin lifecycles timed out, force stopping',
             ),
         ]).catch(e => {
-            plugin.flags |= Flag.ReloadRequired
+            plugin.flags |= Flag.PendingReload
             return handlePluginError(e, plugin)
         })
     else if (
@@ -683,7 +721,7 @@ export async function stopPlugin(plugin: AnyPlugin) {
 async function cleanupPlugin(plugin: AnyPlugin, meta: InternalPluginMeta) {
     async function handleStopError(e: unknown) {
         // Some cleanup was unsuccessful, so we need to reload the app
-        plugin.flags |= Flag.ReloadRequired
+        plugin.flags |= Flag.PendingReload
         return handlePluginError(e, plugin)
     }
 
@@ -718,7 +756,7 @@ declare module '@revenge-mod/modules/native' {
 
 interface PluginStateObject {
     enabled?: boolean
-    reloadRequired?: boolean
+    pendingReload?: boolean
     errored?: boolean
     enabledLate?: boolean
 }

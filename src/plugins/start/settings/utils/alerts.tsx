@@ -1,6 +1,9 @@
 import { AlertActionCreators } from '@revenge-mod/discord/actions'
 import { RootNavigationRef } from '@revenge-mod/discord/modules/main_tabs_v2'
-import { uninstallExternalPlugin } from '@revenge-mod/plugins/_'
+import {
+    isPluginStartable,
+    uninstallExternalPlugin,
+} from '@revenge-mod/plugins/_'
 import { deleteStorageForPlugin } from '~plugins/preinit/api.storage'
 import PluginClearDataConfirmationAlert from '../components/PluginClearDataConfirmationAlert'
 import PluginHasDependenciesAlert from '../components/PluginHasDependenciesAlert'
@@ -45,7 +48,7 @@ export function showPluginUninstallConfirmation(
 }
 
 export function openPluginSettings(plugin: AnyPlugin) {
-    if (!plugin.SettingsComponent) return
+    if (!plugin.SettingsComponent || !isPluginStartable(plugin)) return
 
     const navigation = RootNavigationRef.getRootNavigationRef()
     if (navigation.isReady()) navigation.navigate(plugin.manifest.id)

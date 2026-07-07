@@ -11,6 +11,8 @@ import {
     InternalPluginFlags,
     isPluginEssential,
     isPluginInternal,
+    isPluginPendingUpdate,
+    isPluginStartable,
     PluginFlags,
 } from '@revenge-mod/plugins/_'
 import { PluginStatus } from '@revenge-mod/plugins/constants'
@@ -53,6 +55,7 @@ export default function PluginOptionsActionSheet({
     const meta = getInternalPluginMeta(plugin)
     const { dependencies, dependents } = meta!
     const essential = isPluginEssential(meta)
+    const pendingUpdate = isPluginPendingUpdate(plugin)
     const {
         manifest: { id, name, author, description, icon },
         errors,
@@ -71,6 +74,7 @@ export default function PluginOptionsActionSheet({
                         !essential && (
                             <FormSwitch
                                 value={enabled}
+                                disabled={pendingUpdate}
                                 onValueChange={v => {
                                     if (v) handleEnablePlugin(plugin)
                                     else handleDisablePlugin(plugin)
@@ -180,10 +184,10 @@ function PluginActions({
     plugin: AnyPlugin
     closeSheet: () => void
 }) {
-    const enabled = usePluginEnabled(plugin)
     const enableTooltip = useEnablePluginTooltip()
     const settingsRef = useClickOutsideTooltip(useEnablePluginTooltip, () => {})
     const meta = getInternalPluginMeta(plugin)
+    const startable = isPluginStartable(plugin)
 
     return (
         <Stack
@@ -213,9 +217,8 @@ function PluginActions({
             )}
             {plugin.SettingsComponent && (
                 <Pressable
+                    disabled={!startable}
                     onPress={() => {
-                        if (enabled) return
-
                         requestAnimationFrame(() => {
                             enableTooltip.targetRef.current =
                                 settingsRef.current
@@ -223,13 +226,13 @@ function PluginActions({
                         })
                     }}
                 >
-                    <Design.IconButton
+                    <IconButton
                         ref={settingsRef}
                         variant="secondary"
                         size="lg"
                         icon={SettingsIcon}
                         label="Settings"
-                        disabled={!enabled}
+                        disabled={!startable}
                         onPress={() => {
                             openPluginSettings(plugin)
                             closeSheet()
