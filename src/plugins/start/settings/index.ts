@@ -43,7 +43,7 @@ const pluginSettings = registerPlugin(
             })
 
             waitForModuleWithImportedPath(
-                'modules/user_settings/native/core/SettingsNavigator.tsx',
+                'modules/user_settings/core/native/SettingsNavigator.tsx',
                 exports => {
                     patchSettingsNavigator(exports)
                 },
