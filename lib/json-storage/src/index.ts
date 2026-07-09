@@ -1,14 +1,30 @@
-import { FileModule } from '@revenge-mod/discord/native'
+import {
+    exists as fsExists,
+    getConstants,
+    readFile,
+    rm,
+    writeFile,
+} from '@revenge-mod/modules/native/fs'
+import { pluginStorageDirFor } from '@revenge-mod/plugins/constants'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import { cloneDeep, mergeDeep } from '@revenge-mod/utils/object'
 import type { AnyObject, DeepPartial, If } from '@revenge-mod/utils/types'
 
-export type StorageSubscription<T extends AnyObject = AnyObject> = (
+/**
+ * Get the storage path for a plugin's JSON storage document.
+ *
+ * @param id The plugin ID.
+ * @param file The file name (or relative path) of the storage document inside the plugin's storage directory.
+ */
+export const pluginStoragePathFor = (id: string, file = 'storage.json') =>
+    `${pluginStorageDirFor(id)}/${file}`
+
+export type JsonStorageSubscription<T extends AnyObject = AnyObject> = (
     update: DeepPartial<T>,
-    mode: (typeof StorageUpdateMode)[keyof typeof StorageUpdateMode],
+    mode: (typeof JsonStorageUpdateMode)[keyof typeof JsonStorageUpdateMode],
 ) => void
 
-export const StorageUpdateMode = {
+export const JsonStorageUpdateMode = {
     /**
      * The update will be merged into the existing storage.
      */
@@ -18,29 +34,37 @@ export const StorageUpdateMode = {
      */
     Replace: 1,
     /**
-     * Same behavior as {@link StorageUpdateMode.Replace}, but for the intial load of the storage.
+     * Same behavior as {@link JsonStorageUpdateMode.Replace}, but for the intial load of the storage.
      */
     Load: 2,
 } as const
 
-export function Storage<T extends AnyObject>(
-    this: Storage<T>,
+/**
+ * Create a new JSON storage object.
+ *
+ * @param path The path to the storage document.
+ * - Relative paths resolve against the app data directory (`/data/data/<pkg>` on Android).
+ *   Use `files/...` for app data or `cache/...` for cache on Android.
+ * - Absolute paths are used as-is.
+ *
+ * @param options Options for the storage.
+ */
+export function JsonStorage<T extends AnyObject>(
+    this: JsonStorage<T>,
     path: string,
-    options?: StorageOptions<T>,
+    options?: JsonStorageOptions<T>,
 ) {
-    const { CacheDirPath, DocumentsDirPath } = FileModule.getConstants()
+    const fullPath = path.startsWith('/')
+        ? path
+        : `${getConstants().data}/${path}`
 
-    const directory = options?.directory ?? 'documents'
-    const dirPath = directory === 'cache' ? CacheDirPath : DocumentsDirPath
-    const fullPath = `${dirPath}/${path}`
-
-    const subscriptions = new Set<StorageSubscription<T>>()
+    const subscriptions = new Set<JsonStorageSubscription<T>>()
 
     this.loaded = false
 
-    this.exists = () => FileModule.fileExists(fullPath)
+    this.exists = () => fsExists(fullPath)
     this.delete = async function () {
-        await FileModule.removeFile(directory, path)
+        await rm(fullPath)
         const success = !(await this.exists())
         if (this.loaded && success) await this.get()
         return success
@@ -51,13 +75,13 @@ export function Storage<T extends AnyObject>(
         return () => subscriptions.delete(callback)
     }
 
-    async function write(storage: Storage<T>) {
+    async function write(storage: JsonStorage<T>) {
         try {
             const contents = JSON.stringify(storage.cache)
-            await FileModule.writeFile(directory, path, contents, 'utf8')
+            await writeFile(fullPath, contents)
         } catch (e) {
             nativeLoggingHook(
-                `Failed to write storage (<${directory}>/${path}): ${getErrorStack(e)}`,
+                `Failed to write storage (${fullPath}): ${getErrorStack(e)}`,
                 2,
             )
         }
@@ -71,17 +95,17 @@ export function Storage<T extends AnyObject>(
             return this.cache
         }
 
-        const contents = await FileModule.readFile(fullPath, 'utf8')
+        const contents = await readFile(fullPath)
         if (contents) {
             this.loaded = true
             try {
                 const cache = (this.cache = JSON.parse(contents))
                 for (const sub of subscriptions)
-                    sub(cache, StorageUpdateMode.Load)
+                    sub(cache, JsonStorageUpdateMode.Load)
                 return cache
             } catch (e) {
                 nativeLoggingHook(
-                    `Failed to parse storage (<${directory}>/${path}): ${getErrorStack(e)}`,
+                    `Failed to parse storage (${fullPath}): ${getErrorStack(e)}`,
                     2,
                 )
             }
@@ -98,7 +122,9 @@ export function Storage<T extends AnyObject>(
         for (const sub of subscriptions)
             sub(
                 value,
-                replace ? StorageUpdateMode.Replace : StorageUpdateMode.Merge,
+                replace
+                    ? JsonStorageUpdateMode.Replace
+                    : JsonStorageUpdateMode.Merge,
             )
     }
 
@@ -106,34 +132,30 @@ export function Storage<T extends AnyObject>(
 }
 
 // React is only initialized right before the init stage, so this is a dummy method
-// See init.ts in api.storage plugin for the actual implementation
-Storage.prototype.use = () => {
-    throw new Error('Storage#use can only be called after the init stage!')
+// See init.ts in api.json-storage plugin for the actual implementation
+JsonStorage.prototype.use = () => {
+    throw new Error('JsonStorage#use can only be called after the init stage!')
 }
 
 /**
- * Get a storage object for a given path and directory.
+ * Get a JSON storage object for a given path.
  *
- * @param path Path relative to the directory.
- * @param directory Directory to use. Can be either 'cache' or 'documents'.
+ * @param path The path to the storage document.
+ * - Relative paths resolve against the app data directory (`/data/data/<pkg>` on Android).
+ *   Use `files/...` for app data or `cache/...` for cache on Android.
+ * - Absolute paths are used as-is.
  */
-export function getStorage<T extends AnyObject = AnyObject>(
+export function getJsonStorage<T extends AnyObject = AnyObject>(
     path: string,
-    options?: StorageOptions<T>,
-): Storage<T> {
-    const storage: Storage<T> = Object.create(Storage.prototype)
-    Storage.call(storage, path, options)
+    options?: JsonStorageOptions<T>,
+): JsonStorage<T> {
+    const storage: JsonStorage<T> = Object.create(JsonStorage.prototype)
+    JsonStorage.call(storage, path, options)
 
     return storage
 }
 
-export interface StorageOptions<T extends AnyObject = AnyObject> {
-    /**
-     * The directory of the storage file.
-     *
-     * @default 'documents'
-     */
-    directory?: StorageDirectory
+export interface JsonStorageOptions<T extends AnyObject = AnyObject> {
     /**
      * The default value to use for the storage. This will also be used for cache.
      *
@@ -148,11 +170,11 @@ export interface StorageOptions<T extends AnyObject = AnyObject> {
     load?: boolean
 }
 
-export type UseStorageFilter<T extends AnyObject = AnyObject> = (
-    ...params: Parameters<StorageSubscription<T>>
+export type UseJsonStorageFilter<T extends AnyObject = AnyObject> = (
+    ...params: Parameters<JsonStorageSubscription<T>>
 ) => any
 
-export interface Storage<T extends AnyObject> {
+export interface JsonStorage<T extends AnyObject> {
     /**
      * Whether the storage has been loaded. If the storage is not loaded, `storage.cache` may be `undefined`.
      * If you have `options.default` set, you can use this property to check if `storage.cache` is the default value or not.
@@ -172,7 +194,7 @@ export interface Storage<T extends AnyObject> {
      * ```tsx
      * type Settings = { key: boolean, nested: { key: boolean } }
      *
-     * const SettingsStorage = getStorage<Settings>('settings.json')
+     * const SettingsStorage = getJsonStorage<Settings>('settings.json')
      *
      * const MyComponent = () => {
      *   // Re-renders every time any of the keys in the settings object change
@@ -190,14 +212,14 @@ export interface Storage<T extends AnyObject> {
      *  // ...
      * }
      */
-    use(filter?: UseStorageFilter<T>): T | undefined
+    use(filter?: UseJsonStorageFilter<T>): T | undefined
     /**
      * Subscribe to storage updates.
      *
      * @param callback The callback to call when the storage is updated.
      * @returns A function to unsubscribe.
      */
-    subscribe(callback: StorageSubscription<T>): () => void
+    subscribe(callback: JsonStorageSubscription<T>): () => void
     /**
      * Get the storage.
      */
@@ -222,5 +244,3 @@ export interface Storage<T extends AnyObject> {
      */
     delete(): Promise<boolean>
 }
-
-export type StorageDirectory = 'cache' | 'documents'

@@ -85,7 +85,7 @@ export default function RevengeDeveloperSettingScreen() {
 
 export function DTConnectionSetting() {
     const open = useIsDTConnected()
-    const settings = api.storage.use(
+    const settings = api.jsonStorage.use(
         s =>
             s.devTools?.address !== undefined ||
             s.devTools?.alias !== undefined,
@@ -100,7 +100,7 @@ export function DTConnectionSetting() {
                 label="DevTools"
                 leadingText="ws://"
                 onBlur={() =>
-                    api.storage
+                    api.jsonStorage
                         .set({
                             devTools: {
                                 address: DTContext.addr,
@@ -125,7 +125,7 @@ export function DTConnectionSetting() {
                 isDisabled={open}
                 label="DevTools Alias"
                 onBlur={() =>
-                    api.storage
+                    api.jsonStorage
                         .set({
                             devTools: {
                                 alias: DTContext.alias,
@@ -150,7 +150,7 @@ export function DTConnectionSetting() {
 
 export function RDTAddrSetting() {
     const open = useIsRDTConnected()
-    const settings = api.storage.use(s => s.reactDevTools?.address)
+    const settings = api.jsonStorage.use(s => s.reactDevTools?.address)
 
     return (
         <Design.TextInput
@@ -160,7 +160,7 @@ export function RDTAddrSetting() {
             label="React DevTools"
             leadingText="ws://"
             onBlur={() =>
-                api.storage
+                api.jsonStorage
                     .set({
                         reactDevTools: {
                             address: RDTContext.addr,

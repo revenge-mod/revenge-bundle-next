@@ -47,7 +47,7 @@ function makePayload(name: string, args: any[]): object {
  * @param args The arguments to pass to the native method.
  * @returns A promise that resolves with the result of the native method call.
  */
-export async function callBridgeMethod<N extends MethodName>(
+export async function callNativeMethod<N extends MethodName>(
     name: N,
     args: MethodArgs<N>,
 ): Promise<MethodResult<N>> {
@@ -74,7 +74,7 @@ export async function callBridgeMethod<N extends MethodName>(
  * @param args The arguments to pass to the native method.
  * @returns The result of the native method call.
  */
-export function callBridgeMethodSync<N extends MethodName>(
+export function callNativeMethodSync<N extends MethodName>(
     name: N,
     args: MethodArgs<N>,
 ): MethodResult<N> {
@@ -95,7 +95,7 @@ export function callBridgeMethodSync<N extends MethodName>(
  */
 export function getBridgeInfo(): BridgeInfo | null {
     try {
-        return callBridgeMethodSync('revenge.info', [])
+        return callNativeMethodSync('revenge.info', [])
     } catch (e) {
         nativeLoggingHook(
             `\u001b[31mFailed to get native bridge info: ${e}\u001b[0m`,
@@ -146,7 +146,7 @@ function _wrapJSMethod(method: AnyFunction) {
 }
 
 function _returnJSCall(payload: object) {
-    callBridgeMethodSync(CallableReturnNativeMethodName, [payload])
+    callNativeMethodSync(CallableReturnNativeMethodName, [payload])
 }
 
 RN$registerCallableModule(
@@ -170,11 +170,11 @@ export interface BridgeInfo {
     version: number
 }
 
-export type MethodName = Extract<keyof Methods, string>
-export type MethodArgs<T extends MethodName> = Methods[T][0]
-export type MethodResult<T extends MethodName> = Methods[T][1]
+export type MethodName = Extract<keyof NativeMethods, string>
+export type MethodArgs<T extends MethodName> = NativeMethods[T][0]
+export type MethodResult<T extends MethodName> = NativeMethods[T][1]
 
-export interface Methods {
+export interface NativeMethods {
     'revenge.info': [[], BridgeInfo]
     [CallableReturnNativeMethodName]: [[payload: object], void]
 }

@@ -7,7 +7,13 @@ import {
     refreshSettingsNavigator,
     registerSettingsItem,
 } from '@revenge-mod/discord/modules/settings'
-import { PluginFlags, pEmitter, pList } from '@revenge-mod/plugins/_'
+import {
+    isPluginErrored,
+    isPluginPendingReload,
+    isPluginPendingUpdate,
+    pEmitter,
+    pList,
+} from '@revenge-mod/plugins/_'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import { useLayoutEffect } from 'react'
 import defer * as NavigatorHeaderWithIcon from './components/NavigatorHeaderWithIcon'
@@ -79,8 +85,7 @@ pEmitter.on('started', plugin => {
 function showPendingReloadAlertIfNeeded() {
     const plugins = [...pList.values()].filter(
         plugin =>
-            plugin.flags &
-            (PluginFlags.PendingReload | PluginFlags.PendingUpdate),
+            isPluginPendingReload(plugin) || isPluginPendingUpdate(plugin),
     )
 
     if (!plugins.length) return
@@ -93,8 +98,8 @@ function showPendingReloadAlertIfNeeded() {
 }
 
 function showErrorAlertIfNeeded() {
-    const plugins = [...pList.values()].filter(
-        plugin => plugin.flags & PluginFlags.Errored,
+    const plugins = [...pList.values()].filter(plugin =>
+        isPluginErrored(plugin),
     )
 
     if (!plugins.length) return
@@ -107,12 +112,12 @@ function showErrorAlertIfNeeded() {
 }
 
 pEmitter.on('flagUpdate', plugin => {
-    if (plugin.flags & (PluginFlags.PendingReload | PluginFlags.PendingUpdate))
+    if (isPluginPendingReload(plugin) || isPluginPendingUpdate(plugin))
         showPendingReloadAlertIfNeeded()
 })
 
 pEmitter.on('stopped', plugin => {
-    if (plugin.flags & PluginFlags.Errored) showErrorAlertIfNeeded()
+    if (isPluginErrored(plugin)) showErrorAlertIfNeeded()
 })
 
 /// PLUGIN INSTALL FEEDBACK

@@ -58,9 +58,8 @@ export default function PluginOptionsActionSheet({
     const pendingUpdate = isPluginPendingUpdate(plugin)
     const {
         manifest: { id, name, author, description, icon },
-        errors,
-        flags,
     } = plugin
+    const errors = [...plugin.errors, ...meta.nativeErrors]
 
     return (
         <ActionSheet>
@@ -136,7 +135,7 @@ export default function PluginOptionsActionSheet({
                     <TableRow
                         icon={<TableRowAssetIcon name="FlagIcon" />}
                         label="Flags"
-                        subLabel={bitFieldToString(PluginFlags, flags)}
+                        subLabel={bitFieldToString(PluginFlags, meta.flags)}
                     />
                     {meta.iflags && (
                         <TableRow
@@ -217,13 +216,13 @@ function PluginActions({
             )}
             {plugin.SettingsComponent && (
                 <Pressable
-                    disabled={!startable}
                     onPress={() => {
-                        requestAnimationFrame(() => {
-                            enableTooltip.targetRef.current =
-                                settingsRef.current
-                            enableTooltip.setVisible(true)
-                        })
+                        if (!startable)
+                            requestAnimationFrame(() => {
+                                enableTooltip.targetRef.current =
+                                    settingsRef.current
+                                enableTooltip.setVisible(true)
+                            })
                     }}
                 >
                     <IconButton

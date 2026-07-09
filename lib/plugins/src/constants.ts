@@ -1,3 +1,5 @@
+import { callNativeMethodSync } from '@revenge-mod/modules/native'
+
 /**
  * The plugin status.
  */
@@ -11,5 +13,13 @@ export const PluginStatus = {
     Stopping: 1 << 6,
 }
 
-export const pluginStoragePathFor = (id: string) =>
-    `revenge/plugins/storage/${id}/storage.json`
+const { storageRootPath } = callNativeMethodSync(
+    'revenge.plugins.getConstants',
+    [],
+)
+
+/**
+ * Per-plugin storage directory, relative to app data directory.
+ */
+// TODO: is it best to share this with the native side, or should we let native side be the sole source of truth?
+export const pluginStorageDirFor = (id: string) => `${storageRootPath}/${id}`

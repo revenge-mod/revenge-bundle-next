@@ -51,7 +51,7 @@ export function decoratePluginApi(
         const decorators = store.get(dep)
 
         if (decorators) {
-            const { handleError } = getInternalPluginMeta(dep)!
+            const { handleError } = getInternalPluginMeta(dep)
 
             try {
                 for (const decorator of decorators)

@@ -1,4 +1,4 @@
-import { callBridgeMethodSync } from '@revenge-mod/modules/native'
+import { callNativeMethodSync } from '@revenge-mod/modules/native'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import { FullVersion } from '~constants'
 import { cache, cacheBlacklistedModule, Uncached } from '../caches'
@@ -191,7 +191,7 @@ function handleFactoryCall(
         const msg = `Module ${mInitializingId} failed to initialize:\n\n${getErrorStack(e)}`
 
         if (__DEV__) {
-            callBridgeMethodSync('revenge.alertError', [msg, FullVersion])
+            callNativeMethodSync('revenge.alertError', [msg, FullVersion])
         } else {
             // So... it wasn't a great idea to throw, Discord has pushed a broken build that has some failing modules
             // Vanilla Metro would swallow the error and just return an empty object as the exports..., insanity

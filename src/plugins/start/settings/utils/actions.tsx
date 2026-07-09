@@ -27,7 +27,7 @@ export async function handleEnablePlugin(plugin: AnyPlugin) {
 }
 
 export async function handleDisablePlugin(plugin: AnyPlugin) {
-    const { dependents } = getInternalPluginMeta(plugin)!
+    const { dependents } = getInternalPluginMeta(plugin)
     const action = () => disablePlugin(plugin)
 
     const enabledDeps = dependents.filter(isPluginEnabled)

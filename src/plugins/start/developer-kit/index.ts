@@ -37,7 +37,7 @@ const defaultStorage: Storage = {
 }
 
 // TODO(PalmDevs): only register in development builds once updates can be made automatic
-registerPlugin<{ storage: Storage }>(
+registerPlugin<{ jsonStorage: Storage }>(
     {
         id: 'revenge.developer-kit',
         name: 'Developer Kit',
@@ -47,7 +47,7 @@ registerPlugin<{ storage: Storage }>(
         dependencies: [pluginSettings],
     },
     {
-        storage: {
+        jsonStorage: {
             load: true,
             default: defaultStorage,
         },
@@ -61,7 +61,7 @@ registerPlugin<{ storage: Storage }>(
                 refreshSettingsNavigator()
             }
 
-            const settings = await api.storage.get()
+            const settings = await api.jsonStorage.get()
 
             dt.DTContext.addr = settings.devTools.address
             dt.DTContext.alias = settings.devTools.alias ?? ''
@@ -79,4 +79,4 @@ registerPlugin<{ storage: Storage }>(
 )
 
 // Expose to EvalJSSetting
-export let api: PluginApi<{ storage: Storage }>
+export let api: PluginApi<{ jsonStorage: Storage }>

@@ -1,13 +1,14 @@
 import { TypedEventEmitter } from '@revenge-mod/discord/common/utils'
 import {
-    callBridgeMethod,
-    callBridgeMethodSync,
+    callNativeMethod,
+    callNativeMethodSync,
     registerJSMethod,
 } from '@revenge-mod/modules/native'
+import { exists, rm } from '@revenge-mod/modules/native/fs'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import { sleepReject } from '@revenge-mod/utils/promise'
 import { pUnscopedApi as uapi } from '../apis'
-import { PluginStatus as Status } from '../constants'
+import { pluginStorageDirFor, PluginStatus as Status } from '../constants'
 import {
     addPluginApiDecorator,
     decoratePluginApi,
@@ -35,10 +36,7 @@ import type {
     PreInitPluginApi,
 } from '../types'
 
-export type AnyPlugin = Plugin<any, any> & {
-    /** @internal */
-    flags: number
-}
+export type AnyPlugin = Plugin<any, any>
 
 const MaxWaitTime = 5000
 
@@ -47,13 +45,12 @@ const MaxWaitTime = 5000
 export const PluginFlags = {
     Enabled: 1 << 0,
     PendingReload: 1 << 1,
-    Errored: 1 << 2,
-    EnabledLate: 1 << 3,
+    EnabledLate: 1 << 2,
     /**
      * Marks the plugin as pending an update. Set when {@link PluginFlags.PendingReload} is set when stopping the plugin to update.
      * This means for the update to be applied safely, the updated plugin can only be started after a reload.
      */
-    PendingUpdate: 1 << 4,
+    PendingUpdate: 1 << 3,
 }
 
 const Flag = PluginFlags
@@ -92,6 +89,7 @@ export interface InternalPluginMeta {
     options: PluginOptions<any>
     optionsFactory?: PluginOptionsFactory<any>
     flags: number
+    nativeErrors: readonly string[]
 }
 
 export const pUnscopedApi = uapi
@@ -116,8 +114,10 @@ export type PluginInstallEvent =
 export const pList = new Map<PluginManifest['id'], AnyPlugin>()
 const pMetadata = new WeakMap<AnyPlugin, InternalPluginMeta>()
 
+/// STATE-SYNC
+
 const { states: InitialPersistedStates }: PersistedPluginStates =
-    callBridgeMethodSync('revenge.plugins.states.read', []) ?? {
+    callNativeMethodSync('revenge.plugins.states.read', []) ?? {
         states: {},
     }
 
@@ -133,28 +133,47 @@ function pluginStateToFlags(state: PluginStateObject): number {
     return (
         (state.enabled ? Flag.Enabled : 0) |
         (state.pendingReload ? Flag.PendingReload : 0) |
-        (state.errored ? Flag.Errored : 0) |
         (state.enabledLate ? Flag.EnabledLate : 0)
     )
 }
 
 async function applyPluginFlags(id: PluginManifest['id'], flags: number) {
     const plugin = pList.get(id)
-    if (!plugin || plugin.flags === flags) return
+    if (!plugin) return
 
-    const wasEnabled = plugin.flags & Flag.Enabled
+    const meta = getInternalPluginMeta(plugin)
+    if (meta.flags === flags) return
+
+    const wasEnabled = meta.flags & Flag.Enabled
     const nowEnabled = flags & Flag.Enabled
 
     if (wasEnabled && !nowEnabled) {
         if (plugin.status && !(plugin.status & Status.Stopping))
             await stopPlugin(plugin)
-        plugin.flags = flags
+        meta.flags = flags
         pEmitter.emit('disabled', plugin)
     } else {
-        plugin.flags = flags
+        meta.flags = flags
         if (!wasEnabled && nowEnabled) pEmitter.emit('enabled', plugin)
     }
 }
+
+/// NATIVE-ERROR SYNC
+
+registerJSMethod(
+    'revenge.plugins.events.pluginErrored',
+    (id: string, errors: string[]) => {
+        const plugin = pList.get(id)
+        if (!plugin) return
+
+        const meta = getInternalPluginMeta(plugin)
+        if (meta) {
+            meta.nativeErrors = Object.freeze(errors)
+        }
+    },
+)
+
+/// REST OF THE SYSTEM
 
 /**
  * Registers a new plugin with the system.
@@ -190,22 +209,20 @@ export function registerPlugin<O extends PluginApiExtensionsOptions>(
         status: 0,
         disable: () => disablePlugin(plugin),
         stop: () => stopPlugin(plugin),
+        reportError: (e: unknown) => handlePluginError(e, plugin),
         requireReload: () => {
-            plugin.flags |= Flag.PendingReload
+            meta.flags |= Flag.PendingReload
         },
         api: undefined,
-        set flags(flags: number) {
-            if (meta.flags === flags) return
-            meta.flags = flags
-            pEmitter.emit('flagUpdate', this)
-        },
-        get flags() {
-            return meta.flags
-        },
     }
+
+    let flags = InitialPersistedStates[manifest.id]
+        ? pluginStateToFlags(InitialPersistedStates[manifest.id])
+        : defflags
 
     const meta: InternalPluginMeta = {
         cleanups: [],
+        nativeErrors: Object.freeze([]),
         promises: [],
         iflags,
         apiLevel: PluginApiLevel.None,
@@ -213,9 +230,14 @@ export function registerPlugin<O extends PluginApiExtensionsOptions>(
         handleError: e => handlePluginError(e, plugin),
         options: resolved ?? {},
         optionsFactory: factory,
-        flags: InitialPersistedStates[manifest.id]
-            ? pluginStateToFlags(InitialPersistedStates[manifest.id])
-            : defflags,
+        set flags(newFlags: number) {
+            if (newFlags === flags) return
+            flags = newFlags
+            pEmitter.emit('flagUpdate', plugin)
+        },
+        get flags() {
+            return flags
+        },
     }
 
     pMetadata.set(plugin, meta)
@@ -268,11 +290,13 @@ export function getPluginDependencies(plugin: AnyPlugin): AnyPlugin[] {
 }
 
 export function isPluginEnabled(plugin: AnyPlugin): boolean {
-    return Boolean((plugin as AnyPlugin).flags & Flag.Enabled)
+    const meta = getInternalPluginMeta(plugin)
+    return Boolean(meta && meta.flags & Flag.Enabled)
 }
 
 export function isPluginEnabledLate(plugin: AnyPlugin): boolean {
-    return Boolean((plugin as AnyPlugin).flags & Flag.EnabledLate)
+    const meta = getInternalPluginMeta(plugin)
+    return Boolean(meta && meta.flags & Flag.EnabledLate)
 }
 
 export function isPluginEssential({ iflags }: InternalPluginMeta): boolean {
@@ -284,15 +308,17 @@ export function isPluginInternal({ iflags }: InternalPluginMeta): boolean {
 }
 
 export function isPluginErrored(plugin: AnyPlugin): boolean {
-    return Boolean((plugin as AnyPlugin).flags & Flag.Errored)
+    return plugin.errors.length > 0
 }
 
 export function isPluginPendingReload(plugin: AnyPlugin): boolean {
-    return Boolean((plugin as AnyPlugin).flags & Flag.PendingReload)
+    const meta = getInternalPluginMeta(plugin)
+    return Boolean(meta && meta.flags & Flag.PendingReload)
 }
 
 export function isPluginPendingUpdate(plugin: AnyPlugin): boolean {
-    return Boolean((plugin as AnyPlugin).flags & Flag.PendingUpdate)
+    const meta = getInternalPluginMeta(plugin)
+    return Boolean(meta && meta.flags & Flag.PendingUpdate)
 }
 
 /**
@@ -327,9 +353,10 @@ export function isPluginStartable(plugin: AnyPlugin): boolean {
 /**
  * Handles errors that occur in plugins.
  */
-async function handlePluginError(e: unknown, plugin: AnyPlugin) {
-    plugin.errors.push(e)
-    plugin.flags |= Flag.Errored
+export async function handlePluginError(e: unknown, plugin: AnyPlugin) {
+    ;(plugin.errors as unknown[]).push(e)
+
+    // TODO: Emit errored event so UI can update?
 
     nativeLoggingHook(
         `\u001b[31mPlugin "${plugin.manifest.id}" encountered an error: ${getErrorStack(e)}\u001b[0m`,
@@ -337,9 +364,12 @@ async function handlePluginError(e: unknown, plugin: AnyPlugin) {
     )
 
     plugin.api?.logger?.error('Plugin encountered an error', e)
-    pEmitter.emit('errored', plugin, e)
 
-    if (!isPluginEssential(getInternalPluginMeta(plugin)!))
+    if (
+        !isPluginEssential(getInternalPluginMeta(plugin)) &&
+        // Multiple errors may surface, but we only want to disable the plugin once
+        isPluginEnabled(plugin)
+    )
         await plugin.disable()
 }
 
@@ -370,12 +400,11 @@ function resolvePluginOptions(plugin: AnyPlugin, meta: InternalPluginMeta) {
  * Prepares the plugin API for the preInit lifecycle.
  */
 function tryPreparePluginPreInit(plugin: AnyPlugin) {
-    const meta = getInternalPluginMeta(plugin)!
+    const meta = getInternalPluginMeta(plugin)
     if (meta.apiLevel >= PluginApiLevel.PreInit) return
 
     // Clear errors from previous runs
     plugin.errors = []
-    plugin.flags &= ~Flag.Errored
 
     resolvePluginOptions(plugin, meta)
 
@@ -398,7 +427,7 @@ function tryPreparePluginPreInit(plugin: AnyPlugin) {
  * Prepares the plugin API for the init lifecycle.
  */
 function tryPreparePluginInit(plugin: AnyPlugin) {
-    const meta = getInternalPluginMeta(plugin)!
+    const meta = getInternalPluginMeta(plugin)
     if (meta.apiLevel >= PluginApiLevel.Init) return
 
     const api = plugin.api as InitPluginApi
@@ -415,7 +444,7 @@ function tryPreparePluginInit(plugin: AnyPlugin) {
  * Prepares the plugin API for the start lifecycle.
  */
 function tryPreparePluginStart(plugin: AnyPlugin) {
-    const meta = getInternalPluginMeta(plugin)!
+    const meta = getInternalPluginMeta(plugin)
     if (meta.apiLevel >= PluginApiLevel.Start) return
 
     const api = plugin.api as PluginApi
@@ -434,7 +463,7 @@ function tryPreparePluginStart(plugin: AnyPlugin) {
 export async function disablePlugin(plugin: AnyPlugin) {
     requirePluginStartableState(plugin)
 
-    const meta = getInternalPluginMeta(plugin)!
+    const meta = getInternalPluginMeta(plugin)
 
     if (isPluginEssential(meta))
         throw new Error(
@@ -445,7 +474,8 @@ export async function disablePlugin(plugin: AnyPlugin) {
 
     await Promise.all(
         dependents.map(dep => {
-            if (dep.flags & Flag.Enabled) return disablePlugin(dep)
+            if (getInternalPluginMeta(dep)!.flags & Flag.Enabled)
+                return disablePlugin(dep)
         }),
     )
 
@@ -453,12 +483,12 @@ export async function disablePlugin(plugin: AnyPlugin) {
     if (plugin.status && !(plugin.status & Status.Stopping))
         await stopPlugin(plugin)
 
-    await callBridgeMethod('revenge.plugins.states.setEnabled', [
+    await callNativeMethod('revenge.plugins.setEnabled', [
         plugin.manifest.id,
         false,
     ])
 
-    plugin.flags &= ~Flag.Enabled
+    meta.flags &= ~Flag.Enabled
     pEmitter.emit('disabled', plugin)
 }
 
@@ -475,12 +505,14 @@ export async function enablePlugin(plugin: AnyPlugin) {
         }),
     )
 
-    await callBridgeMethod('revenge.plugins.states.setEnabled', [
+    await callNativeMethod('revenge.plugins.setEnabled', [
         plugin.manifest.id,
         true,
     ])
 
-    plugin.flags |= Flag.Enabled
+    const meta = getInternalPluginMeta(plugin)
+    meta.flags |= Flag.Enabled
+
     pEmitter.emit('enabled', plugin)
 }
 
@@ -500,11 +532,12 @@ export async function runPluginLate(plugin: AnyPlugin) {
         pListOrdered
             .filter(plugin => !plugin.status)
             .map(async function runLate(plugin) {
-                plugin.flags |= Flag.EnabledLate
+                const meta = getInternalPluginMeta(plugin)
+                meta.flags |= Flag.EnabledLate
 
                 // Plugin would already be started native-side if it was not started late
                 // But on late starts (enable, fresh install), we must start the native side too
-                await callBridgeMethod('revenge.plugins.loader.start', [
+                await callNativeMethod('revenge.plugins.startNative', [
                     plugin.manifest.id,
                 ])
 
@@ -534,7 +567,7 @@ export async function preInitPlugin(plugin: AnyPlugin) {
     tryPreparePluginPreInit(plugin)
 
     const { lifecycles } = plugin
-    const { promises, handleError } = getInternalPluginMeta(plugin)!
+    const { promises, handleError } = getInternalPluginMeta(plugin)
 
     try {
         if (!lifecycles.preInit) return
@@ -623,7 +656,7 @@ export async function startPlugin(plugin: AnyPlugin) {
     tryPreparePluginStart(plugin)
 
     const { lifecycles } = plugin
-    const { promises, handleError } = getInternalPluginMeta(plugin)!
+    const { promises, handleError } = getInternalPluginMeta(plugin)
 
     try {
         if (!lifecycles.start) return
@@ -659,7 +692,7 @@ export async function stopPlugin(plugin: AnyPlugin) {
         manifest: { id },
     } = plugin
 
-    const meta = getInternalPluginMeta(plugin)!
+    const meta = getInternalPluginMeta(plugin)
 
     if (isPluginEssential(meta))
         throw new Error(`Plugin "${id}" is essential and cannot be stopped`)
@@ -679,7 +712,7 @@ export async function stopPlugin(plugin: AnyPlugin) {
                 'Plugin lifecycles timed out, force stopping',
             ),
         ]).catch(e => {
-            plugin.flags |= Flag.PendingReload
+            meta.flags |= Flag.PendingReload
             return handlePluginError(e, plugin)
         })
     else if (
@@ -721,7 +754,7 @@ export async function stopPlugin(plugin: AnyPlugin) {
 async function cleanupPlugin(plugin: AnyPlugin, meta: InternalPluginMeta) {
     async function handleStopError(e: unknown) {
         // Some cleanup was unsuccessful, so we need to reload the app
-        plugin.flags |= Flag.PendingReload
+        meta.flags |= Flag.PendingReload
         return handlePluginError(e, plugin)
     }
 
@@ -738,16 +771,28 @@ async function cleanupPlugin(plugin: AnyPlugin, meta: InternalPluginMeta) {
 }
 
 export function getInternalPluginMeta(plugin: AnyPlugin): InternalPluginMeta {
-    return pMetadata.get(plugin)!
+    const meta = pMetadata.get(plugin)
+    if (!meta)
+        throw new Error(
+            `Plugin "${plugin.manifest.id}" has no internal metadata, is it registered?`,
+        )
+
+    return meta
+}
+
+export async function deleteStorageForPlugin(plugin: Plugin<any, any>) {
+    const dir = pluginStorageDirFor(plugin.manifest.id)
+
+    if (await exists(dir)) await rm(dir)
 }
 
 export { uninstallExternalPlugin } from './external-plugins'
 
 declare module '@revenge-mod/modules/native' {
-    interface Methods {
-        'revenge.plugins.loader.start': [[id: PluginManifest['id']], null]
+    interface NativeMethods {
+        'revenge.plugins.startNative': [[id: PluginManifest['id']], null]
         'revenge.plugins.states.read': [[], PersistedPluginStates | null]
-        'revenge.plugins.states.setEnabled': [
+        'revenge.plugins.setEnabled': [
             [id: PluginManifest['id'], enabled: boolean],
             null,
         ]

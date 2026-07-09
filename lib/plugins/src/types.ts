@@ -264,7 +264,11 @@ export interface Plugin<
     /**
      * Errors encountered during the plugin lifecycles.
      */
-    errors: unknown[]
+    errors: readonly unknown[]
+    /**
+     * Reports an error encountered during the plugin's execution.
+     */
+    reportError(e: unknown): void
 
     SettingsComponent?: PluginSettingsComponent<O>
 
@@ -308,3 +312,9 @@ export type PluginApiInLifecycleMap<
 export interface PluginSettingsComponent<
     O extends PluginApiExtensionsOptions = PluginApiExtensionsOptions,
 > extends FunctionComponent<{ api: PluginApi<O> }> {}
+
+declare module '@revenge-mod/modules/native' {
+    export interface NativeMethods {
+        'revenge.plugins.getConstants': [[], { storageRootPath: string }]
+    }
+}

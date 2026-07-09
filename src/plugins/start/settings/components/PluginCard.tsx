@@ -183,13 +183,13 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
                     />
                     {plugin.SettingsComponent && (
                         <Pressable
-                            disabled={!startable}
                             onPress={() => {
-                                requestAnimationFrame(() => {
-                                    enableTooltip.targetRef.current =
-                                        settingsRef.current
-                                    enableTooltip.setVisible(true)
-                                })
+                                if (!startable)
+                                    requestAnimationFrame(() => {
+                                        enableTooltip.targetRef.current =
+                                            settingsRef.current
+                                        enableTooltip.setVisible(true)
+                                    })
                             }}
                         >
                             <IconButton
@@ -205,13 +205,13 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
                         </Pressable>
                     )}
                     <Pressable
-                        disabled={toggleDisabled}
                         onPress={() => {
-                            requestAnimationFrame(() => {
-                                essentialTooltip.targetRef.current =
-                                    switchRef.current
-                                essentialTooltip.setVisible(true)
-                            })
+                            if (toggleDisabled)
+                                requestAnimationFrame(() => {
+                                    essentialTooltip.targetRef.current =
+                                        switchRef.current
+                                    essentialTooltip.setVisible(true)
+                                })
                         }}
                         ref={switchRef}
                     >

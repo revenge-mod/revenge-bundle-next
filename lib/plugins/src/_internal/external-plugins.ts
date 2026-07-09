@@ -1,12 +1,14 @@
 import {
-    callBridgeMethod,
-    callBridgeMethodSync,
+    callNativeMethod,
+    callNativeMethodSync,
     registerJSMethod,
 } from '@revenge-mod/modules/native'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import { pUnscopedApi } from '../apis'
 import {
     disablePlugin,
+    getInternalPluginMeta,
+    handlePluginError,
     InternalPluginFlags,
     isPluginEnabled,
     isPluginPendingReload,
@@ -36,7 +38,7 @@ type PluginInstallResult =
 
 export function registerExternalPlugins() {
     registerJSMethod(
-        'revenge.plugins.loader.stopPlugin',
+        'revenge.plugins.stop',
         async function stopHandler(id: string) {
             const plugin = pList.get(id)
             if (plugin?.status) await stopPlugin(plugin)
@@ -44,7 +46,7 @@ export function registerExternalPlugins() {
     )
 
     registerJSMethod(
-        'revenge.plugins.loader.pluginInstalled',
+        'revenge.plugins.events.pluginInstalled',
         async function installedHandler(result: PluginInstallResult) {
             if (result.error !== false) {
                 pEmitter.emit('install', { error: result.error })
@@ -72,7 +74,8 @@ export function registerExternalPlugins() {
                         registerExternalPlugin(plugin).id,
                     )!
 
-                    registered.flags |= PluginFlags.PendingUpdate
+                    const meta = getInternalPluginMeta(registered)
+                    meta.flags |= PluginFlags.PendingUpdate
                 } else await loadExternalPlugin(plugin)
             } catch (e) {
                 pEmitter.emit('install', { error: getErrorStack(e) })
@@ -87,10 +90,7 @@ export function registerExternalPlugins() {
         },
     )
 
-    const externals = callBridgeMethodSync(
-        'revenge.plugins.loader.getPlugins',
-        [],
-    )
+    const externals = callNativeMethodSync('revenge.plugins.list', [])
     if (!externals) return
 
     for (const external of externals)
@@ -121,8 +121,7 @@ export function registerExternalPlugin(external: ExternalPlugin) {
     // Sync errors the native side already caught
     if (errors?.length) {
         const plugin = pList.get(dep.id)!
-        plugin.errors.push(...errors)
-        plugin.flags |= PluginFlags.Errored
+        for (const error of errors) handlePluginError(error, plugin)
     }
 
     return dep
@@ -138,9 +137,7 @@ export async function loadExternalPlugin(external: ExternalPlugin) {
 export async function uninstallExternalPlugin(plugin: AnyPlugin) {
     if (isPluginEnabled(plugin)) await disablePlugin(plugin)
 
-    await callBridgeMethod('revenge.plugins.loader.uninstallPlugin', [
-        plugin.manifest.id,
-    ])
+    await callNativeMethod('revenge.plugins.uninstall', [plugin.manifest.id])
 
     pList.delete(plugin.manifest.id)
     pEmitter.emit('unregister', plugin)
@@ -152,9 +149,9 @@ function createOptionsFactory(script?: string): PluginOptionsFactory {
 }
 
 declare module '@revenge-mod/modules/native' {
-    interface Methods {
-        'revenge.plugins.loader.getPlugins': [[], ExternalPlugin[] | null]
-        'revenge.plugins.loader.installPlugin': [[], null]
-        'revenge.plugins.loader.uninstallPlugin': [[string], null]
+    interface NativeMethods {
+        'revenge.plugins.list': [[], ExternalPlugin[] | null]
+        'revenge.plugins.install': [[], null]
+        'revenge.plugins.uninstall': [[string], null]
     }
 }

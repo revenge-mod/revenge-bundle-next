@@ -1,10 +1,11 @@
 import { AlertActionCreators } from '@revenge-mod/discord/actions'
 import { RootNavigationRef } from '@revenge-mod/discord/modules/main_tabs_v2'
 import {
+    deleteStorageForPlugin,
     isPluginStartable,
     uninstallExternalPlugin,
 } from '@revenge-mod/plugins/_'
-import { deleteStorageForPlugin } from '~plugins/preinit/api.storage'
+import { deleteJsonStorageForPlugin } from '~plugins/preinit/api.json-storage'
 import PluginClearDataConfirmationAlert from '../components/PluginClearDataConfirmationAlert'
 import PluginHasDependenciesAlert from '../components/PluginHasDependenciesAlert'
 import PluginHasDependentsAlert from '../components/PluginHasDependentsAlert'
@@ -20,6 +21,8 @@ export function showPluginClearDataConfirmation(
 
     async function action() {
         await deleteStorageForPlugin(plugin)
+        // Trigger update for JSON storage
+        await deleteJsonStorageForPlugin(plugin)
         callback()
     }
 
@@ -36,7 +39,7 @@ export function showPluginUninstallConfirmation(
     const KEY = 'plugin-uninstall-confirmation'
 
     async function action() {
-        await deleteStorageForPlugin(plugin)
+        // Uninstalling also deletes data
         await uninstallExternalPlugin(plugin)
         callback()
     }

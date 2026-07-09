@@ -67,7 +67,7 @@ export function resolvePluginGraph(plugin: AnyPlugin) {
         pRootNodes.add(plugin)
 
         for (const dep of getPluginDependencies(plugin)) {
-            const depMeta = getInternalPluginMeta(dep)!
+            const depMeta = getInternalPluginMeta(dep)
             depMeta.dependents.push(plugin)
 
             // Not a root node if it has dependencies

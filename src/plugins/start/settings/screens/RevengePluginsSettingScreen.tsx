@@ -5,14 +5,13 @@ import Page from '@revenge-mod/components/Page'
 import SearchInput from '@revenge-mod/components/SearchInput'
 import { ActionSheetActionCreators } from '@revenge-mod/discord/actions'
 import { Design } from '@revenge-mod/discord/design'
-import { callBridgeMethod } from '@revenge-mod/modules/native'
+import { callNativeMethod } from '@revenge-mod/modules/native'
 import {
     getInternalPluginMeta,
     InternalPluginFlags,
     isPluginEnabled,
     isPluginEssential,
     isPluginInternal,
-    PluginFlags,
     pEmitter,
     pList,
 } from '@revenge-mod/plugins/_'
@@ -103,7 +102,11 @@ const Sorts = {
     'Enabled first': [
         getAssetIdByName('CircleCheckIcon')!,
         (a, b) =>
-            (b.flags & PluginFlags.Enabled) - (a.flags & PluginFlags.Enabled),
+            isPluginEnabled(a) === isPluginEnabled(b)
+                ? a.manifest.name.localeCompare(b.manifest.name)
+                : isPluginEnabled(a)
+                  ? -1
+                  : 1,
     ],
 } satisfies FilterAndSortActionSheetProps['sorts']
 
@@ -116,10 +119,7 @@ function HeaderContextMenu() {
                 {
                     label: 'Install from file',
                     action: () =>
-                        callBridgeMethod(
-                            'revenge.plugins.loader.installPlugin',
-                            [],
-                        ),
+                        callNativeMethod('revenge.plugins.install', []),
                 },
             ]}
         >
@@ -136,7 +136,7 @@ function HeaderContextMenu() {
 
 function snapshotPlugins() {
     return [...pList.values()].map(
-        plugin => [plugin, getInternalPluginMeta(plugin)!] as const,
+        plugin => [plugin, getInternalPluginMeta(plugin)] as const,
     )
 }
 
