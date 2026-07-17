@@ -87,6 +87,7 @@ export interface Design {
     Card: DiscordModules.Components.Card
     ContextMenu: DiscordModules.Components.ContextMenu
     ContextMenuItem: DiscordModules.Components.ContextMenuItem
+    FloatingActionButton: DiscordModules.Components.FloatingActionButton
     IconButton: DiscordModules.Components.IconButton
     ImageButton: DiscordModules.Components.ImageButton
     LayerScope: DiscordModules.Components.LayerScope

@@ -306,6 +306,15 @@ export namespace DiscordModules {
 
         export type ImageButton = FC<ImageButtonProps>
 
+        export interface FloatingActionButtonProps {
+            icon: number
+            onPress: () => void
+            positionBottom?: number
+            accessibilityLabel?: string
+        }
+
+        export type FloatingActionButton = FC<FloatingActionButtonProps>
+
         export interface StackProps extends ViewProps {
             spacing?: number
             align?: ViewStyle['alignItems']
