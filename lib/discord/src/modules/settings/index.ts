@@ -84,15 +84,57 @@ export function registerSettingsItems(record: Record<string, SettingsItem>) {
  *
  * @param key The section to add the settings item to.
  * @param item The settings item to add.
+ * @param index The index to insert the settings item at. Defaults to -1 (end of the section).
  * @returns A function to remove the settings item from the section.
  */
-export function addSettingsItemToSection(key: string, item: string) {
+export function addSettingsItemToSection(
+    key: string,
+    item: string,
+    index?: number,
+): () => void
+/**
+ * Adds a settings item to an existing section.
+ *
+ * @param key The section to add the settings item to.
+ * @param fn A function that takes the current settings items and returns the new settings items. Removing items will result in an error.
+ * @returns A function to remove the settings items from the section.
+ */
+export function addSettingsItemToSection(
+    key: string,
+    fn: (items: string[]) => string[],
+): () => void
+export function addSettingsItemToSection(
+    key: string,
+    item: string | ((items: string[]) => string[]),
+    index = -1,
+) {
     const section = sSections[key]
     if (!section) throw new Error(`Section "${key}" does not exist`)
 
-    const newLength = section.settings.push(item)
-    return () => {
-        delete section.settings[newLength - 1]
+    if (typeof item === 'function') {
+        const before = [...section.settings]
+        const after = [...item(before)]
+        const added = after.filter(i => !before.includes(i))
+        const removed = before.filter(i => !after.includes(i))
+        if (removed.length > 0)
+            throw new Error(
+                `Cannot remove settings items from section "${key}"`,
+            )
+
+        section.settings = after
+
+        return () => {
+            section.settings = section.settings.filter(i => !added.includes(i))
+        }
+    } else {
+        const actualIndex =
+            index < 0 ? section.settings.length + (index + 1) : index
+        section.settings.splice(actualIndex, 0, item)
+
+        return () => {
+            const idx = section.settings.indexOf(item)
+            if (idx !== -1) section.settings.splice(idx, 1)
+        }
     }
 }
 
