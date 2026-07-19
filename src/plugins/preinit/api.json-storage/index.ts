@@ -6,6 +6,7 @@ import {
     PluginFlags,
     registerPlugin,
 } from '@revenge-mod/plugins/_'
+import { pluginStorageDirFor } from '@revenge-mod/plugins/constants'
 import { defineLazyProperty } from '@revenge-mod/utils/object'
 import type { JsonStorage, JsonStorageOptions } from '@revenge-mod/json-storage'
 import type { InitPluginApi, Plugin } from '@revenge-mod/plugins/types'
@@ -66,16 +67,16 @@ registerPlugin(
 )
 
 export async function deleteJsonStorageForPlugin(plugin: Plugin<any, any>) {
-    const opts = storageOptions.get(plugin)!
-
-    const path = jsonStorage.pluginStoragePathFor(plugin.manifest.id, opts.file)
-
+    const path = pluginStorageDirFor(plugin.manifest.id)
     if (await exists(path)) await rm(path)
 
     const api = plugin.api as
         | InitPluginApi<{ jsonStorage: AnyObject }>
         | undefined
 
-    const storage = api?.jsonStorage as JsonStorage<AnyObject> | undefined
+    // Only update already initialized storages
+    const storage = Object.getOwnPropertyDescriptor(api, 'jsonStorage')
+        ?.value as JsonStorage<AnyObject> | undefined
+
     await storage?.get()
 }
