@@ -289,9 +289,10 @@ registerJSMethod(
         if (!plugin) return
 
         const meta = getInternalPluginMeta(plugin)
-        if (meta) {
-            meta.nativeErrors = Object.freeze(errors)
-        }
+        meta.nativeErrors = Object.freeze(errors)
+        // TODO: Do we need an errored event specifically?
+        // Nudge open UI to re-render the errors row
+        pEmitter.emit('flagUpdate', plugin)
     },
 )
 

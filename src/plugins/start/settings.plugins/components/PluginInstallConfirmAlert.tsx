@@ -31,16 +31,12 @@ export default function PluginInstallConfirmAlert({
                     <AlertActionButton
                         text="Install"
                         variant="primary"
-                        onPress={() => {
-                            confirmInstall(prompt.token, true)
-                        }}
+                        onPress={() => confirmInstall(prompt.token, true)}
                     />
                     <AlertActionButton
                         text="Cancel"
                         variant="secondary"
-                        onPress={() => {
-                            confirmInstall(prompt.token, false)
-                        }}
+                        onPress={() => confirmInstall(prompt.token, false)}
                     />
                 </>
             }

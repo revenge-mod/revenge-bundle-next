@@ -64,8 +64,9 @@ export async function handleEnablePlugin(plugin: AnyPlugin) {
         try {
             await enablePlugin(plugin)
         } catch (e) {
-            // Requirements not satisfied by native
+            // Requirements not satisfied by native, don't try to start
             showErrorToast(messageOf(e))
+            return
         }
 
         await runPluginLate(plugin).catch(noop)
