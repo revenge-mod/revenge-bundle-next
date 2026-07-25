@@ -109,6 +109,10 @@ declare global {
     var nativeModuleProxy: Record<string, unknown>
     var __turboModuleProxy: ((name: string) => unknown) | undefined
     function nativeLoggingHook(str: string, level: number): void
+    function RN$registerCallableModule(
+        name: string,
+        moduleProvider: () => object,
+    ): void
     function alert(message: unknown): void
     function queueMicrotask(cb: () => void): void
 

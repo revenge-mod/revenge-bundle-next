@@ -3,8 +3,12 @@ import {
     refreshSettingsNavigator,
     refreshSettingsOverviewScreen,
 } from '@revenge-mod/discord/modules/settings'
-import { InternalPluginFlags, registerPlugin } from '@revenge-mod/plugins/_'
-import { PluginFlags } from '@revenge-mod/plugins/constants'
+import {
+    InternalPluginFlags,
+    isPluginEnabledLate,
+    PluginFlags,
+    registerInternalPlugin,
+} from '@revenge-mod/plugins/_'
 import pluginSettings from '../settings'
 import * as dt from './devtools'
 import defer * as rdt from './react-devtools'
@@ -33,17 +37,17 @@ const defaultStorage: Storage = {
 }
 
 // TODO(PalmDevs): only register in development builds once updates can be made automatic
-registerPlugin<{ storage: Storage }>(
+registerInternalPlugin<{ jsonStorage: Storage }>(
     {
         id: 'revenge.developer-kit',
         name: 'Developer Kit',
         description: 'Tools assisting Revenge developers.',
         author: 'Revenge',
         icon: 'WrenchIcon',
-        dependencies: [pluginSettings],
+        dependencies: { [pluginSettings]: {} },
     },
     {
-        storage: {
+        jsonStorage: {
             load: true,
             default: defaultStorage,
         },
@@ -52,12 +56,12 @@ registerPlugin<{ storage: Storage }>(
 
             onSettingsModulesLoaded(utils.register)
 
-            if (api_.plugin.flags & PluginFlags.EnabledLate) {
+            if (isPluginEnabledLate(api_.plugin)) {
                 refreshSettingsOverviewScreen()
                 refreshSettingsNavigator()
             }
 
-            const settings = await api.storage.get()
+            const settings = await api.jsonStorage.get()
 
             dt.DTContext.addr = settings.devTools.address
             dt.DTContext.alias = settings.devTools.alias ?? ''
@@ -75,4 +79,4 @@ registerPlugin<{ storage: Storage }>(
 )
 
 // Expose to EvalJSSetting
-export let api: PluginApi<{ storage: Storage }>
+export let api: PluginApi<{ jsonStorage: Storage }>

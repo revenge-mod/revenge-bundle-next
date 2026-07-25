@@ -11,11 +11,19 @@ import {
     isPluginEnabled,
     isPluginEssential,
     isPluginInternal,
+    isPluginPendingReload,
+    isPluginPendingUpdate,
+    pEmitter,
     pList,
 } from '@revenge-mod/plugins/_'
-import { PluginFlags } from '@revenge-mod/plugins/constants'
 import { debounce } from '@revenge-mod/utils/callback'
-import { useCallback, useMemo, useState } from 'react'
+import {
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useState,
+} from 'react'
 import { View } from 'react-native'
 import { ClickOutsideProvider } from 'react-native-click-outside'
 import RevengeIcon from '~assets/RevengeIcon'
@@ -25,14 +33,16 @@ import {
     EnablePluginTooltipProvider,
     EssentialPluginTooltipProvider,
 } from '../components/TooltipProvider'
-import type { RouteProp } from '@react-navigation/core'
+import { RouteNames, Setting } from '../constants'
+import type { NavigationProp, RouteProp } from '@react-navigation/core'
 import type { ReactNavigationParamList } from '@revenge-mod/externals/react-navigation'
 import type { FilterAndSortActionSheetProps } from '../components/FilterAndSortActionSheet'
-import type { RouteNames, Setting } from '../constants'
 
-const { Stack, IconButton, LayerScope } = Design
+const { Stack, IconButton, FloatingActionButton, LayerScope } = Design
 
 const FiltersHorizontalIcon = getAssetIdByName('FiltersHorizontalIcon', 'png')!
+const SettingsIcon = getAssetIdByName('SettingsIcon')!
+const PlusLargeIcon = getAssetIdByName('PlusLargeIcon')!
 
 export default function RevengePluginsSettingScreen() {
     return (
@@ -67,6 +77,14 @@ const Filters: FilterAndSortActionSheetProps['filters'] = {
         icon: getAssetIdByName('CircleErrorIcon')!,
         filter: plugin => plugin.errors.length > 0,
     },
+    'Pending Reload': {
+        icon: getAssetIdByName('RetryIcon')!,
+        filter: plugin => isPluginPendingReload(plugin),
+    },
+    'Pending Update': {
+        icon: getAssetIdByName('RefreshIcon')!,
+        filter: plugin => isPluginPendingUpdate(plugin),
+    },
     Internal: {
         icon: RevengeIcon,
         desc: 'Included with Revenge.',
@@ -94,9 +112,47 @@ const Sorts = {
     'Enabled first': [
         getAssetIdByName('CircleCheckIcon')!,
         (a, b) =>
-            (b.flags & PluginFlags.Enabled) - (a.flags & PluginFlags.Enabled),
+            isPluginEnabled(a) === isPluginEnabled(b)
+                ? a.manifest.name.localeCompare(b.manifest.name)
+                : isPluginEnabled(a)
+                  ? -1
+                  : 1,
     ],
 } satisfies FilterAndSortActionSheetProps['sorts']
+
+function HeaderButton() {
+    const navigation = useNavigation<NavigationProp<any>>()
+
+    return (
+        <IconButton
+            icon={SettingsIcon}
+            onPress={() =>
+                navigation.navigate(RouteNames[Setting.RevengePluginsAdvanced])
+            }
+            variant="tertiary"
+        />
+    )
+}
+
+function BrowseFloatingActionButton() {
+    const navigation = useNavigation<NavigationProp<any>>()
+
+    return (
+        <FloatingActionButton
+            icon={PlusLargeIcon}
+            accessibilityLabel="Browse plugins"
+            onPress={() =>
+                navigation.navigate(RouteNames[Setting.RevengePluginsBrowse])
+            }
+        />
+    )
+}
+
+function snapshotPlugins() {
+    return [...pList.values()].map(
+        plugin => [plugin, getInternalPluginMeta(plugin)] as const,
+    )
+}
 
 function Screen() {
     const navigation = useNavigation()
@@ -114,18 +170,30 @@ function Screen() {
         [],
     )
 
+    useLayoutEffect(() => {
+        navigation.setOptions({
+            headerRight: () => <HeaderButton />,
+        })
+    }, [navigation])
+
     const filter = route.params?.filter ?? DefaultFilters
     const matchAll = route.params?.matchAll ?? true
     const reverse = route.params?.reverse ?? false
     const sort = route.params?.sort ?? DefaultSort
 
-    const allPlugins = useMemo(
-        () =>
-            [...pList.values()].map(
-                plugin => [plugin, getInternalPluginMeta(plugin)!] as const,
-            ),
-        [],
-    )
+    const [allPlugins, setAllPlugins] = useState(snapshotPlugins)
+
+    useEffect(() => {
+        const handleUpdate = () => setAllPlugins(snapshotPlugins())
+
+        pEmitter.on('register', handleUpdate)
+        pEmitter.on('unregister', handleUpdate)
+
+        return () => {
+            pEmitter.off('register', handleUpdate)
+            pEmitter.off('unregister', handleUpdate)
+        }
+    }, [])
 
     const plugins = useMemo(
         () =>
@@ -188,6 +256,7 @@ function Screen() {
                 />
             </Stack>
             <InstalledPluginMasonryFlashList plugins={plugins} />
+            <BrowseFloatingActionButton />
         </>
     )
 }

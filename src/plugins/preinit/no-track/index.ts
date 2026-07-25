@@ -2,8 +2,12 @@ import { waitForModules } from '@revenge-mod/modules/finders'
 import { withProps } from '@revenge-mod/modules/finders/filters'
 import { getModuleDependencies } from '@revenge-mod/modules/metro/utils'
 import { instead } from '@revenge-mod/patcher'
-import { InternalPluginFlags, registerPlugin } from '@revenge-mod/plugins/_'
-import { PluginFlags } from '@revenge-mod/plugins/constants'
+import {
+    InternalPluginFlags,
+    isPluginEnabledLate,
+    PluginFlags,
+    registerInternalPlugin,
+} from '@revenge-mod/plugins/_'
 import { noop } from '@revenge-mod/utils/callback'
 import { getCurrentStack } from '@revenge-mod/utils/error'
 
@@ -35,7 +39,7 @@ const fakeSentryCarrier = new Proxy(
 
 const getFakeCarrier = () => fakeSentryCarrier
 
-registerPlugin(
+registerInternalPlugin(
     {
         id: 'revenge.no-track',
         name: 'No Track',
@@ -45,8 +49,7 @@ registerPlugin(
     },
     {
         preInit({ cleanup, plugin }) {
-            if (plugin.flags & PluginFlags.EnabledLate)
-                plugin.flags |= PluginFlags.ReloadRequired
+            if (isPluginEnabledLate(plugin)) plugin.requireReload()
 
             // utils/SentryUtils.native.tsx
             const unsubSU = waitForModules(
@@ -206,7 +209,7 @@ registerPlugin(
             cleanup(unsubTI, unsubATAC, unsubHTTPUtils)
         },
         stop({ plugin }) {
-            plugin.flags |= PluginFlags.ReloadRequired
+            plugin.requireReload()
         },
     },
     PluginFlags.Enabled,

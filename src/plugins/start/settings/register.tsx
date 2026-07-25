@@ -10,14 +10,12 @@ import ReactVersionSetting from './definitions/ReactVersionSetting'
 import ReloadSetting from './definitions/ReloadSetting'
 import RevengeDiscordSetting from './definitions/RevengeDiscordSetting'
 import RevengeLicenseSetting from './definitions/RevengeLicenseSetting'
-import RevengePluginsSetting from './definitions/RevengePluginsSetting'
 import RevengeSetting from './definitions/RevengeSetting'
 import RevengeSourceRepositorySetting from './definitions/RevengeSourceRepositorySetting'
 import RevengeVersionSetting from './definitions/RevengeVersionSetting'
 
 registerSettingsItems({
     [Setting.Revenge]: RevengeSetting,
-    [Setting.RevengePlugins]: RevengePluginsSetting,
     [Setting.RevengeSourceRepository]: RevengeSourceRepositorySetting,
     [Setting.RevengeLicense]: RevengeLicenseSetting,
     [Setting.RevengeDiscord]: RevengeDiscordSetting,
@@ -31,5 +29,5 @@ registerSettingsItems({
 
 registerSettingsSection('REVENGE', {
     label: 'Revenge',
-    settings: [Setting.Revenge, Setting.RevengePlugins],
+    settings: [Setting.Revenge],
 })

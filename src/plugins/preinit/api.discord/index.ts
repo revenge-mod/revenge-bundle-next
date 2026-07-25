@@ -1,8 +1,11 @@
-import { InternalPluginFlags, registerPlugin } from '@revenge-mod/plugins/_'
-import { PluginFlags } from '@revenge-mod/plugins/constants'
+import {
+    InternalPluginFlags,
+    PluginFlags,
+    registerInternalPlugin,
+} from '@revenge-mod/plugins/_'
 import { defineLazyProperty } from '@revenge-mod/utils/object'
 
-registerPlugin(
+registerInternalPlugin(
     {
         id: 'revenge.api.discord',
         name: 'Discord API',

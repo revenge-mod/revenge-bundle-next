@@ -1,12 +1,15 @@
 import { waitForModules } from '@revenge-mod/modules/finders'
 import { withName } from '@revenge-mod/modules/finders/filters'
 import { instead } from '@revenge-mod/patcher'
-import { InternalPluginFlags, registerPlugin } from '@revenge-mod/plugins/_'
-import { PluginFlags } from '@revenge-mod/plugins/constants'
+import {
+    InternalPluginFlags,
+    PluginFlags,
+    registerInternalPlugin,
+} from '@revenge-mod/plugins/_'
 import ErrorBoundaryScreen from './components/ErrorBoundaryScreen'
 import type { Component, ReactNode } from 'react'
 
-registerPlugin(
+registerInternalPlugin(
     {
         id: 'revenge.error-boundary',
         name: 'Error Boundary',

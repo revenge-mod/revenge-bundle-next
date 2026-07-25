@@ -4,8 +4,11 @@ import { waitForModuleWithImportedPath } from '@revenge-mod/discord/utils/module
 import { waitForModules } from '@revenge-mod/modules/finders'
 import { withName } from '@revenge-mod/modules/finders/filters'
 import { instead } from '@revenge-mod/patcher'
-import { InternalPluginFlags, registerPlugin } from '@revenge-mod/plugins/_'
-import { PluginFlags } from '@revenge-mod/plugins/constants'
+import {
+    InternalPluginFlags,
+    PluginFlags,
+    registerInternalPlugin,
+} from '@revenge-mod/plugins/_'
 import { React } from '@revenge-mod/react'
 import { asap, noop } from '@revenge-mod/utils/callback'
 import { getCurrentStack } from '@revenge-mod/utils/error'
@@ -15,7 +18,7 @@ import type { FC } from 'react'
 
 let DEBUG_patchedNavigator = false
 
-const pluginSettings = registerPlugin(
+const pluginSettings = registerInternalPlugin(
     {
         id: 'revenge.settings',
         name: 'Settings',
@@ -25,9 +28,6 @@ const pluginSettings = registerPlugin(
     },
     {
         start() {
-            // @as-require
-            import('./plugins')
-
             onSettingsModulesLoaded(() => {
                 // @as-require
                 import('./register')
@@ -40,7 +40,7 @@ const pluginSettings = registerPlugin(
             })
 
             waitForModuleWithImportedPath(
-                'modules/user_settings/native/core/SettingsNavigator.tsx',
+                'modules/user_settings/core/native/SettingsNavigator.tsx',
                 exports => {
                     patchSettingsNavigator(exports)
                 },

@@ -1,10 +1,18 @@
 import { AlertActionCreators } from '@revenge-mod/discord/actions'
 import { RootNavigationRef } from '@revenge-mod/discord/modules/main_tabs_v2'
-import { deleteStorageForPlugin } from '~plugins/preinit/api.storage'
+import {
+    deleteStorageForPlugin,
+    isPluginStartable,
+    uninstallExternalPlugin,
+} from '@revenge-mod/plugins/_'
+import { getErrorStack } from '@revenge-mod/utils/error'
+import { deleteJsonStorageForPlugin } from '~plugins/preinit/api.json-storage'
 import PluginClearDataConfirmationAlert from '../components/PluginClearDataConfirmationAlert'
 import PluginHasDependenciesAlert from '../components/PluginHasDependenciesAlert'
 import PluginHasDependentsAlert from '../components/PluginHasDependentsAlert'
+import PluginMissingDependenciesAlert from '../components/PluginMissingDependenciesAlert'
 import PluginStatesProvider from '../components/PluginStateProvider'
+import PluginUninstallConfirmationAlert from '../components/PluginUninstallConfirmationAlert'
 import type { AnyPlugin } from '@revenge-mod/plugins/_'
 
 export function showPluginClearDataConfirmation(
@@ -14,7 +22,13 @@ export function showPluginClearDataConfirmation(
     const KEY = 'plugin-clear-data-confirmation'
 
     async function action() {
-        await deleteStorageForPlugin(plugin)
+        try {
+            await deleteStorageForPlugin(plugin)
+            // Trigger update for JSON storage
+            await deleteJsonStorageForPlugin(plugin)
+        } catch (e) {
+            alert(getErrorStack(e))
+        }
         callback()
     }
 
@@ -24,8 +38,26 @@ export function showPluginClearDataConfirmation(
     )
 }
 
+export function showPluginUninstallConfirmation(
+    plugin: AnyPlugin,
+    callback: () => void,
+) {
+    const KEY = 'plugin-uninstall-confirmation'
+
+    async function action() {
+        // Uninstalling also deletes data
+        await uninstallExternalPlugin(plugin)
+        callback()
+    }
+
+    AlertActionCreators.openAlert(
+        KEY,
+        <PluginUninstallConfirmationAlert plugin={plugin} action={action} />,
+    )
+}
+
 export function openPluginSettings(plugin: AnyPlugin) {
-    if (!plugin.SettingsComponent) return
+    if (!plugin.SettingsComponent || !isPluginStartable(plugin)) return
 
     const navigation = RootNavigationRef.getRootNavigationRef()
     if (navigation.isReady()) navigation.navigate(plugin.manifest.id)
@@ -50,6 +82,21 @@ export function showPluginHasDependenciesAlert(
                 action={action}
             />
         </PluginStatesProvider>,
+    )
+}
+
+export function showPluginMissingDependenciesAlert(
+    plugin: AnyPlugin,
+    dependencies: { id: string; range: string }[],
+    action: () => unknown,
+) {
+    AlertActionCreators.openAlert(
+        'plugin-missing-dependencies',
+        <PluginMissingDependenciesAlert
+            plugin={plugin}
+            dependencies={dependencies}
+            action={action}
+        />,
     )
 }
 

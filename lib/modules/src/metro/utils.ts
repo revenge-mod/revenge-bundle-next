@@ -20,6 +20,7 @@ export function getModuleDependencies(
  * @returns Non-zero number if the module is initialized, `0` if it is not initialized or does not exist.
  */
 export function isModuleInitialized(id: Metro.ModuleID): number | undefined {
+    // biome-ignore lint/suspicious/noNonNullAssertedOptionalChain: Hot path, undefined & <n> === 0
     return mList.get(id)?.flags! & Initialized
 }
 

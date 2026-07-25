@@ -29,6 +29,6 @@ export function register() {
             [Setting.AssetBrowser]: AssetBrowserSetting,
             [Setting.TestErrorBoundary]: TestErrorBoundarySetting,
         }),
-        addSettingsItemToSection('REVENGE', Setting.RevengeDeveloper),
+        addSettingsItemToSection('REVENGE', Setting.RevengeDeveloper, -1),
     )
 }

@@ -1,17 +1,17 @@
-import { Storage } from '@revenge-mod/storage'
+import { JsonStorage } from '@revenge-mod/json-storage'
 import { useReRender } from '@revenge-mod/utils/react'
 import { useLayoutEffect } from 'react'
-import type { StorageSubscription } from '@revenge-mod/storage'
+import type { JsonStorageSubscription } from '@revenge-mod/json-storage'
 
-const proto = Storage.prototype as Storage<any>
-// Actual implementation of Storage#use
+const proto = JsonStorage.prototype as JsonStorage<any>
+// Actual implementation of JsonStorage#use
 proto.use = function (filter) {
     if (!this.cache) this.get()
 
     const reRender = useReRender()
 
     useLayoutEffect(() => {
-        const sub: StorageSubscription = filter
+        const sub: JsonStorageSubscription = filter
             ? (update, mode) => {
                   if (filter(update, mode)) reRender()
               }

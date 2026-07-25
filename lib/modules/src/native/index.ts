@@ -1,3 +1,5 @@
+import { getCurrentStack, getErrorStack } from '@revenge-mod/utils/error'
+
 const turboModuleProxy = globalThis.__turboModuleProxy
 
 /**
@@ -45,7 +47,7 @@ function makePayload(name: string, args: any[]): object {
  * @param args The arguments to pass to the native method.
  * @returns A promise that resolves with the result of the native method call.
  */
-export async function callBridgeMethod<N extends MethodName>(
+export async function callNativeMethod<N extends MethodName>(
     name: N,
     args: MethodArgs<N>,
 ): Promise<MethodResult<N>> {
@@ -72,7 +74,7 @@ export async function callBridgeMethod<N extends MethodName>(
  * @param args The arguments to pass to the native method.
  * @returns The result of the native method call.
  */
-export function callBridgeMethodSync<N extends MethodName>(
+export function callNativeMethodSync<N extends MethodName>(
     name: N,
     args: MethodArgs<N>,
 ): MethodResult<N> {
@@ -93,7 +95,7 @@ export function callBridgeMethodSync<N extends MethodName>(
  */
 export function getBridgeInfo(): BridgeInfo | null {
     try {
-        return callBridgeMethodSync('revenge.info', [])
+        return callNativeMethodSync('revenge.info', [])
     } catch (e) {
         nativeLoggingHook(
             `\u001b[31mFailed to get native bridge info: ${e}\u001b[0m`,
@@ -103,15 +105,76 @@ export function getBridgeInfo(): BridgeInfo | null {
     }
 }
 
+type AnyFunction = (...args: any[]) => any
+
+const CallableReturnNativeMethodName = 'revenge.__callableReturn' as const
+const CallableModuleName = 'RevengeBridge'
+const ExposedJSMethods: {
+    [methodName: string]: AnyFunction
+} = {}
+
+/**
+ * Registers a JS method that can be called from native code.
+ *
+ * @param name The name of the method to register.
+ * @param method The method implementation.
+ */
+export function registerJSMethod(name: string, method: AnyFunction) {
+    if (__DEV__ && ExposedJSMethods[name])
+        nativeLoggingHook(
+            `\u001b[33mWarning: Overwriting existing registered JS method: ${name}\n${getCurrentStack()}\u001b[0m`,
+            1,
+        )
+
+    ExposedJSMethods[name] = _wrapJSMethod(method)
+}
+
+function _wrapJSMethod(method: AnyFunction) {
+    return (...args: any[]) => {
+        try {
+            const ret = method(...args)
+            if (ret instanceof Promise)
+                ret.then(
+                    result => _returnJSCall({ result: result ?? null }),
+                    error => _returnJSCall({ error: getErrorStack(error) }),
+                )
+            else _returnJSCall({ result: ret ?? null })
+        } catch (error) {
+            _returnJSCall({ error: getErrorStack(error) })
+        }
+    }
+}
+
+function _returnJSCall(payload: object) {
+    callNativeMethodSync(CallableReturnNativeMethodName, [payload])
+}
+
+RN$registerCallableModule(
+    CallableModuleName,
+    () =>
+        new Proxy(ExposedJSMethods, {
+            get(target, prop: string) {
+                const method = target[prop]
+                if (!method)
+                    return () => {
+                        // Can't catch this native side, this will crash the app
+                        throw new Error(`JS method not found: ${prop}`)
+                    }
+                return method
+            },
+        }),
+)
+
 export interface BridgeInfo {
     name: string
     version: number
 }
 
-export type MethodName = Extract<keyof Methods, string>
-export type MethodArgs<T extends MethodName> = Methods[T][0]
-export type MethodResult<T extends MethodName> = Methods[T][1]
+export type MethodName = Extract<keyof NativeMethods, string>
+export type MethodArgs<T extends MethodName> = NativeMethods[T][0]
+export type MethodResult<T extends MethodName> = NativeMethods[T][1]
 
-export interface Methods {
+export interface NativeMethods {
     'revenge.info': [[], BridgeInfo]
+    [CallableReturnNativeMethodName]: [[payload: object], void]
 }

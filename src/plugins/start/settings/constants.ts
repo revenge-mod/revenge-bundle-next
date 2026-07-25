@@ -2,7 +2,6 @@ export const Setting = {
     // MAIN SETTINGS
 
     Revenge: 'Revenge',
-    RevengePlugins: 'RevengePlugins',
 
     // SUBSETTINGS
 
@@ -20,5 +19,4 @@ export const Setting = {
 
 export const RouteNames = {
     [Setting.Revenge]: 'Revenge',
-    [Setting.RevengePlugins]: 'Revenge Plugins',
 } as const

@@ -1,5 +1,5 @@
 {
-  "name": "@revenge-mod/storage",
+  "name": "@revenge-mod/json-storage",
   "private": true,
   "type": "module",
   "exports": {

@@ -4,7 +4,7 @@ import type { PluginApiExternals } from './apis/externals'
 import type { PluginApiModules } from './apis/modules'
 import type { PluginApiPlugins } from './apis/plugins'
 import type { PluginApiReact } from './apis/react'
-import type { PluginFlags, PluginStatus } from './constants'
+import type { PluginStatus } from './constants'
 
 // biome-ignore lint/suspicious/noEmptyInterface: To be extended by actual extensions
 export interface PluginApiExtensionsOptions {}
@@ -136,26 +136,14 @@ export interface PluginApi<
     plugin: Plugin<O, 'Start'>
 }
 
-// TODO(plugins): support plugin bundles
-// export interface PluginBundle {
-//     /**
-//      * The unique identifier for the plugin bundle.
-//      */
-//     id: string
-//     /**
-//      * The author of the plugin bundle.
-//      */
-//     author: string
-//     /**
-//      * The URL of the plugin bundle.
-//      */
-//     url: string
-// }
-
 /**
  * The plugin manifest.
  */
 export interface PluginManifest {
+    /**
+     * The manifest format version.
+     */
+    format: number
     /**
      * The unique identifier for the plugin.
      */
@@ -173,25 +161,36 @@ export interface PluginManifest {
      */
     description: string
     /**
-     * The icon of the plugin.
+     * The icon of the plugin. An asset name, or a `data:` URL.
      */
     icon?: string
     /**
-     * The dependencies of the plugin.
+     * The dependencies of the plugin, keyed by plugin ID.
      */
-    dependencies?: PluginDependency[]
+    dependencies?: Record<string, PluginDependency>
+    /**
+     * The plugin's version.
+     */
+    version: PluginVersion
 }
 
+export interface PluginVersion {
+    nums: number[]
+    label?: string
+}
+
+/**
+ * A dependency specification. The dependency's plugin ID is the key in {@link PluginManifest.dependencies}.
+ */
 export interface PluginDependency {
     /**
-     * The ID of this dependency.
+     * Version range the dependency must satisfy.
      */
-    id: string
-    // TODO(plugins): support plugin bundles
-    // /**
-    //  * The bundle of this dependency.
-    //  */
-    // bundle: PluginBundle
+    version?: string
+    /**
+     * Whether this dependency can be optionally linked.
+     */
+    optional?: boolean
 }
 
 export interface PluginOptions<
@@ -199,6 +198,16 @@ export interface PluginOptions<
 > extends PluginLifecycles<O> {
     SettingsComponent?: PluginSettingsComponent<O>
 }
+
+/**
+ * A factory that lazily creates the plugin options.
+ *
+ * Only passed when the options (and lifecycles) must only be created right before the plugin runs,
+ * for example to avoid evaluating external plugin code until it is actually used.
+ */
+export type PluginOptionsFactory<
+    O extends PluginApiExtensionsOptions = PluginApiExtensionsOptions,
+> = () => PluginOptions<O>
 
 /**
  * The plugin lifecycles.
@@ -239,18 +248,9 @@ export interface Plugin<
     S extends
         keyof PluginApiInLifecycleMap<O> = keyof PluginApiInLifecycleMap<O>,
 > {
-    // TODO(plugins): support plugin bundles
-    // /**
-    //  * The plugin bundle this plugin belongs to.
-    //  */
-    // bundle: PluginBundle
     manifest: PluginManifest
     lifecycles: PluginLifecycles<O>
 
-    /**
-     * @see {@link PluginFlags}
-     */
-    flags: number
     /**
      * @see {@link PluginStatus}
      */
@@ -258,7 +258,11 @@ export interface Plugin<
     /**
      * Errors encountered during the plugin lifecycles.
      */
-    errors: unknown[]
+    errors: readonly unknown[]
+    /**
+     * Reports an error encountered during the plugin's execution.
+     */
+    reportError(e: unknown): void
 
     SettingsComponent?: PluginSettingsComponent<O>
 
@@ -271,6 +275,10 @@ export interface Plugin<
      * Stop the plugin.
      */
     stop(this: Plugin<O, S>): Promise<void>
+    /**
+     * Marks this plugin as requiring a reload to apply changes.
+     */
+    requireReload(this: Plugin<O, S>): void
 
     /**
      * The plugin API.
@@ -298,3 +306,9 @@ export type PluginApiInLifecycleMap<
 export interface PluginSettingsComponent<
     O extends PluginApiExtensionsOptions = PluginApiExtensionsOptions,
 > extends FunctionComponent<{ api: PluginApi<O> }> {}
+
+declare module '@revenge-mod/modules/native' {
+    export interface NativeMethods {
+        'revenge.plugins.getConstants': [[], { storageRootPath: string }]
+    }
+}

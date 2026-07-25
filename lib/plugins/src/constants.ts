@@ -1,30 +1,4 @@
-/**
- * The plugin flags.
- */
-export const PluginFlags = {
-    /**
-     * The plugin is enabled.
-     */
-    Enabled: 1 << 0,
-    /**
-     * The plugin requires a reload to apply changes.
-     */
-    ReloadRequired: 1 << 1,
-    /**
-     * The plugin has errors.
-     */
-    Errored: 1 << 2,
-    /**
-     * The plugin was enabled after the app was started.
-     * This is usually caused by a newly installed plugin, or a plugin that was re-enabled.
-     */
-    EnabledLate: 1 << 3,
-}
-
-/**
- * A bitmask of {@link PluginFlags} that are persisted to storage.
- */
-export const PersistentPluginFlags = PluginFlags.Enabled
+import { callNativeMethodSync } from '@revenge-mod/modules/native'
 
 /**
  * The plugin status.
@@ -39,4 +13,13 @@ export const PluginStatus = {
     Stopping: 1 << 6,
 }
 
-export const PluginsStorageDirectory = 'revenge/plugins/storage'
+const { storageRootPath } = callNativeMethodSync(
+    'revenge.plugins.getConstants',
+    [],
+)
+
+/**
+ * Absolute path to per-plugin storage directory.
+ */
+// TODO: is it best to dupe this logic with the native side???
+export const pluginStorageDirFor = (id: string) => `${storageRootPath}/${id}`

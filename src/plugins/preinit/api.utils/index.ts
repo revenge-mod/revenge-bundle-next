@@ -1,5 +1,8 @@
-import { InternalPluginFlags, registerPlugin } from '@revenge-mod/plugins/_'
-import { PluginFlags } from '@revenge-mod/plugins/constants'
+import {
+    InternalPluginFlags,
+    PluginFlags,
+    registerInternalPlugin,
+} from '@revenge-mod/plugins/_'
 import defer * as UtilsCallback from '@revenge-mod/utils/callback'
 import defer * as UtilsDiscord from '@revenge-mod/utils/discord'
 import defer * as UtilsError from '@revenge-mod/utils/error'
@@ -9,7 +12,7 @@ import defer * as UtilsProxy from '@revenge-mod/utils/proxy'
 import defer * as UtilsReact from '@revenge-mod/utils/react'
 import defer * as UtilsTree from '@revenge-mod/utils/tree'
 
-registerPlugin(
+registerInternalPlugin(
     {
         id: 'revenge.api.utils',
         name: 'Utils API',

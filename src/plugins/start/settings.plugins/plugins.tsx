@@ -1,16 +1,27 @@
 import TableRowAssetIcon from '@revenge-mod/components/TableRowAssetIcon'
-import { AlertActionCreators } from '@revenge-mod/discord/actions'
+import {
+    AlertActionCreators,
+    ToastActionCreators,
+} from '@revenge-mod/discord/actions'
 import {
     refreshSettingsNavigator,
     registerSettingsItem,
 } from '@revenge-mod/discord/modules/settings'
-import { pEmitter, pList } from '@revenge-mod/plugins/_'
-import { PluginFlags } from '@revenge-mod/plugins/constants'
+import {
+    isPluginErrored,
+    isPluginPendingReload,
+    isPluginPendingUpdate,
+    pEmitter,
+    pList,
+} from '@revenge-mod/plugins/_'
+import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import { useLayoutEffect } from 'react'
+import { Setting } from '../settings/constants'
 import defer * as NavigatorHeaderWithIcon from './components/NavigatorHeaderWithIcon'
+import PluginInstallConfirmAlert from './components/PluginInstallConfirmAlert'
+import PluginInstallFailedAlert from './components/PluginInstallFailedAlert'
 import PluginsFailedToStartAlert from './components/PluginsFailedToStartAlert'
 import PluginsRequireReloadAlert from './components/PluginsRequireReloadAlert'
-import { Setting } from './constants'
 import type { StackScreenProps } from '@react-navigation/stack'
 import type { ReactNavigationParamList } from '@revenge-mod/externals/react-navigation'
 import type { PluginApi } from '@revenge-mod/plugins/types'
@@ -72,9 +83,10 @@ pEmitter.on('started', plugin => {
 
 /// RELOAD REQUIRED ALERT
 
-function showReloadRequiredAlertIfNeeded() {
+function showPendingReloadAlertIfNeeded() {
     const plugins = [...pList.values()].filter(
-        plugin => plugin.flags & PluginFlags.ReloadRequired,
+        plugin =>
+            isPluginPendingReload(plugin) || isPluginPendingUpdate(plugin),
     )
 
     if (!plugins.length) return
@@ -87,8 +99,8 @@ function showReloadRequiredAlertIfNeeded() {
 }
 
 function showErrorAlertIfNeeded() {
-    const plugins = [...pList.values()].filter(
-        plugin => plugin.flags & PluginFlags.Errored,
+    const plugins = [...pList.values()].filter(plugin =>
+        isPluginErrored(plugin),
     )
 
     if (!plugins.length) return
@@ -101,13 +113,68 @@ function showErrorAlertIfNeeded() {
 }
 
 pEmitter.on('flagUpdate', plugin => {
-    if (plugin.flags & PluginFlags.ReloadRequired)
-        showReloadRequiredAlertIfNeeded()
+    if (isPluginPendingReload(plugin) || isPluginPendingUpdate(plugin))
+        showPendingReloadAlertIfNeeded()
 })
 
 pEmitter.on('stopped', plugin => {
-    if (plugin.flags & PluginFlags.Errored) showErrorAlertIfNeeded()
+    if (isPluginErrored(plugin)) showErrorAlertIfNeeded()
 })
 
+/// PLUGIN INSTALL FEEDBACK
+
+const pluginInstallToastKeyFor = (id: string) => `REVENGE_PLUGIN_INSTALL:${id}`
+const PluginInstallFailedAlertKey = 'plugin-install-failed'
+const PluginInstallConfirmAlertKey = 'plugin-install-confirm'
+
+pEmitter.on('installReady', prompt => {
+    AlertActionCreators.dismissAlert(PluginInstallConfirmAlertKey)
+    AlertActionCreators.openAlert(
+        PluginInstallConfirmAlertKey,
+        <PluginInstallConfirmAlert prompt={prompt} />,
+    )
+})
+
+pEmitter.on('install', result => {
+    if (result.error !== false) {
+        AlertActionCreators.dismissAlert(PluginInstallFailedAlertKey)
+        AlertActionCreators.openAlert(
+            PluginInstallFailedAlertKey,
+            <PluginInstallFailedAlert error={result.error} />,
+        )
+        return
+    }
+
+    if (result.pending) {
+        // Applied on disk only, the new version loads at next reload
+        showInstallToast(
+            `Downloaded ${pList.get(result.id)?.manifest.name || result.id} ${result.version}, reload to apply`,
+            result.id,
+        )
+        return
+    }
+
+    showInstallToast(
+        result.updated
+            ? `Updated ${result.manifest.name}`
+            : `Installed ${result.manifest.name}`,
+        result.manifest.id,
+    )
+})
+
+const CircleCheckIcon = lookupGeneratedIconComponent(
+    'CircleCheckIcon',
+    'CircleCheckIcon-secondary',
+    'CircleCheckIcon-primary',
+)
+
+function showInstallToast(content: string, id: string) {
+    ToastActionCreators.open({
+        key: pluginInstallToastKeyFor(id),
+        content,
+        IconComponent: CircleCheckIcon,
+    })
+}
+
 showErrorAlertIfNeeded()
-showReloadRequiredAlertIfNeeded()
+showPendingReloadAlertIfNeeded()
