@@ -35,7 +35,7 @@ export default function PluginUninstallConfirmationAlert({
                         color="text-feedback-critical"
                     >
                         This plugin is pending a reload. Uninstalling now may
-                        leave side unintended effects.
+                        leave unintended side effects.
                     </Text>
                 )
             }
