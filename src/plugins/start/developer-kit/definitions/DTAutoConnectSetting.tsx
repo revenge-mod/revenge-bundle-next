@@ -9,8 +9,8 @@ const DTAutoConnectSetting: SettingsItem = {
     useTitle: () => 'Auto-connect to DevTools',
     useDescription: () => 'Automatically connect to DevTools during startup.',
     useValue: () =>
-        api.jsonStorage.use(s => s.devTools?.autoConnect !== undefined)!.devTools
-            .autoConnect,
+        api.jsonStorage.use(s => s.devTools?.autoConnect !== undefined)!
+            .devTools.autoConnect,
     onValueChange: v => {
         api.jsonStorage.set({ devTools: { autoConnect: v } })
     },

@@ -39,9 +39,10 @@ export type WaitForModulesOptions<ReturnNamespace extends boolean = boolean> =
 export type WaitForModulesResult<
     F extends Filter,
     O extends WaitForModulesOptions,
-> = O extends RunFilterReturnExportsOptions<true>
-    ? MaybeDefaultExportMatched<FilterResult<F>>
-    : FilterResult<F>
+> =
+    O extends RunFilterReturnExportsOptions<true>
+        ? MaybeDefaultExportMatched<FilterResult<F>>
+        : FilterResult<F>
 
 /**
  * Wait for modules to initialize. **Callback won't be called if the module is already initialized!**

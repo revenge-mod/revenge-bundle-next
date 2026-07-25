@@ -52,7 +52,7 @@ const PlanConfirmAlertKey = 'repo-install-plan-confirm'
 export async function confirmPlan(plan: InstallPlan): Promise<boolean> {
     const repos = await listRepos()
 
-    let resolve: (value: boolean) => void
+    let resolve!: (value: boolean) => void
     const promise = new Promise<boolean>(r => (resolve = r))
 
     const summary = await Promise.all(
