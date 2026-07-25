@@ -135,7 +135,6 @@ export const pEmitter = new TypedEventEmitter<{
     flagUpdate: [AnyPlugin]
     install: [PluginInstallEvent]
     installReady: [PluginInstallReadyEvent]
-    allReposRefreshed: []
 }>()
 
 /**

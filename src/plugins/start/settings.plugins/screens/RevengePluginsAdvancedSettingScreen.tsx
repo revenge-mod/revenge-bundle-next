@@ -233,6 +233,8 @@ export default function RevengePluginsAdvancedSettingScreen() {
                 showErrorToast(
                     errors.map(e => `${e.url}: ${e.error}`).join('\n'),
                 )
+            else await api.jsonStorage.set({ lastUpdateCheck: Date.now() })
+
             const result = await listAllUpdates()
             setUpdates(result.updates)
         } finally {
@@ -259,7 +261,7 @@ export default function RevengePluginsAdvancedSettingScreen() {
     const lastCheckedSubLabel =
         updates !== null && !updates.length
             ? 'All plugins up to date!'
-            : settings?.lastUpdateCheck &&
+            : settings?.lastUpdateCheck !== undefined &&
               `Last checked: ${new Date(settings.lastUpdateCheck).toLocaleString()}`
 
     return (

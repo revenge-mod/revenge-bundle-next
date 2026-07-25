@@ -1,6 +1,5 @@
 import { TypedEventEmitter } from '@revenge-mod/discord/common/utils'
 import { callNativeMethod, registerJSMethod } from '@revenge-mod/modules/native'
-import { pEmitter } from '@revenge-mod/plugins/_'
 
 export interface DownloadProgressEvent {
     id: string
@@ -105,8 +104,6 @@ export async function refreshAllRepos(): Promise<{
                 ),
             ),
     )
-
-    pEmitter.emit('allReposRefreshed')
 
     return { refreshed, errors }
 }

@@ -8,7 +8,6 @@ import {
     InternalPluginFlags,
     isPluginEnabledLate,
     PluginFlags,
-    pEmitter,
     registerInternalPlugin,
 } from '@revenge-mod/plugins/_'
 import {
@@ -65,10 +64,6 @@ registerInternalPlugin<{ jsonStorage: Storage }>(
                 refreshSettingsNavigator()
             }
 
-            pEmitter.addListener('allReposRefreshed', () => {
-                api.jsonStorage.set({ lastUpdateCheck: Date.now() })
-            })
-
             const settings = await api.jsonStorage.get()
             if (!settings.autoUpdate) return
             if (
@@ -79,8 +74,13 @@ registerInternalPlugin<{ jsonStorage: Storage }>(
 
             setTimeout(async () => {
                 try {
-                    await refreshAllRepos()
+                    const { errors } = await refreshAllRepos()
                     await updateAllPlugins()
+
+                    if (!errors.length)
+                        await api.jsonStorage.set({
+                            lastUpdateCheck: Date.now(),
+                        })
                 } catch (e) {
                     ToastActionCreators.open({
                         key: 'PLUGIN_UPDATE_CHECK_FAILED',
