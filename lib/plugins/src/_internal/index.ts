@@ -18,7 +18,9 @@ import {
     pDecoratorsStart,
 } from './decorators'
 import {
+    ApiDependencyId,
     computePendingNodes,
+    DiscordDependencyId,
     pLeafOrSingleNodes,
     pListOrdered,
     pPending,
@@ -29,28 +31,45 @@ import type {
     PluginApi,
     PluginApiExtensionsOptions,
     PluginCleanup,
-    PluginDependency,
     PluginManifest,
     PluginOptions,
     PluginOptionsFactory,
+    PluginVersion,
     PreInitPluginApi,
 } from '../types'
 
 export type AnyPlugin = Plugin<any, any>
 
+const InternalPluginVersion: PluginVersion = (() => {
+    const [segments, label] = __BUILD_VERSION__.split('-')
+    const nums = segments.split('.').map(Number)
+    if (!label) return { nums }
+    return { nums, label }
+})()
+
 const MaxWaitTime = 5000
 
-// TODO: Maybe remove this later?
-// This is never used in bridge, but still used internally by JS.
 export const PluginFlags = {
     Enabled: 1 << 0,
     PendingReload: 1 << 1,
     EnabledLate: 1 << 2,
     /**
-     * Marks the plugin as pending an update. Set when {@link PluginFlags.PendingReload} is set when stopping the plugin to update.
-     * This means for the update to be applied safely, the updated plugin can only be started after a reload.
+     * A newer version of the plugin is on disk, but the running version is still active.
+     * The new plugin version will be reloaded on next reload.
+     *
+     * This flag is JS-side.
      */
     PendingUpdate: 1 << 3,
+    /**
+     * The plugin failed to load this session (aka. session-skip), but is registered so the user sees it and the reason.
+     * It can never run in this session, and it isn't disabled however.
+     *
+     * This is usually because some dependencies failed to start, but could be caused by other misc errors too,
+     * such as missing dependencies, bad code, etc.
+     *
+     * This flag is JS-side.
+     */
+    Failed: 1 << 4,
 }
 
 const Flag = PluginFlags
@@ -84,12 +103,22 @@ export interface InternalPluginMeta {
     cleanups: PluginCleanup[]
     iflags: number
     apiLevel: number
-    dependents: AnyPlugin[]
-    dependencies?: AnyPlugin[]
+    unsatisfiedOptionalDependencies: readonly string[]
     options: PluginOptions<any>
     optionsFactory?: PluginOptionsFactory<any>
     flags: number
-    nativeErrors: readonly string[]
+    nativeErrors: readonly PluginError[]
+    /**
+     * Where the plugin came from. `repo: null` or missing means sideloaded.
+     * Internal plugins never have one.
+     */
+    source?: PluginSource | null
+}
+
+export interface PluginSource {
+    // url
+    repo: string | null
+    channel: string
 }
 
 export const pUnscopedApi = uapi
@@ -105,11 +134,99 @@ export const pEmitter = new TypedEventEmitter<{
     errored: [AnyPlugin, unknown]
     flagUpdate: [AnyPlugin]
     install: [PluginInstallEvent]
+    installReady: [PluginInstallReadyEvent]
+    allReposRefreshed: []
 }>()
 
+/**
+ * A sideloaded plugin was staged and validated.
+ * The user can confirm (or declines) through `confirmInstall(token, accepted)`.
+ */
+export interface PluginInstallReadyEvent {
+    /** Single-use confirmation token. */
+    token: string
+    manifest: {
+        id: string
+        name: string
+        description: string
+        author: string
+        version: string
+        icon?: string | null
+    }
+    /** The installed version this replaces, or null for a fresh install. */
+    replaces: string | null
+}
+
 export type PluginInstallEvent =
-    | { error: false; manifest: PluginManifest; updated: boolean }
-    | { error: string }
+    | {
+          error: false
+          manifest: PluginManifest
+          updated: boolean
+          pending: false
+      }
+    | {
+          /**
+           * The plugin was applied on disk only. The running version, if any, is
+           * untouched and the new one loads at next reload.
+           */
+          error: false
+          pending: true
+          id: string
+          version: string
+      }
+    | { error: PluginError }
+
+/// PLUGIN ERRORS
+
+export interface PluginError {
+    /** One of {@link PluginErrorCodes}, or something unknown. */
+    code: string
+    message: string
+    stack?: string | null
+}
+
+export const PluginErrorCodes = {
+    // Discovery / boot
+    ManifestInvalid: 'MANIFEST_INVALID',
+    DependencyMissing: 'DEPENDENCY_MISSING',
+    DependencyUnsatisfied: 'DEPENDENCY_UNSATISFIED',
+    DependencyFailed: 'DEPENDENCY_FAILED',
+    DependencyCycle: 'DEPENDENCY_CYCLE',
+    LoadFailed: 'LOAD_FAILED',
+
+    /* The plugin's own code threw */
+    PluginError: 'PLUGIN_ERROR',
+
+    InstallInvalidZip: 'INSTALL_INVALID_ZIP',
+    InstallVerifyFailed: 'INSTALL_VERIFY_FAILED',
+    InstallMismatch: 'INSTALL_MISMATCH',
+    InstallFailed: 'INSTALL_FAILED',
+} as const
+
+export function isPluginError(e: unknown): e is PluginError {
+    return (
+        typeof e === 'object' &&
+        e !== null &&
+        typeof (e as PluginError).code === 'string' &&
+        typeof (e as PluginError).message === 'string'
+    )
+}
+
+export function toPluginError(e: unknown): PluginError {
+    if (isPluginError(e)) return e
+    if (e instanceof Error)
+        return {
+            code: PluginErrorCodes.PluginError,
+            message: e.message,
+            stack: e.stack,
+        }
+    return { code: PluginErrorCodes.PluginError, message: String(e) }
+}
+
+export function formatPluginError(e: unknown): string {
+    const err = toPluginError(e)
+    return `[${err.code}] ${err.message}${err.stack ? `\n${err.stack}` : ''}`
+}
 
 export const pList = new Map<PluginManifest['id'], AnyPlugin>()
 const pMetadata = new WeakMap<AnyPlugin, InternalPluginMeta>()
@@ -142,6 +259,8 @@ async function applyPluginFlags(id: PluginManifest['id'], flags: number) {
     if (!plugin) return
 
     const meta = getInternalPluginMeta(plugin)
+    // Repersist JS-side flags
+    flags |= meta.flags & (Flag.PendingUpdate | Flag.Failed)
     if (meta.flags === flags) return
 
     const wasEnabled = meta.flags & Flag.Enabled
@@ -162,7 +281,7 @@ async function applyPluginFlags(id: PluginManifest['id'], flags: number) {
 
 registerJSMethod(
     'revenge.plugins.events.pluginErrored',
-    (id: string, errors: string[]) => {
+    (id: string, errors: PluginError[]) => {
         const plugin = pList.get(id)
         if (!plugin) return
 
@@ -181,15 +300,42 @@ registerJSMethod(
  * @param manifest The manifest of the plugin.
  * @param options The options for the plugin.
  * @param defflags The default flags for the plugin.
- * @param iflags The internal flags for the plugin.
  */
 export function registerPlugin<O extends PluginApiExtensionsOptions>(
     manifest: PluginManifest,
     options: PluginOptions<O> | PluginOptionsFactory<O>,
     defflags: number,
+) {
+    return register(manifest, options, defflags, 0)
+}
+
+export type InternalPluginManifest = Omit<
+    PluginManifest,
+    'version' | 'format' | 'dependencies'
+> &
+    Partial<Pick<PluginManifest, 'version' | 'format' | 'dependencies'>>
+
+export function registerInternalPlugin<O extends PluginApiExtensionsOptions>(
+    manifest: InternalPluginManifest,
+    options: PluginOptions<O> | PluginOptionsFactory<O>,
+    defflags: number,
+    iflags = 0,
+) {
+    manifest.version ??= InternalPluginVersion
+    manifest.format ??= 1
+    manifest.dependencies ??= {}
+    manifest.dependencies[ApiDependencyId] ??= { version: '*' }
+    manifest.dependencies[DiscordDependencyId] ??= { version: '*' }
+
+    return register(manifest as PluginManifest, options, defflags, iflags)
+}
+
+function register<O extends PluginApiExtensionsOptions>(
+    manifest: PluginManifest,
+    options: PluginOptions<O> | PluginOptionsFactory<O>,
+    defflags: number,
     iflags: number,
 ) {
-    // TODO(plugins): verify plugin manifest
     if (pList.has(manifest.id))
         throw new Error(`Plugin with ID "${manifest.id}" already registered`)
 
@@ -226,7 +372,7 @@ export function registerPlugin<O extends PluginApiExtensionsOptions>(
         promises: [],
         iflags,
         apiLevel: PluginApiLevel.None,
-        dependents: [],
+        unsatisfiedOptionalDependencies: Object.freeze([]),
         handleError: e => handlePluginError(e, plugin),
         options: resolved ?? {},
         optionsFactory: factory,
@@ -252,41 +398,75 @@ export function registerPlugin<O extends PluginApiExtensionsOptions>(
 
     pEmitter.emit('register', plugin, meta.options)
 
-    return { id: manifest.id } satisfies PluginDependency
+    return manifest.id
 }
 
-/**
- * Gets dependencies for a plugin.
- */
-export function getPluginDependencies(plugin: AnyPlugin): AnyPlugin[] {
-    const meta = getInternalPluginMeta(plugin)!
-    if (meta.dependencies) return meta.dependencies
-
+export function getPluginDependencies(
+    plugin: AnyPlugin,
+    throwOnMissing = true,
+): AnyPlugin[] {
     const { dependencies, id } = plugin.manifest
     const deps: AnyPlugin[] = []
+    const { unsatisfiedOptionalDependencies } = getInternalPluginMeta(plugin)
 
-    if (dependencies?.length)
-        for (const { id: depId } of dependencies) {
+    if (dependencies)
+        for (const [depId, spec] of Object.entries(dependencies)) {
             const dep = pList.get(depId)
 
             if (dep) {
-                if (isPluginEnabled(dep)) deps.push(dep)
-                else
-                    throw new Error(
-                        `Plugin "${id}" depends on disabled plugin "${depId}"`,
-                    )
-            } else {
-                // TODO: Once external plugins are implemented, we will have to check the external plugin registry here as well
-                // External plugin registry should ideally be Record<PluginManifest['id'], [PluginManifest, Flags: number, PluginCode: string]>
-                // Then we register the plugin here and do dep = pList.get(id) again
-
-                throw new Error(
-                    `Plugin "${id}" depends on unregistered plugin "${depId}"`,
+                if (
+                    !spec.optional ||
+                    (isPluginEnabled(dep) &&
+                        !unsatisfiedOptionalDependencies.includes(depId))
                 )
+                    deps.push(dep)
+            } else if (!spec.optional) {
+                if (throwOnMissing) {
+                    throw new Error(
+                        `Plugin "${id}" depends on unregistered plugin "${depId}"`,
+                    )
+                }
             }
         }
 
-    return (meta.dependencies = deps)
+    return deps
+}
+
+export function getMissingPluginDependencies(plugin: AnyPlugin): string[] {
+    const { dependencies } = plugin.manifest
+    if (!dependencies) return []
+
+    const missing: string[] = []
+    for (const [depId, spec] of Object.entries(dependencies)) {
+        if (!spec.optional && !pList.has(depId)) missing.push(depId)
+    }
+    return missing
+}
+
+export function getPluginDependents(
+    plugin: AnyPlugin,
+    includeLinkedOptionals = false,
+): AnyPlugin[] {
+    const { id } = plugin.manifest
+    const dependents: AnyPlugin[] = []
+    const enabled = isPluginEnabled(plugin)
+
+    for (const p of pList.values()) {
+        const spec = p.manifest.dependencies?.[id]
+        if (!spec) continue
+
+        if (!spec.optional) dependents.push(p)
+        else if (
+            includeLinkedOptionals &&
+            enabled &&
+            !getInternalPluginMeta(p).unsatisfiedOptionalDependencies.includes(
+                id,
+            )
+        )
+            dependents.push(p)
+    }
+
+    return dependents
 }
 
 export function isPluginEnabled(plugin: AnyPlugin): boolean {
@@ -321,18 +501,28 @@ export function isPluginPendingUpdate(plugin: AnyPlugin): boolean {
     return Boolean(meta && meta.flags & Flag.PendingUpdate)
 }
 
+/** @see {@link Flag.Failed} */
+export function isPluginFailed(plugin: AnyPlugin): boolean {
+    const meta = getInternalPluginMeta(plugin)
+    return Boolean(meta && meta.flags & Flag.Failed)
+}
+
 /**
- * Requires that the plugin is in a state where it can be started, all of:
- * - Enabled
- * - Not pending an update
+ * Requires that the plugin can be started: enabled, not pending a reload, and not failed at discovery.
+ * PendingUpdate doesn't block, it only means a newer version sits on disk for next reload.
  */
 function requirePluginStartableState(plugin: AnyPlugin) {
     if (!isPluginEnabled(plugin))
         throw new Error(`Plugin "${plugin.manifest.id}" is not enabled`)
 
-    if (isPluginPendingUpdate(plugin))
+    if (isPluginPendingReload(plugin))
         throw new Error(
-            `Plugin "${plugin.manifest.id}" is pending an update and cannot be started`,
+            `Plugin "${plugin.manifest.id}" requires a reload before it can be started again`,
+        )
+
+    if (isPluginFailed(plugin))
+        throw new Error(
+            `Plugin "${plugin.manifest.id}" failed to load this session (reload to retry)`,
         )
 }
 
@@ -357,9 +547,12 @@ export async function handlePluginError(e: unknown, plugin: AnyPlugin) {
     ;(plugin.errors as unknown[]).push(e)
 
     // TODO: Emit errored event so UI can update?
+    // Update: errored event removed (but status changes are still emitted), so UI should update fine
 
     nativeLoggingHook(
-        `\u001b[31mPlugin "${plugin.manifest.id}" encountered an error: ${getErrorStack(e)}\u001b[0m`,
+        `\u001b[31mPlugin "${plugin.manifest.id}" encountered an error: ${
+            isPluginError(e) ? formatPluginError(e) : getErrorStack(e)
+        }\u001b[0m`,
         2,
     )
 
@@ -367,6 +560,8 @@ export async function handlePluginError(e: unknown, plugin: AnyPlugin) {
 
     if (
         !isPluginEssential(getInternalPluginMeta(plugin)) &&
+        // Failed plugins keep their persisted enabled state untouched, recovering on a later boot
+        !isPluginFailed(plugin) &&
         // Multiple errors may surface, but we only want to disable the plugin once
         isPluginEnabled(plugin)
     )
@@ -461,7 +656,9 @@ function tryPreparePluginStart(plugin: AnyPlugin) {
  * Disables a plugin, as well as all its dependents.
  */
 export async function disablePlugin(plugin: AnyPlugin) {
-    requirePluginStartableState(plugin)
+    // PendingReload/PendingUpdate never block disabling
+    if (!isPluginEnabled(plugin))
+        throw new Error(`Plugin "${plugin.manifest.id}" is not enabled`)
 
     const meta = getInternalPluginMeta(plugin)
 
@@ -470,10 +667,9 @@ export async function disablePlugin(plugin: AnyPlugin) {
             `Plugin "${plugin.manifest.id}" is essential and cannot be disabled`,
         )
 
-    const { dependents } = meta
-
+    // Disable dependents
     await Promise.all(
-        dependents.map(dep => {
+        getPluginDependents(plugin).map(dep => {
             if (getInternalPluginMeta(dep)!.flags & Flag.Enabled)
                 return disablePlugin(dep)
         }),
@@ -505,10 +701,23 @@ export async function enablePlugin(plugin: AnyPlugin) {
         }),
     )
 
-    await callNativeMethod('revenge.plugins.setEnabled', [
+    const result = await callNativeMethod('revenge.plugins.setEnabled', [
         plugin.manifest.id,
         true,
     ])
+
+    if (result?.code === 'DEPENDENCIES_UNSATISFIED') {
+        const details = result.problems
+            .map(
+                p =>
+                    `"${p.id}" (requires ${p.required}, installed: ${p.installed ?? 'none'}${p.installed && !p.enabled ? ', disabled' : ''})`,
+            )
+            .join(', ')
+
+        throw new Error(
+            `Cannot enable plugin "${plugin.manifest.id}": unsatisfied dependencies: ${details}`,
+        )
+    }
 
     const meta = getInternalPluginMeta(plugin)
     meta.flags |= Flag.Enabled
@@ -686,7 +895,9 @@ export async function startPlugin(plugin: AnyPlugin) {
  * Stops a plugin by running its stop lifecycle and cleanup functions.
  */
 export async function stopPlugin(plugin: AnyPlugin) {
-    requirePluginStartableState(plugin)
+    // PendingReload/PendingUpdate shouldn't block stopping
+    if (!isPluginEnabled(plugin))
+        throw new Error(`Plugin "${plugin.manifest.id}" is not enabled`)
 
     const {
         manifest: { id },
@@ -719,6 +930,15 @@ export async function stopPlugin(plugin: AnyPlugin) {
         !(plugin.status & (Status.PreInited | Status.Inited | Status.Started))
     )
         throw new Error(`Plugin "${id}" is not running`)
+
+    // Stop dependents
+    await Promise.all(
+        getPluginDependents(plugin, true).map(dep =>
+            dep.status && !(dep.status & Status.Stopping)
+                ? stopPlugin(dep)
+                : undefined,
+        ),
+    )
 
     plugin.status |= Status.Stopping
 
@@ -786,7 +1006,11 @@ export async function deleteStorageForPlugin(plugin: Plugin<any, any>) {
     if (await exists(dir)) await rm(dir)
 }
 
-export { uninstallExternalPlugin } from './external-plugins'
+export {
+    confirmInstall,
+    resyncPluginSources,
+    uninstallExternalPlugin,
+} from './external-plugins'
 
 declare module '@revenge-mod/modules/native' {
     interface NativeMethods {
@@ -794,9 +1018,21 @@ declare module '@revenge-mod/modules/native' {
         'revenge.plugins.states.read': [[], PersistedPluginStates | null]
         'revenge.plugins.setEnabled': [
             [id: PluginManifest['id'], enabled: boolean],
-            null,
+            SetEnabledError | null,
         ]
     }
+}
+
+type SetEnabledError = {
+    code: 'DEPENDENCIES_UNSATISFIED'
+    problems: Array<{
+        id: PluginManifest['id']
+        /** The declared range (`*` for any). */
+        required: string
+        /** Installed version, or `null` when missing entirely. */
+        installed: string | null
+        enabled: boolean
+    }>
 }
 
 interface PluginStateObject {

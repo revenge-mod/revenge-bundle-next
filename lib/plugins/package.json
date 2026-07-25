@@ -6,6 +6,9 @@
     "./constants": {
       "default": "./src/constants.ts"
     },
+    "./utils": {
+      "default": "./src/utils.ts"
+    },
     "./preinit": {
       "default": "./src/preinit.ts"
     },
@@ -20,6 +23,9 @@
     },
     "./_": {
       "default": "./src/_internal/index.ts"
+    },
+    "./_/repositories": {
+      "default": "./src/_internal/repositories.ts"
     }
   }
 }

@@ -16,11 +16,12 @@ import {
 } from '@revenge-mod/plugins/_'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import { useLayoutEffect } from 'react'
+import { Setting } from '../settings/constants'
 import defer * as NavigatorHeaderWithIcon from './components/NavigatorHeaderWithIcon'
+import PluginInstallConfirmAlert from './components/PluginInstallConfirmAlert'
 import PluginInstallFailedAlert from './components/PluginInstallFailedAlert'
 import PluginsFailedToStartAlert from './components/PluginsFailedToStartAlert'
 import PluginsRequireReloadAlert from './components/PluginsRequireReloadAlert'
-import { Setting } from './constants'
 import type { StackScreenProps } from '@react-navigation/stack'
 import type { ReactNavigationParamList } from '@revenge-mod/externals/react-navigation'
 import type { PluginApi } from '@revenge-mod/plugins/types'
@@ -124,6 +125,15 @@ pEmitter.on('stopped', plugin => {
 
 const pluginInstallToastKeyFor = (id: string) => `REVENGE_PLUGIN_INSTALL:${id}`
 const PluginInstallFailedAlertKey = 'plugin-install-failed'
+const PluginInstallConfirmAlertKey = 'plugin-install-confirm'
+
+pEmitter.on('installReady', prompt => {
+    AlertActionCreators.dismissAlert(PluginInstallConfirmAlertKey)
+    AlertActionCreators.openAlert(
+        PluginInstallConfirmAlertKey,
+        <PluginInstallConfirmAlert prompt={prompt} />,
+    )
+})
 
 pEmitter.on('install', result => {
     if (result.error !== false) {
@@ -131,6 +141,15 @@ pEmitter.on('install', result => {
         AlertActionCreators.openAlert(
             PluginInstallFailedAlertKey,
             <PluginInstallFailedAlert error={result.error} />,
+        )
+        return
+    }
+
+    if (result.pending) {
+        // Applied on disk only, the new version loads at next reload
+        showInstallToast(
+            `Downloaded ${pList.get(result.id)?.manifest.name || result.id} ${result.version}, reload to apply`,
+            result.id,
         )
         return
     }

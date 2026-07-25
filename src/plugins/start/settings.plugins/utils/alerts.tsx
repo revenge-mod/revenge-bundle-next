@@ -5,10 +5,12 @@ import {
     isPluginStartable,
     uninstallExternalPlugin,
 } from '@revenge-mod/plugins/_'
+import { getErrorStack } from '@revenge-mod/utils/error'
 import { deleteJsonStorageForPlugin } from '~plugins/preinit/api.json-storage'
 import PluginClearDataConfirmationAlert from '../components/PluginClearDataConfirmationAlert'
 import PluginHasDependenciesAlert from '../components/PluginHasDependenciesAlert'
 import PluginHasDependentsAlert from '../components/PluginHasDependentsAlert'
+import PluginMissingDependenciesAlert from '../components/PluginMissingDependenciesAlert'
 import PluginStatesProvider from '../components/PluginStateProvider'
 import PluginUninstallConfirmationAlert from '../components/PluginUninstallConfirmationAlert'
 import type { AnyPlugin } from '@revenge-mod/plugins/_'
@@ -20,9 +22,13 @@ export function showPluginClearDataConfirmation(
     const KEY = 'plugin-clear-data-confirmation'
 
     async function action() {
-        await deleteStorageForPlugin(plugin)
-        // Trigger update for JSON storage
-        await deleteJsonStorageForPlugin(plugin)
+        try {
+            await deleteStorageForPlugin(plugin)
+            // Trigger update for JSON storage
+            await deleteJsonStorageForPlugin(plugin)
+        } catch (e) {
+            alert(getErrorStack(e))
+        }
         callback()
     }
 
@@ -76,6 +82,21 @@ export function showPluginHasDependenciesAlert(
                 action={action}
             />
         </PluginStatesProvider>,
+    )
+}
+
+export function showPluginMissingDependenciesAlert(
+    plugin: AnyPlugin,
+    dependencies: { id: string; range: string }[],
+    action: () => unknown,
+) {
+    AlertActionCreators.openAlert(
+        'plugin-missing-dependencies',
+        <PluginMissingDependenciesAlert
+            plugin={plugin}
+            dependencies={dependencies}
+            action={action}
+        />,
     )
 }
 

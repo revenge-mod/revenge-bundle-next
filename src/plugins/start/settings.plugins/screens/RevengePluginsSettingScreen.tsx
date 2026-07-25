@@ -5,13 +5,14 @@ import Page from '@revenge-mod/components/Page'
 import SearchInput from '@revenge-mod/components/SearchInput'
 import { ActionSheetActionCreators } from '@revenge-mod/discord/actions'
 import { Design } from '@revenge-mod/discord/design'
-import { callNativeMethod } from '@revenge-mod/modules/native'
 import {
     getInternalPluginMeta,
     InternalPluginFlags,
     isPluginEnabled,
     isPluginEssential,
     isPluginInternal,
+    isPluginPendingReload,
+    isPluginPendingUpdate,
     pEmitter,
     pList,
 } from '@revenge-mod/plugins/_'
@@ -32,15 +33,16 @@ import {
     EnablePluginTooltipProvider,
     EssentialPluginTooltipProvider,
 } from '../components/TooltipProvider'
-import type { RouteProp } from '@react-navigation/core'
+import { RouteNames, Setting } from '../constants'
+import type { NavigationProp, RouteProp } from '@react-navigation/core'
 import type { ReactNavigationParamList } from '@revenge-mod/externals/react-navigation'
 import type { FilterAndSortActionSheetProps } from '../components/FilterAndSortActionSheet'
-import type { RouteNames, Setting } from '../constants'
 
-const { Stack, IconButton, LayerScope, ContextMenu } = Design
+const { Stack, IconButton, FloatingActionButton, LayerScope } = Design
 
 const FiltersHorizontalIcon = getAssetIdByName('FiltersHorizontalIcon', 'png')!
-const MoreHorizontalIcon = getAssetIdByName('MoreHorizontalIcon')!
+const SettingsIcon = getAssetIdByName('SettingsIcon')!
+const PlusLargeIcon = getAssetIdByName('PlusLargeIcon')!
 
 export default function RevengePluginsSettingScreen() {
     return (
@@ -74,6 +76,14 @@ const Filters: FilterAndSortActionSheetProps['filters'] = {
     'Has Errors': {
         icon: getAssetIdByName('CircleErrorIcon')!,
         filter: plugin => plugin.errors.length > 0,
+    },
+    'Pending Reload': {
+        icon: getAssetIdByName('RetryIcon')!,
+        filter: plugin => isPluginPendingReload(plugin),
+    },
+    'Pending Update': {
+        icon: getAssetIdByName('RefreshIcon')!,
+        filter: plugin => isPluginPendingUpdate(plugin),
     },
     Internal: {
         icon: RevengeIcon,
@@ -110,27 +120,31 @@ const Sorts = {
     ],
 } satisfies FilterAndSortActionSheetProps['sorts']
 
-function HeaderContextMenu() {
+function HeaderButton() {
+    const navigation = useNavigation<NavigationProp<any>>()
+
     return (
-        <ContextMenu
-            title="More options"
-            align="below"
-            items={[
-                {
-                    label: 'Install from file',
-                    action: () =>
-                        callNativeMethod('revenge.plugins.install', []),
-                },
-            ]}
-        >
-            {props => (
-                <IconButton
-                    {...props}
-                    icon={MoreHorizontalIcon}
-                    variant="tertiary"
-                />
-            )}
-        </ContextMenu>
+        <IconButton
+            icon={SettingsIcon}
+            onPress={() =>
+                navigation.navigate(RouteNames[Setting.RevengePluginsAdvanced])
+            }
+            variant="tertiary"
+        />
+    )
+}
+
+function BrowseFloatingActionButton() {
+    const navigation = useNavigation<NavigationProp<any>>()
+
+    return (
+        <FloatingActionButton
+            icon={PlusLargeIcon}
+            accessibilityLabel="Browse plugins"
+            onPress={() =>
+                navigation.navigate(RouteNames[Setting.RevengePluginsBrowse])
+            }
+        />
     )
 }
 
@@ -158,7 +172,7 @@ function Screen() {
 
     useLayoutEffect(() => {
         navigation.setOptions({
-            headerRight: () => <HeaderContextMenu />,
+            headerRight: () => <HeaderButton />,
         })
     }, [navigation])
 
@@ -242,6 +256,7 @@ function Screen() {
                 />
             </Stack>
             <InstalledPluginMasonryFlashList plugins={plugins} />
+            <BrowseFloatingActionButton />
         </>
     )
 }

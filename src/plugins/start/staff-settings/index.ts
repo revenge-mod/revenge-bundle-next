@@ -6,12 +6,12 @@ import { instead } from '@revenge-mod/patcher'
 import {
     InternalPluginFlags,
     PluginFlags,
-    registerPlugin,
+    registerInternalPlugin,
 } from '@revenge-mod/plugins/_'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import type { DiscordModules } from '@revenge-mod/discord/types'
 
-registerPlugin(
+registerInternalPlugin(
     {
         id: 'revenge.staff-settings',
         name: 'Staff Settings',

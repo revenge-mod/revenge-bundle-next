@@ -1,4 +1,5 @@
 import { Design } from '@revenge-mod/discord/design'
+import { useState } from 'react'
 import { PixelRatio, useWindowDimensions, View } from 'react-native'
 import { PLUGIN_CARD_ESTIMATED_SIZE } from './PluginCard'
 import { PluginFlashList } from './PluginList'
@@ -6,51 +7,54 @@ import type { AnyPlugin } from '@revenge-mod/plugins/_'
 
 const { AlertModal, AlertActionButton, Text } = Design
 
-export default function PluginHasDependentsAlert({
+export default function PluginHasDependenciesAlert({
     plugin,
-    dependents,
+    dependencies,
     action,
 }: {
     plugin: AnyPlugin
-    dependents: AnyPlugin[]
+    dependencies: AnyPlugin[]
     action: () => Promise<void>
 }) {
     const { height: windowHeight } = useWindowDimensions()
     const maxHeight = PixelRatio.get() * windowHeight * 0.35 - 64
+    const [height, setHeight] = useState(
+        PLUGIN_CARD_ESTIMATED_SIZE * dependencies.length,
+    )
 
     return (
         <AlertModal
-            title="Plugin has dependents"
+            title="Plugin has dependencies"
             content={
                 <Text color="text-default">
-                    Other plugins depend on{' '}
+                    Plugin{' '}
                     <Text variant="text-md/semibold" color="text-default">
                         {plugin.manifest.name}
                     </Text>{' '}
-                    to function.
+                    depends on other plugins to function.
                     {'\n'}
-                    Disabling it will also disable the following plugins:
+                    Enabling it will also enable the following plugins:
                 </Text>
             }
             extraContent={
                 <View
                     style={{
-                        height: Math.min(
-                            PLUGIN_CARD_ESTIMATED_SIZE * dependents.length,
-                            maxHeight,
-                        ),
+                        height,
                         maxHeight,
                     }}
                 >
-                    <PluginFlashList plugins={dependents} />
+                    <PluginFlashList
+                        plugins={dependencies}
+                        onContentSizeChange={(_, h) => setHeight(h)}
+                    />
                 </View>
             }
             actions={
                 <>
                     <AlertActionButton
-                        text="Disable all"
-                        variant="destructive"
                         onPress={action}
+                        text="Enable all"
+                        variant="primary"
                     />
                     <AlertActionButton text="Cancel" variant="secondary" />
                 </>

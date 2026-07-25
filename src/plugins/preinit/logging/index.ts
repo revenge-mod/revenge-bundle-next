@@ -2,7 +2,7 @@ import { AppStartPerformance } from '@revenge-mod/discord/preinit'
 import {
     InternalPluginFlags,
     PluginFlags,
-    registerPlugin,
+    registerInternalPlugin,
 } from '@revenge-mod/plugins/_'
 import { BuildEnvironment, FullVersion } from '~/constants'
 
@@ -13,7 +13,7 @@ if (__DEV__) {
     let tsPreInit: number
     let tsInit: number
 
-    registerPlugin(
+    registerInternalPlugin(
         {
             id: 'revenge.logging',
             name: 'Logging',

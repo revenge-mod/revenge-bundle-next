@@ -1,18 +1,22 @@
 import { getAssetIdByName } from '@revenge-mod/assets'
 import { styles } from '@revenge-mod/components/_'
 import FormSwitch from '@revenge-mod/components/FormSwitch'
-import { Tokens } from '@revenge-mod/discord/common'
 import { Design } from '@revenge-mod/discord/design'
 import {
     isPluginEssential,
     isPluginPendingUpdate,
     isPluginStartable,
 } from '@revenge-mod/plugins/_'
+import { formatVersion } from '@revenge-mod/plugins/utils'
 import { memo } from 'react'
-import { Image, Pressable } from 'react-native'
+import { Pressable } from 'react-native'
 import { handleDisablePlugin, handleEnablePlugin } from '../utils/actions'
 import { openPluginSettings } from '../utils/alerts'
-import { showPluginOptionsActionSheet } from '../utils/sheets'
+import {
+    showBrowsePluginActionSheet,
+    showPluginOptionsActionSheet,
+} from '../utils/sheets'
+import { PluginIcon } from './PluginIcon'
 import { usePluginEnabled } from './PluginStateProvider'
 import {
     useClickOutsideTooltip,
@@ -21,48 +25,42 @@ import {
 } from './TooltipProvider'
 import type { AnyPlugin, InternalPluginMeta } from '@revenge-mod/plugins/_'
 
-const { Card, Text, Stack, IconButton, createStyles } = Design
+const { Card, Text, Stack, IconButton, Button, createStyles } = Design
 
-const PuzzlePieceIcon = getAssetIdByName('PuzzlePieceIcon', 'png')!
 const SettingsIcon = getAssetIdByName('SettingsIcon', 'png')!
 const MoreVerticalIcon = getAssetIdByName('MoreVerticalIcon', 'png')!
+const DownloadIcon = getAssetIdByName('DownloadIcon', 'png')!
 
 export const PLUGIN_CARD_ESTIMATED_SIZE = 116
+
+export const PLUGIN_CARD_HALF_GUTTER = 6
 
 export const PluginCard = memo(function PluginCard({
     name,
     description,
+    version,
     author,
     icon,
     actions,
-    rowEnd,
-    columnEnd,
 }: {
     name: string
     description: string
+    version: string
     author: string
     icon?: string
     actions?: React.ReactNode
-    rowEnd?: boolean
-    columnEnd?: boolean
 }) {
     const styles_ = usePluginCardStyles()
 
     return (
-        <Card
-            style={[
-                styles_.card,
-                styles.grow,
-                columnEnd && styles_.columnEnd,
-                rowEnd && styles_.rowEnd,
-            ]}
-        >
+        <Card style={[styles_.card, styles.grow]}>
             <PluginInfo
                 name={name}
                 description={description}
                 author={author}
                 icon={icon}
                 actions={actions}
+                version={version}
                 aligned
             />
         </Card>
@@ -73,6 +71,7 @@ export const PluginInfo = memo(function PluginInfo({
     name,
     description,
     author,
+    version,
     icon,
     actions,
     aligned,
@@ -80,6 +79,7 @@ export const PluginInfo = memo(function PluginInfo({
     name: string
     description: string
     author: string
+    version: string
     icon?: string
     actions?: React.ReactNode
     aligned?: boolean
@@ -97,10 +97,7 @@ export const PluginInfo = memo(function PluginInfo({
                     spacing={8}
                     style={[styles_.topContainer, styles.flex]}
                 >
-                    <Image
-                        source={icon ? getAssetIdByName(icon) : PuzzlePieceIcon}
-                        style={styles_.icon}
-                    />
+                    <PluginIcon icon={icon} />
                     <Text
                         variant="heading-lg/semibold"
                         textBreakStrategy="balanced"
@@ -121,6 +118,7 @@ export const PluginInfo = memo(function PluginInfo({
                     variant="heading-md/medium"
                 >
                     by {author}
+                    {version ? ` \u2022 ${version}` : ''}
                 </Text>
                 <Text style={styles.grow} variant="text-md/medium">
                     {description}
@@ -133,18 +131,14 @@ export const PluginInfo = memo(function PluginInfo({
 export const InstalledPluginCard = memo(function InstalledPluginCard({
     plugin,
     meta,
-    rowEnd,
-    columnEnd,
 }: {
     plugin: AnyPlugin
     meta: InternalPluginMeta
-    rowEnd?: boolean
-    columnEnd?: boolean
 }) {
     const enabled = usePluginEnabled(plugin)
 
     const {
-        manifest: { name, description, author, icon },
+        manifest: { name, description, version, author, icon },
     } = plugin
 
     const essential = isPluginEssential(meta)
@@ -167,10 +161,9 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
         <PluginCard
             name={name}
             description={description}
+            version={formatVersion(version)}
             author={author}
             icon={icon}
-            rowEnd={rowEnd}
-            columnEnd={columnEnd}
             actions={
                 <>
                     <IconButton
@@ -231,24 +224,73 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
     )
 })
 
+/**
+ * Card for a plugin that isn't installed yet, shown on the Browse screen.
+ * No switch or settings button, just a more menu and a small Install button.
+ */
+export const BrowsePluginCard = memo(function BrowsePluginCard({
+    name,
+    description,
+    version,
+    author,
+    icon,
+    id,
+    repositoryText,
+    onInstall,
+}: {
+    name: string
+    description: string
+    version: string
+    author: string
+    icon?: string
+    id: string
+    repositoryText: string
+    onInstall: () => void
+}) {
+    return (
+        <PluginCard
+            name={name}
+            description={description}
+            version={version}
+            author={author}
+            icon={icon}
+            actions={
+                <>
+                    <IconButton
+                        size="sm"
+                        variant="secondary"
+                        icon={MoreVerticalIcon}
+                        onPress={() => {
+                            showBrowsePluginActionSheet({
+                                name,
+                                author,
+                                description,
+                                version,
+                                icon,
+                                id,
+                                repositoryText,
+                                onInstall,
+                            })
+                        }}
+                    />
+                    <Button
+                        size="sm"
+                        text="Install"
+                        icon={DownloadIcon}
+                        onPress={onInstall}
+                    />
+                </>
+            }
+        />
+    )
+})
+
 const usePluginCardStyles = createStyles({
-    icon: {
-        width: 20,
-        height: 20,
-        tintColor: Tokens.default.colors.TEXT_DEFAULT,
-    },
     card: {
         paddingVertical: 12,
         paddingHorizontal: 12,
         gap: 4,
-        marginBottom: 12,
-        marginRight: 12,
-    },
-    rowEnd: {
-        marginBottom: 0,
-    },
-    columnEnd: {
-        marginRight: 0,
+        margin: PLUGIN_CARD_HALF_GUTTER,
     },
     topContainer: {
         alignItems: 'center',

@@ -21,5 +21,5 @@ const { storageRootPath } = callNativeMethodSync(
 /**
  * Per-plugin storage directory, relative to app data directory.
  */
-// TODO: is it best to share this with the native side, or should we let native side be the sole source of truth?
+// TODO: is it best to dupe this logic with the native side???
 export const pluginStorageDirFor = (id: string) => `${storageRootPath}/${id}`

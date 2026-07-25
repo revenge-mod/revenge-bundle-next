@@ -1,4 +1,4 @@
-import { getInternalPluginMeta, getPluginDependencies } from '../_internal'
+import { getPluginDependencies, isPluginStartable } from '../_internal'
 import { pApis } from './decorators'
 import type { AnyPlugin } from '../_internal'
 
@@ -23,8 +23,27 @@ export const pListOrdered: AnyPlugin[] = []
 // Pending plugins to be computed
 export const pPending = new Set<AnyPlugin>()
 
+// Reserved dependencies verified by native
+export const ApiDependencyId = 'revenge.api'
+export const DiscordDependencyId = 'discord'
+
+export function isReservedDependency(id: string) {
+    return id === ApiDependencyId || id === DiscordDependencyId
+}
+
+/**
+ * Whether the plugin has start-order dependencies. Reserved dependencies don't count.
+ */
+function hasGraphableDependencies(plugin: AnyPlugin): boolean {
+    const deps = plugin.manifest.dependencies
+    if (!deps) return false
+    for (const id in deps) if (!isReservedDependency(id)) return true
+    return false
+}
+
 export function computePendingNodes() {
-    for (const plugin of pPending) resolvePluginGraph(plugin)
+    for (const plugin of pPending)
+        if (isPluginStartable(plugin)) resolvePluginGraph(plugin)
 
     const apis: AnyPlugin[] = []
 
@@ -44,8 +63,8 @@ export function computePendingNodes() {
             continue
         }
 
-        if (plugin.manifest.dependencies?.length) {
-            for (const dep of getPluginDependencies(plugin))
+        if (hasGraphableDependencies(plugin)) {
+            for (const dep of getPluginDependencies(plugin, false))
                 if (!pLeafOrSingleNodes.has(dep)) stack.push(dep)
 
             stack.push(plugin)
@@ -60,18 +79,12 @@ export function computePendingNodes() {
 }
 
 export function resolvePluginGraph(plugin: AnyPlugin) {
-    const { manifest } = plugin
-
-    if (manifest.dependencies?.length) {
+    if (hasGraphableDependencies(plugin)) {
         // Optimisitically add to root nodes (if there are dependents, it will be removed later)
         pRootNodes.add(plugin)
 
-        for (const dep of getPluginDependencies(plugin)) {
-            const depMeta = getInternalPluginMeta(dep)
-            depMeta.dependents.push(plugin)
-
-            // Not a root node if it has dependencies
-            if (dep.manifest.dependencies?.length) pRootNodes.delete(dep)
-        }
+        // Not a root node if it has dependencies
+        for (const dep of getPluginDependencies(plugin, false))
+            if (hasGraphableDependencies(dep)) pRootNodes.delete(dep)
     } else pLeafOrSingleNodes.add(plugin)
 }

@@ -136,26 +136,14 @@ export interface PluginApi<
     plugin: Plugin<O, 'Start'>
 }
 
-// TODO(plugins): support plugin bundles
-// export interface PluginBundle {
-//     /**
-//      * The unique identifier for the plugin bundle.
-//      */
-//     id: string
-//     /**
-//      * The author of the plugin bundle.
-//      */
-//     author: string
-//     /**
-//      * The URL of the plugin bundle.
-//      */
-//     url: string
-// }
-
 /**
  * The plugin manifest.
  */
 export interface PluginManifest {
+    /**
+     * The manifest format version.
+     */
+    format: number
     /**
      * The unique identifier for the plugin.
      */
@@ -173,25 +161,36 @@ export interface PluginManifest {
      */
     description: string
     /**
-     * The icon of the plugin.
+     * The icon of the plugin. An asset name, or a `data:` URL.
      */
     icon?: string
     /**
-     * The dependencies of the plugin.
+     * The dependencies of the plugin, keyed by plugin ID.
      */
-    dependencies?: PluginDependency[]
+    dependencies?: Record<string, PluginDependency>
+    /**
+     * The plugin's version.
+     */
+    version: PluginVersion
 }
 
+export interface PluginVersion {
+    nums: number[]
+    label?: string
+}
+
+/**
+ * A dependency specification. The dependency's plugin ID is the key in {@link PluginManifest.dependencies}.
+ */
 export interface PluginDependency {
     /**
-     * The ID of this dependency.
+     * Version range the dependency must satisfy.
      */
-    id: string
-    // TODO(plugins): support plugin bundles
-    // /**
-    //  * The bundle of this dependency.
-    //  */
-    // bundle: PluginBundle
+    version?: string
+    /**
+     * Whether this dependency can be optionally linked.
+     */
+    optional?: boolean
 }
 
 export interface PluginOptions<
@@ -249,11 +248,6 @@ export interface Plugin<
     S extends
         keyof PluginApiInLifecycleMap<O> = keyof PluginApiInLifecycleMap<O>,
 > {
-    // TODO(plugins): support plugin bundles
-    // /**
-    //  * The plugin bundle this plugin belongs to.
-    //  */
-    // bundle: PluginBundle
     manifest: PluginManifest
     lifecycles: PluginLifecycles<O>
 

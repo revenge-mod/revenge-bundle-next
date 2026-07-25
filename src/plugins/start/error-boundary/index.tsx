@@ -4,12 +4,12 @@ import { instead } from '@revenge-mod/patcher'
 import {
     InternalPluginFlags,
     PluginFlags,
-    registerPlugin,
+    registerInternalPlugin,
 } from '@revenge-mod/plugins/_'
 import ErrorBoundaryScreen from './components/ErrorBoundaryScreen'
 import type { Component, ReactNode } from 'react'
 
-registerPlugin(
+registerInternalPlugin(
     {
         id: 'revenge.error-boundary',
         name: 'Error Boundary',

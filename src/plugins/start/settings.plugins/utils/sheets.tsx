@@ -1,6 +1,7 @@
 import { ActionSheetActionCreators } from '@revenge-mod/discord/actions'
 import PluginStatesProvider from '../components/PluginStateProvider'
 import type { AnyPlugin } from '@revenge-mod/plugins/_'
+import type { BrowsePluginActionSheetProps } from '../components/BrowsePluginActionSheet'
 import type { PluginOptionsActionSheetProps } from '../components/PluginOptionsActionSheet'
 
 export function showPluginOptionsActionSheet(plugin: AnyPlugin) {
@@ -16,5 +17,17 @@ export function showPluginOptionsActionSheet(plugin: AnyPlugin) {
         })),
         KEY,
         { plugin, sheetKey: KEY },
+    )
+}
+
+export function showBrowsePluginActionSheet(
+    props: Omit<BrowsePluginActionSheetProps, 'sheetKey'>,
+) {
+    const KEY = 'browse-plugin-action-sheet'
+
+    ActionSheetActionCreators.openLazy(
+        import('../components/BrowsePluginActionSheet'),
+        KEY,
+        { ...props, sheetKey: KEY },
     )
 }

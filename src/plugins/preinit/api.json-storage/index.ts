@@ -4,7 +4,7 @@ import { exists, rm } from '@revenge-mod/modules/native/fs'
 import {
     InternalPluginFlags,
     PluginFlags,
-    registerPlugin,
+    registerInternalPlugin,
 } from '@revenge-mod/plugins/_'
 import { pluginStorageDirFor } from '@revenge-mod/plugins/constants'
 import { defineLazyProperty } from '@revenge-mod/utils/object'
@@ -18,7 +18,7 @@ type PluginJsonStorageOptions = JsonStorageOptions & {
 
 const storageOptions = new WeakMap<Plugin<any, any>, PluginJsonStorageOptions>()
 
-registerPlugin(
+registerInternalPlugin(
     {
         id: 'revenge.api.json-storage',
         name: 'JSON Storage API',

@@ -7,7 +7,7 @@ import { instead } from '@revenge-mod/patcher'
 import {
     InternalPluginFlags,
     PluginFlags,
-    registerPlugin,
+    registerInternalPlugin,
 } from '@revenge-mod/plugins/_'
 import { React } from '@revenge-mod/react'
 import { asap, noop } from '@revenge-mod/utils/callback'
@@ -18,7 +18,7 @@ import type { FC } from 'react'
 
 let DEBUG_patchedNavigator = false
 
-const pluginSettings = registerPlugin(
+const pluginSettings = registerInternalPlugin(
     {
         id: 'revenge.settings',
         name: 'Settings',
@@ -28,9 +28,6 @@ const pluginSettings = registerPlugin(
     },
     {
         start() {
-            // @as-require
-            import('./plugins')
-
             onSettingsModulesLoaded(() => {
                 // @as-require
                 import('./register')

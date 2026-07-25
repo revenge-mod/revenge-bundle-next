@@ -7,7 +7,7 @@ import {
     InternalPluginFlags,
     isPluginEnabledLate,
     PluginFlags,
-    registerPlugin,
+    registerInternalPlugin,
 } from '@revenge-mod/plugins/_'
 import pluginSettings from '../settings'
 import * as dt from './devtools'
@@ -37,14 +37,14 @@ const defaultStorage: Storage = {
 }
 
 // TODO(PalmDevs): only register in development builds once updates can be made automatic
-registerPlugin<{ jsonStorage: Storage }>(
+registerInternalPlugin<{ jsonStorage: Storage }>(
     {
         id: 'revenge.developer-kit',
         name: 'Developer Kit',
         description: 'Tools assisting Revenge developers.',
         author: 'Revenge',
         icon: 'WrenchIcon',
-        dependencies: [pluginSettings],
+        dependencies: { [pluginSettings]: {} },
     },
     {
         jsonStorage: {

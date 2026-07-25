@@ -64,6 +64,11 @@ export default function PluginStatesProvider({
         pEmitter.on('disabled', handleDisabled)
 
         return () => {
+            pEmitter.off('preInited', handleStatusChange)
+            pEmitter.off('inited', handleStatusChange)
+            pEmitter.off('started', handleStatusChange)
+            pEmitter.off('stopped', handleStatusChange)
+
             pEmitter.off('enabled', handleEnabled)
             pEmitter.off('disabled', handleDisabled)
         }

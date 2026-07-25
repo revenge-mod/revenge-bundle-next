@@ -5,7 +5,7 @@ import { withProps } from '@revenge-mod/modules/finders/filters'
 import {
     InternalPluginFlags,
     PluginFlags,
-    registerPlugin,
+    registerInternalPlugin,
 } from '@revenge-mod/plugins/_'
 import { afterJSX, beforeJSX } from '@revenge-mod/react/jsx-runtime'
 import { findInReactFiber } from '@revenge-mod/utils/react'
@@ -50,7 +50,7 @@ type ViewWithProfileBadges = ReactElement<{
     children: Array<ReactElement<ProfileBadgeProps, FC<ProfileBadgeProps>>>
 }>
 
-registerPlugin(
+registerInternalPlugin(
     {
         id: 'revenge.user-badges',
         name: 'User Badges',

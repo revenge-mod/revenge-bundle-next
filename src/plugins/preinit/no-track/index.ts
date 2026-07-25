@@ -6,7 +6,7 @@ import {
     InternalPluginFlags,
     isPluginEnabledLate,
     PluginFlags,
-    registerPlugin,
+    registerInternalPlugin,
 } from '@revenge-mod/plugins/_'
 import { noop } from '@revenge-mod/utils/callback'
 import { getCurrentStack } from '@revenge-mod/utils/error'
@@ -39,7 +39,7 @@ const fakeSentryCarrier = new Proxy(
 
 const getFakeCarrier = () => fakeSentryCarrier
 
-registerPlugin(
+registerInternalPlugin(
     {
         id: 'revenge.no-track',
         name: 'No Track',
