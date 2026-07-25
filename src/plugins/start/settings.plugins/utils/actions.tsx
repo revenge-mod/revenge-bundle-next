@@ -52,6 +52,7 @@ export async function handleEnablePlugin(plugin: AnyPlugin) {
 
                     await handleEnablePlugin(plugin)
                 })
+                .catch(e => showErrorToast(messageOf(e)))
         })
         return
     }
