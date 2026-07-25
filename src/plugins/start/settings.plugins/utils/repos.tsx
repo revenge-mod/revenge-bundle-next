@@ -144,12 +144,19 @@ export async function confirmPlan(plan: InstallPlan): Promise<boolean> {
  * Runs the install flow for one plugin: resolve, show warnings, confirm the plan, and execute.
  * Errors show as toasts.
  *
+ * Pass `version`, `channel`, and `filteredRepos` to pin what the user was shown, so the plan
+ * matches the card instead of resolving to whatever a higher-priority repo serves.
+ *
  * Resolves true only when the plan was confirmed and installed.
  */
-// TODO: Let the user pick a release channel
-export async function runInstallFlow(id: string): Promise<boolean> {
+export async function runInstallFlow(
+    id: string,
+    version?: string,
+    channel?: string,
+    filteredRepos?: string[],
+): Promise<boolean> {
     try {
-        const plan = await planInstall(id)
+        const plan = await planInstall(id, version, channel, filteredRepos)
         if (plan.warnings.length) showErrorToast(plan.warnings.join('\n'))
 
         const accepted = await confirmPlan(plan)

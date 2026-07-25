@@ -107,6 +107,8 @@ export interface BrowseEntry {
     /** Display text for the Repository row/sheet, eg. `Name (url)`. */
     repositoryText: string
     version: string
+    /** The channel the displayed version comes from, if the listing has any. */
+    channel?: string
     size: number
     installed?: readonly [AnyPlugin, InternalPluginMeta]
 }

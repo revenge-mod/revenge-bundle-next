@@ -176,11 +176,13 @@ export function planInstall(
     id: string,
     version?: string,
     channel?: string,
+    filteredRepos?: string[],
 ): Promise<InstallPlan> {
     return callNativeMethod('revenge.plugins.planInstall', [
         id,
         version ?? null,
         channel ?? null,
+        filteredRepos ?? null,
     ])
 }
 
@@ -282,7 +284,12 @@ declare module '@revenge-mod/modules/native' {
         ]
         'revenge.plugins.repos.listUpdates': [[url: string], RepoUpdate[]]
         'revenge.plugins.planInstall': [
-            [id: string, version: string | null, channel: string | null],
+            [
+                id: string,
+                version: string | null,
+                channel: string | null,
+                filteredRepos: string[] | null,
+            ],
             InstallPlan,
         ]
         'revenge.plugins.install': [
