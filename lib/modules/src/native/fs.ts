@@ -32,7 +32,7 @@ export function writeFileSync(path: string, data: string) {
 }
 
 export function rmSync(path: string) {
-    return callNativeMethodSync('revenge.fs.exists', [path])
+    return callNativeMethodSync('revenge.fs.delete', [path])
 }
 
 export function deleteFileSync(path: string) {
