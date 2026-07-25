@@ -13,7 +13,10 @@ import {
 } from '@revenge-mod/plugins/_/repositories'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import { PluginIcon } from '../components/PluginIcon'
-import type { InstallPlan } from '@revenge-mod/plugins/_/repositories'
+import type {
+    InstallPlan,
+    RepoPluginListing,
+} from '@revenge-mod/plugins/_/repositories'
 
 const { AlertActionButton, AlertModal } = Design
 
@@ -54,6 +57,7 @@ export async function confirmPlan(plan: InstallPlan): Promise<boolean> {
 
     let resolve!: (value: boolean) => void
     const promise = new Promise<boolean>(r => (resolve = r))
+    const listingCache = new Map<string, RepoPluginListing[]>()
 
     const summary = await Promise.all(
         plan.actions.map(async action => {
@@ -85,7 +89,9 @@ export async function confirmPlan(plan: InstallPlan): Promise<boolean> {
             const repo = repos.find(r => r.url === action.repo)
             if (!repo) return row(action.id, action.repo)
 
-            const plugins = await listRepoPlugins(repo.url)
+            const plugins =
+                listingCache.get(repo.url) ?? (await listRepoPlugins(repo.url))
+
             const plugin = plugins.find(p => p.id === action.id)
             if (!plugin) return row(action.id, repo.name || action.repo)
 
