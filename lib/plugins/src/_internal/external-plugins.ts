@@ -7,6 +7,7 @@ import { getErrorStack } from '@revenge-mod/utils/error'
 import { pUnscopedApi } from '../apis'
 import {
     disablePlugin,
+    forgetInitialPluginState,
     getInternalPluginMeta,
     handlePluginError,
     InternalPluginFlags,
@@ -67,6 +68,9 @@ export function registerExternalPlugins() {
             const { plugin } = result
 
             try {
+                // Drop the stale boot snapshot entry (from before a mid-session uninstall)
+                // so the fresh install registers disabled
+                forgetInitialPluginState(plugin.manifest.id)
                 registerExternalPlugin(plugin)
             } catch (e) {
                 pEmitter.emit('install', { error: toPluginError(e) })
@@ -188,6 +192,9 @@ export async function uninstallExternalPlugin(plugin: AnyPlugin) {
     if (isPluginEnabled(plugin)) await disablePlugin(plugin)
 
     await callNativeMethod('revenge.plugins.uninstall', [plugin.manifest.id])
+
+    // Native cleared its persisted flags, drop our boot snapshot entry too
+    forgetInitialPluginState(plugin.manifest.id)
 
     pList.delete(plugin.manifest.id)
     pEmitter.emit('unregister', plugin)

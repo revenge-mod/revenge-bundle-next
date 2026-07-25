@@ -238,6 +238,10 @@ const { states: InitialPersistedStates }: PersistedPluginStates =
         states: {},
     }
 
+export function forgetInitialPluginState(id: PluginManifest['id']) {
+    delete InitialPersistedStates[id]
+}
+
 // Native is the source of truth, we're expecting dispatches from native to sync states
 registerJSMethod('revenge.plugins.states.update', (id, state) => {
     applyPluginFlags(
