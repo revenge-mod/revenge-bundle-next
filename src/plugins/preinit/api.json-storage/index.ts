@@ -74,6 +74,9 @@ export async function deleteJsonStorageForPlugin(plugin: Plugin<any, any>) {
         | InitPluginApi<{ jsonStorage: AnyObject }>
         | undefined
 
+    // Plugin may have never initialized, so there is no API and nothing to refresh
+    if (!api) return
+
     // Only update already initialized storages
     const storage = Object.getOwnPropertyDescriptor(api, 'jsonStorage')
         ?.value as JsonStorage<AnyObject> | undefined
