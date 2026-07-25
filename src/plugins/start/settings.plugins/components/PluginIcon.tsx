@@ -10,7 +10,6 @@ export function PluginIcon({
     size = 20,
 }: {
     icon?: string
-    dataUrl?: boolean
     size?: number
 }) {
     const styles = usePluginIconStyles()
