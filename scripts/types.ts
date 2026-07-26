@@ -1,6 +1,6 @@
 import { main } from 'bun'
 import chalk from 'chalk'
-import { exists, mkdir, rm } from 'fs/promises'
+import { mkdir, rm } from 'fs/promises'
 import { rolldown } from 'rolldown'
 import { dts } from 'rolldown-plugin-dts'
 import pkg from '../package.json'
@@ -8,7 +8,7 @@ import pkg from '../package.json'
 const PATHS = {
     lib: 'lib',
     output: 'dist/types',
-    outputTemp: 'dist/types/.build',
+    outputTemp: 'dist/types/tmp',
     tsconfig: 'tsconfig.json',
 } as const
 
@@ -57,7 +57,6 @@ export default async function buildTypes(log = true): Promise<void> {
                     parallel: true,
                     emitDtsOnly: true,
                     eager: true,
-                    resolve: true,
                 }),
             ],
         })
@@ -86,13 +85,14 @@ import assets from 'pkg:assets'
 import components from 'pkg:components'
 import discord from 'pkg:discord'
 import externals from 'pkg:externals'
+import jsonStorage from 'pkg:json-storage'
 import modules from 'pkg:modules'
 import patcher from 'pkg:patcher'
 import plugins from 'pkg:plugins'
 import react from 'pkg:react'
-import storage from 'pkg:storage'
 import utils from 'pkg:utils'
 import { writeFileSync } from 'fs'
+import { exists } from './_shared'
 
 type TrimLeadingDotAndMaybeSlash<T extends string> = T extends `.${infer R}`
     ? R extends `/${infer S}`
@@ -210,16 +210,15 @@ const Libraries = [
         'modules/settings/renderer',
         'native',
         'types',
-        'types/api',
         'utils/modules/finders',
         'utils/modules/metro/subscriptions',
     ]),
     library(externals, [
         'browserify',
         'react-native-clipboard',
+        'react-native-safe-area-context',
         'react-navigation',
         'shopify',
-        'types',
     ]),
     library(modules, [
         'finders',
@@ -231,9 +230,9 @@ const Libraries = [
         'types',
     ]),
     library(patcher, ['', 'types']),
-    library(plugins, ['constants', 'types']),
+    library(plugins, ['constants', 'types', 'utils']),
     library(react, ['', 'jsx-runtime', 'native', 'types']),
-    library(storage, ['', 'types']),
+    library(jsonStorage, ['', 'types']),
     library(utils, [
         'callback',
         'discord',

@@ -5,7 +5,8 @@
     "target": "ES2020",
     "moduleResolution": "bundler",
     "verbatimModuleSyntax": true,
-    "noEmit": true,
+    "emitDeclarationOnly": true,
+    "declaration": true,
     "jsx": "preserve",
     "allowJs": true,
     "strict": true,
@@ -27,7 +28,9 @@
     "./types/*.d.ts",
     "node_modules/@types/node/events.d.ts",
     "node_modules/@types/node/util.d.ts",
-    "node_modules/react-native/types/index.d.ts"
+    "node_modules/react-native/types/index.d.ts",
+    // Build artifacts required to emit types
+    "dist/types/tmp"
   ],
   "exclude": ["**/*.test.ts"]
 }
