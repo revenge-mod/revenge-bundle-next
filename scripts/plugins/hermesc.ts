@@ -1,3 +1,4 @@
+import { spawnSync } from 'child_process'
 import { existsSync, readFileSync } from 'fs'
 import type { OutputChunk, RolldownPlugin } from 'rolldown'
 
@@ -37,27 +38,40 @@ export default function hermesCPlugin({
             const file = bundle['revenge.js'] as OutputChunk
             if (!file) throw new Error('No code to compile')
 
-            const cmdlist = [binPath, '-emit-binary', ...(flags ?? [])]
+            const argList = ['-emit-binary', ...(flags ?? [])]
 
-            const cmd = Bun.spawnSync<'pipe', 'pipe'>(cmdlist, {
-                // @ts-expect-error: Types are incorrect, but this works
-                stdin: new Blob([file.code]),
-                stdout: 'pipe',
-            })
+            const cmd =
+                // TODO: Move away from Bun: https://github.com/oven-sh/bun/issues/25498
+                typeof Bun !== 'undefined'
+                    ? (() => {
+                          const cmd = Bun.spawnSync([binPath, ...argList], {
+                              // @ts-expect-error: Works but types are incorrect
+                              stdio: [new Blob([file.code]), 'pipe'],
+                          })
 
-            if (cmd.exitCode) {
+                          return {
+                              status: cmd.exitCode,
+                              stdout: cmd.stdout,
+                              stderr: cmd.stderr,
+                          }
+                      })()
+                    : spawnSync(binPath, argList, {
+                          stdio: ['pipe', 'pipe'],
+                          input: file.code,
+                      })
+
+            if (cmd.status !== 0) {
                 if (cmd.stderr.length)
                     throw new Error(
                         `Got error from hermesc: ${cmd.stderr.toString()}`,
                     )
-                else
-                    throw new Error(`hermesc exited with code: ${cmd.exitCode}`)
+                else throw new Error(`hermesc exited with code: ${cmd.status}`)
             }
 
             const buf = cmd.stdout
             if (!buf.length)
                 throw new Error(
-                    `No output from hermesc. Probably a compilation error.\nTry running the command manually: ${cmdlist.join(' ')}`,
+                    `No output from hermesc. Probably a compilation error.\nTry running the command manually: ${binPath} ${argList.join(' ')}`,
                 )
 
             this.emitFile({

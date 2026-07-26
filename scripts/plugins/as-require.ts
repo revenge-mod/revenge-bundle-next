@@ -8,8 +8,10 @@ import type { RolldownPlugin } from 'rolldown'
  * - Dynamic side-effect imports: `import('module')` and `await import('module')`
  */
 export default function asRequire() {
+    const name = 'as-require'
+
     return {
-        name: 'as-require',
+        name,
         transform(code, id) {
             if (!code.includes('// @as-require')) return null
 
@@ -45,7 +47,7 @@ export default function asRequire() {
                 }
 
                 this.warn(
-                    `[${this.pluginName}] Warning: Could not transform statement in ${id}:\n${statement}\n` +
+                    `[${name}] Warning: Could not transform statement in ${id}:\n${statement}\n` +
                         `The line after the comment must be a side-effect import or a dynamic import with .then().`,
                 )
 

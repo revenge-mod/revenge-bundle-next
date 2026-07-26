@@ -1,19 +1,23 @@
-import { $, main } from 'bun'
 import chalk from 'chalk'
-import { exists, mkdir, readdir, rm, writeFile } from 'fs/promises'
-import { parse } from 'path'
+import { execSync } from 'child_process'
+import { mkdir, readdir, rm, writeFile } from 'fs/promises'
+import { dirname, parse } from 'path'
 import { rolldown } from 'rolldown'
 import { importGlobPlugin } from 'rolldown/experimental'
-import pkg from '../package.json'
+import { fileURLToPath } from 'url'
+import pkg from '../package.json' with { type: 'json' }
+import { exists } from './_shared'
 import asRequire from './plugins/as-require'
 import hermesSwcPlugin from './plugins/hermes-swc'
 import hermesCPlugin from './plugins/hermesc'
 import importDefer from './plugins/import-defer'
 import shimAliases from './plugins/shim-aliases'
 
-const ShimsDir = `${import.meta.dir}/../shims`
-const AssetsDir = `${import.meta.dir}/../src/assets`
-const GeneratedAssetsDir = `${import.meta.dir}/../dist/assets/generated`
+const __dirname = dirname(fileURLToPath(import.meta.url))
+
+const ShimsDir = `${__dirname}/../shims`
+const AssetsDir = `${__dirname}/../src/assets`
+const GeneratedAssetsDir = `${__dirname}/../dist/assets/generated`
 
 await rm(GeneratedAssetsDir, { recursive: true, force: true })
     .then(() =>
@@ -25,7 +29,7 @@ const Dev =
     process.argv.includes('--dev') || process.env.NODE_ENV === 'development'
 
 // If this file is being run directly, build the project
-if (main === import.meta.filename) build()
+if (import.meta.main) build()
 
 export default async function build(dev = Dev, log = true) {
     const start = performance.now()
@@ -35,7 +39,10 @@ export default async function build(dev = Dev, log = true) {
     if (log) console.info(chalk.cyanBright('\u{1F5BB} Assets generated'))
     if (log) console.info(chalk.gray('\u{1F5CE} Compiling JS...'))
 
-    const COMMIT = (await $`git rev-parse HEAD`.text()).trim().substring(0, 7)
+    const COMMIT = execSync('git rev-parse HEAD')
+        .toString()
+        .trim()
+        .substring(0, 7)
     const REPO = 'revenge-mod/revenge-bundle-next'
 
     const bundle = await rolldown({
@@ -67,7 +74,9 @@ export default async function build(dev = Dev, log = true) {
                 __BUILD_VERSION__: JSON.stringify(pkg.version),
                 __BUILD_COMMIT__: JSON.stringify(COMMIT),
                 __BUILD_BRANCH__: JSON.stringify(
-                    (await $`git rev-parse --abbrev-ref HEAD`.text()).trim(),
+                    execSync('git rev-parse --abbrev-ref HEAD')
+                        .toString()
+                        .trim(),
                 ),
                 __DEV__: String(dev),
 
@@ -79,6 +88,11 @@ export default async function build(dev = Dev, log = true) {
             },
         },
         tsconfig: 'tsconfig.json',
+        // propertyReadSideEffects: false works around a Rolldown bug where
+        // property reads on tree-shaken import bindings are kept as "side
+        // effects" while their imports are removed, producing free-variable
+        // references (e.g. `FibonacciHeap.MinFibonacciHeap` from mnemonist's
+        // barrel) that throw ReferenceError at runtime.
         treeshake: true,
         moduleTypes: {
             '.webp': 'dataurl',

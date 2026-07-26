@@ -1,13 +1,19 @@
 import watcher from '@parcel/watcher'
 import { debounce } from '@revenge-mod/utils/callback'
 import chalk from 'chalk'
+import { readFile } from 'fs/promises'
+import { createServer } from 'http'
 import os from 'os'
 import { join } from 'path'
-import pkg from '../package.json'
+import { crc32 } from 'zlib'
+import pkg from '../package.json' with { type: 'json' }
 import build from './build'
 
 const prod = process.argv.includes('--prod')
 const lanHost = process.argv.includes('--lan')
+
+const Port = 4040
+const BundlePath = './dist/revenge.bundle'
 
 console.info(chalk.redBright(`\nRevenge ${chalk.white(`v${pkg.version}`)}\n`))
 
@@ -43,50 +49,45 @@ watcher.subscribe(process.cwd(), (err, events) => {
     )
 })
 
-const server = Bun.serve({
-    hostname: lanHost ? '0.0.0.0' : '127.0.0.1',
-    async fetch(req, srv) {
-        try {
-            if (needRebuild) await debouncedBuild()
+const server = createServer(async (req, res) => {
+    try {
+        if (needRebuild) await debouncedBuild()
+        console.debug(
+            chalk.gray(
+                `\u{1F79B} Receiving request from ${req.socket.remoteAddress}`,
+            ),
+        )
+
+        const bundle = await readFile(BundlePath).catch(() => null)
+        if (!bundle)
+            throw new Error('Could not serve the bundle! No file found.')
+
+        const hash = crc32(bundle).toString(16)
+
+        if (req.headers['if-none-match'] === hash) {
             console.debug(
-                chalk.gray(
-                    `\u{1F79B} Receiving request from ${srv.requestIP(req)!.address}`,
-                ),
+                chalk.gray('\u{1F4BE} ETag matched, responding with 304'),
             )
 
-            const file = Bun.file('./dist/revenge.bundle')
-
-            if (await file.exists()) {
-                const hash = Bun.hash
-                    .crc32(await file.arrayBuffer())
-                    .toString(16)
-
-                if (req.headers.get('If-None-Match') === hash) {
-                    console.debug(
-                        chalk.gray(
-                            '\u{1F4BE} ETag matched, responding with 304',
-                        ),
-                    )
-
-                    return new Response(null, {
-                        status: 304,
-                    })
-                }
-
-                return new Response(file, {
-                    status: 200,
-                    headers: {
-                        ETag: hash,
-                    },
-                })
-            } else throw new Error('Could not serve the bundle! No file found.')
-        } catch (e) {
-            console.error(e)
-            throw new Error('Build failed. Check console for details.')
+            res.writeHead(304)
+            res.end()
+            return
         }
-    },
-    port: 4040,
+
+        res.writeHead(200, {
+            ETag: hash,
+            'Content-Length': bundle.byteLength,
+        })
+        res.end(bundle)
+    } catch (e) {
+        console.error(e)
+
+        res.writeHead(500)
+        res.end('Build failed. Check console for details.')
+    }
 })
+
+server.listen(Port, lanHost ? '0.0.0.0' : '127.0.0.1')
 
 if (lanHost) console.info(chalk.gray('\u24D8 Listening on all interfaces...'))
 else
@@ -99,12 +100,12 @@ else
 if (!prod) console.info(chalk.gray('\u24D8 Use --prod to build for production'))
 else console.info(chalk.gray('\u24D8 Building for production...'))
 
-console.info(chalk.cyanBright(`\u24D8 Serving on port ${server.port}`))
+console.info(chalk.cyanBright(`\u24D8 Serving on port ${Port}`))
 console.info(chalk.gray('\u24D8 Accessible on:'))
 
 for (const int of Object.values(os.networkInterfaces()))
     if (int)
         for (const det of int) {
             if (det.family !== 'IPv4' || (!det.internal && !lanHost)) continue
-            console.info(chalk.gray(`- http://${det.address}:${server.port}`))
+            console.info(chalk.gray(`- http://${det.address}:${Port}`))
         }
