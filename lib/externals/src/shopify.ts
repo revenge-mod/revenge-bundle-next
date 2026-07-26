@@ -16,9 +16,9 @@ export let FlashList: typeof import('@shopify/flash-list') = proxify(
         const [module] = lookupModule(
             withProps<typeof FlashList>('FlashList')
                 .and(
-                    // [React, JSXRuntime, (Platform), (FlashListExports), (Reanimated), (RNBottomSheet), (BottomSheet), ImportTracker]
                     withDependencies([
                         ReactModuleId,
+                        ReactNativeModuleId,
                         ReactJSXRuntimeModuleId,
                         null,
                         null,
@@ -28,18 +28,18 @@ export let FlashList: typeof import('@shopify/flash-list') = proxify(
                         // TODO: Decouple?
                         ImportTrackerModuleId,
                     ]).or(
-                        // TODO: Remove when stable > 337206
-                        // [React, RN, JSXRuntime, (FlashListExports), (Reanimated), (RNBottomSheet), ImportTracker, (BottomSheetFlashList)]
+                        // TODO: Remove when stable > 340206+
+                        // [React, JSXRuntime, (Platform), (FlashListExports), (Reanimated), (RNBottomSheet), (BottomSheet), ImportTracker]
                         withDependencies([
                             ReactModuleId,
-                            ReactNativeModuleId,
                             ReactJSXRuntimeModuleId,
+                            null,
+                            null,
                             null,
                             null,
                             null,
                             // TODO: Decouple?
                             ImportTrackerModuleId,
-                            null,
                         ]),
                     ),
                 )
