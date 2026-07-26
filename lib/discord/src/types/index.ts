@@ -23,6 +23,7 @@ import type {
     ViewStyle,
 } from 'react-native'
 
+export * from './api'
 export * from './native'
 export * from './polyfills'
 
