@@ -5,7 +5,7 @@ import {
 } from '@revenge-mod/discord/modules/settings'
 import {
     InternalPluginFlags,
-    isPluginEnabledLate,
+    isPluginStartedLate,
     PluginFlags,
     registerInternalPlugin,
 } from '@revenge-mod/plugins/_'
@@ -56,7 +56,7 @@ registerInternalPlugin<{ jsonStorage: Storage }>(
 
             onSettingsModulesLoaded(utils.register)
 
-            if (isPluginEnabledLate(api_.plugin)) {
+            if (isPluginStartedLate(api_.plugin)) {
                 refreshSettingsOverviewScreen()
                 refreshSettingsNavigator()
             }

@@ -256,6 +256,11 @@ export interface Plugin<
      */
     status: number
     /**
+     * Whether this plugin was started late (after the `start` phase).
+     * This can happen when the plugin is just installed, or the user just started it in the UI.
+     */
+    startedLate: boolean
+    /**
      * Errors encountered during the plugin lifecycles.
      */
     errors: readonly unknown[]

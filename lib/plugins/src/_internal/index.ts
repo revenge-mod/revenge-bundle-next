@@ -52,7 +52,7 @@ const MaxWaitTime = 5000
 export const PluginFlags = {
     Enabled: 1 << 0,
     PendingReload: 1 << 1,
-    EnabledLate: 1 << 2,
+    StartedLate: 1 << 2,
     /**
      * A newer version of the plugin is on disk, but the running version is still active.
      * The new plugin version will be reloaded on next reload.
@@ -253,7 +253,7 @@ function pluginStateToFlags(state: PluginStateObject): number {
     return (
         (state.enabled ? Flag.Enabled : 0) |
         (state.pendingReload ? Flag.PendingReload : 0) |
-        (state.enabledLate ? Flag.EnabledLate : 0)
+        (state.enabledLate || state.startedLate ? Flag.StartedLate : 0)
     )
 }
 
@@ -357,14 +357,17 @@ function register<O extends PluginApiExtensionsOptions>(
         },
         SettingsComponent: resolved?.SettingsComponent,
         status: 0,
-        disable: () => disablePlugin(plugin),
-        stop: () => stopPlugin(plugin),
+        get startedLate(): boolean {
+            return isPluginStartedLate(plugin)
+        },
+        disable: (): Promise<void> => disablePlugin(plugin),
+        stop: (): Promise<void> => stopPlugin(plugin),
         reportError: (e: unknown) => handlePluginError(e, plugin),
         requireReload: () => {
             meta.flags |= Flag.PendingReload
         },
         api: undefined,
-    }
+    } satisfies AnyPlugin
 
     let flags = InitialPersistedStates[manifest.id]
         ? pluginStateToFlags(InitialPersistedStates[manifest.id])
@@ -478,9 +481,9 @@ export function isPluginEnabled(plugin: AnyPlugin): boolean {
     return Boolean(meta && meta.flags & Flag.Enabled)
 }
 
-export function isPluginEnabledLate(plugin: AnyPlugin): boolean {
+export function isPluginStartedLate(plugin: AnyPlugin): boolean {
     const meta = getInternalPluginMeta(plugin)
-    return Boolean(meta && meta.flags & Flag.EnabledLate)
+    return Boolean(meta && meta.flags & Flag.StartedLate)
 }
 
 export function isPluginEssential({ iflags }: InternalPluginMeta): boolean {
@@ -746,7 +749,7 @@ export async function runPluginLate(plugin: AnyPlugin) {
             .filter(plugin => !plugin.status)
             .map(async function runLate(plugin) {
                 const meta = getInternalPluginMeta(plugin)
-                meta.flags |= Flag.EnabledLate
+                meta.flags |= Flag.StartedLate
 
                 // Plugin would already be started native-side if it was not started late
                 // But on late starts (enable, fresh install), we must start the native side too
@@ -1043,7 +1046,9 @@ interface PluginStateObject {
     enabled?: boolean
     pendingReload?: boolean
     errored?: boolean
+    /** @deprecated TODO: (2026-07-26) Remove this in a month's time. */
     enabledLate?: boolean
+    startedLate?: boolean
 }
 
 interface PersistedPluginStates {

@@ -4,7 +4,7 @@ import { getModuleDependencies } from '@revenge-mod/modules/metro/utils'
 import { instead } from '@revenge-mod/patcher'
 import {
     InternalPluginFlags,
-    isPluginEnabledLate,
+    isPluginStartedLate,
     PluginFlags,
     registerInternalPlugin,
 } from '@revenge-mod/plugins/_'
@@ -49,7 +49,7 @@ registerInternalPlugin(
     },
     {
         preInit({ cleanup, plugin }) {
-            if (isPluginEnabledLate(plugin)) plugin.requireReload()
+            if (isPluginStartedLate(plugin)) plugin.requireReload()
 
             // utils/SentryUtils.native.tsx
             const unsubSU = waitForModules(
