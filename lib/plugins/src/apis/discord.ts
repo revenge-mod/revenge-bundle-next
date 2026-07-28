@@ -9,21 +9,22 @@ import defer * as DiscordUtilsMetroSubscriptions from '@revenge-mod/discord/util
 import { defineLazyProperties } from '@revenge-mod/utils/object'
 import { guardIndexInitialized } from '.'
 
-export interface PluginApiDiscord {
-    actions: PluginApiDiscord.Actions
-    /**
-     * This submodule is only available after the index module (ID 0) is initialized.
-     * Attempting to access it before then will throw an error.
-     */
-    common: PluginApiDiscord.Common
-    design: PluginApiDiscord.Design
-    flux: PluginApiDiscord.Flux
-    modules: PluginApiDiscord.Modules
-    native: PluginApiDiscord.Native
-    utils: PluginApiDiscord.Utils
+export interface PreInitPluginApiDiscord {
+    actions: PreInitPluginApiDiscord.Actions
+    /** This API is not available in the `preInit` phase. */
+    common: unknown
+    design: PreInitPluginApiDiscord.Design
+    flux: PreInitPluginApiDiscord.Flux
+    modules: PreInitPluginApiDiscord.Modules
+    native: PreInitPluginApiDiscord.Native
+    utils: PreInitPluginApiDiscord.Utils
 }
 
-export namespace PluginApiDiscord {
+export interface InitPluginApiDiscord extends PreInitPluginApiDiscord {
+    common: PreInitPluginApiDiscord.Common
+}
+
+export namespace PreInitPluginApiDiscord {
     export type Actions = typeof import('@revenge-mod/discord/actions')
     export type Common = typeof import('@revenge-mod/discord/common')
     export type Design = typeof import('@revenge-mod/discord/design')
@@ -46,7 +47,7 @@ export namespace PluginApiDiscord {
 
 export const discord = defineLazyProperties(
     {
-        modules: defineLazyProperties({} as PluginApiDiscord.Modules, {
+        modules: defineLazyProperties({} as PreInitPluginApiDiscord.Modules, {
             mainTabsV2: () => {
                 return DiscordModulesMainTabsV2
             },
@@ -55,7 +56,7 @@ export const discord = defineLazyProperties(
                 ...require('@revenge-mod/discord/modules/settings/renderer'),
             }),
         }),
-        utils: defineLazyProperties({} as PluginApiDiscord.Utils, {
+        utils: defineLazyProperties({} as PreInitPluginApiDiscord.Utils, {
             finders: () => {
                 return DiscordUtilsFinders
             },
@@ -63,7 +64,7 @@ export const discord = defineLazyProperties(
                 subscriptions: DiscordUtilsMetroSubscriptions,
             }),
         }),
-    } as PluginApiDiscord,
+    } as PreInitPluginApiDiscord,
     {
         actions: () => {
             return DiscordActions

@@ -21,7 +21,12 @@ import {
 } from '.'
 import { pPending } from './dependency-graph'
 import { registerRepositoryEvents } from './repositories'
-import type { PluginManifest, PluginOptionsFactory } from '../types'
+import type {
+    PluginLifecycles,
+    PluginManifest,
+    PluginOptions,
+    PluginOptionsFactory,
+} from '../types'
 import type {
     AnyPlugin,
     PluginError,
@@ -221,9 +226,44 @@ export function confirmInstall(
     return callNativeMethod('revenge.plugins.confirmInstall', [token, accepted])
 }
 
+function assertIsFunction(
+    name: string,
+    value: unknown,
+): asserts value is (...args: any[]) => any {
+    if (typeof value !== 'function')
+        throw new Error(`${name} must be a function, got ${typeof value}`)
+}
+
 function createOptionsFactory(script?: string): PluginOptionsFactory {
     if (!script) return () => ({})
-    return () => new Function('revenge', `return ${script}`)(pUnscopedApi)
+
+    return () => {
+        const opts = new Function('revenge', 'plugin', `return ${script}`)(
+            pUnscopedApi,
+            // See types.consumers.ts
+            (opts: PluginOptions) => opts,
+        )()
+        if (typeof opts !== 'object' || opts === null)
+            throw new Error('Plugin options must be an object')
+
+        if (
+            opts.SettingsComponent !== undefined &&
+            typeof opts.SettingsComponent !== 'function'
+        )
+            throw new Error(
+                'SettingsComponent must be a function React component',
+            )
+
+        for (const key of ['preInit', 'init', 'start'] as Array<
+            keyof PluginLifecycles
+        >) {
+            if (opts[key] !== undefined) {
+                assertIsFunction(key, opts[key])
+            }
+        }
+
+        return opts
+    }
 }
 
 declare module '@revenge-mod/modules/native' {

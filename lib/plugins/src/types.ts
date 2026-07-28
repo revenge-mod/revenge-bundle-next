@@ -1,5 +1,8 @@
 import type { FunctionComponent } from 'react'
-import type { PluginApiDiscord } from './apis/discord'
+import type {
+    InitPluginApiDiscord,
+    PreInitPluginApiDiscord,
+} from './apis/discord'
 import type { PluginApiExternals } from './apis/externals'
 import type { PluginApiModules } from './apis/modules'
 import type { PluginApiPlugins } from './apis/plugins'
@@ -23,8 +26,9 @@ export interface UnscopedPreInitPluginApi<
     react: PluginApiReact
     assets: typeof import('@revenge-mod/assets')
     externals: PluginApiExternals
-    components: typeof import('@revenge-mod/components')
-    discord: PluginApiDiscord
+    /** This API is not available in the `preInit` phase. */
+    components: unknown
+    discord: PreInitPluginApiDiscord
 }
 
 /**
@@ -33,7 +37,10 @@ export interface UnscopedPreInitPluginApi<
  */
 export interface UnscopedInitPluginApi<
     O extends PluginApiExtensionsOptions = PluginApiExtensionsOptions,
-> extends UnscopedPreInitPluginApi<O> {}
+> extends UnscopedPreInitPluginApi<O> {
+    components: typeof import('@revenge-mod/components')
+    discord: InitPluginApiDiscord
+}
 
 /**
  * The unscoped plugin API. This API is available as a global for plugins.
