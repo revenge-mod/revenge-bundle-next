@@ -93,11 +93,12 @@ const unsubAR = waitForModules(
  */
 export let AssetsRegistryModuleId: Metro.ModuleID | undefined
 export let AssetsRegistry: ReactNative.AssetsRegistry = proxify(() => {
+    if (AssetsRegistryModuleId !== undefined) return __r(AssetsRegistryModuleId)
+
     for (const [, id] of lookupModules(withDependencies([[]]), {
         initialize: false,
     })) {
         const deps = getModuleDependencies(id)!
-        if (deps.length !== 1) continue
 
         // The module next to assets-registry is AssetSourceResolver
         if (withAssetSourceResolver(deps[0] + 1)) {
