@@ -242,7 +242,8 @@ function createOptionsFactory(script?: string): PluginOptionsFactory {
             pUnscopedApi,
             // See types.consumers.ts
             (opts: PluginOptions) => opts,
-        )()
+        )?.default
+
         if (typeof opts !== 'object' || opts === null)
             throw new Error('Plugin options must be an object')
 
