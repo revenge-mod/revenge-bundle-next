@@ -19,6 +19,7 @@ import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import { useCallback, useEffect, useState } from 'react'
 import { ScrollView, View } from 'react-native'
 import { api } from '..'
+import { toConfig } from '../repos'
 import { formatBytes, messageOf, showErrorToast } from '../utils/repos'
 import type {
     DownloadProgressEvent,
@@ -43,10 +44,6 @@ const MoreIcon = getAssetIdByName('MoreVerticalIcon')!
 const UpIconComponent = lookupGeneratedIconComponent('ArrowSmallUpIcon')!
 const DownIconComponent = lookupGeneratedIconComponent('ArrowSmallDownIcon')!
 const TrashIconComponent = lookupGeneratedIconComponent('TrashIcon')!
-
-function toConfig(list: Repo[]): RepoConfigEntry[] {
-    return list.map(({ url, enabled }) => ({ url, enabled }))
-}
 
 function repoSubLabel(repo: Repo, state?: RepoStateEvent['state']) {
     if (state === 'refreshing') return `${repo.url} (refreshing...)`
@@ -206,6 +203,8 @@ export default function RevengePluginsAdvancedSettingScreen() {
 
     const removeRepo = useCallback(
         async (repo: Repo) => {
+            // TODO: Add warning for default repo removal, user can clear "Plugin Settings" data to restore the default repo
+
             await commit(toConfig(userRepos.filter(r => r.url !== repo.url)))
 
             // Plugins installed from the removed repository turn Sideloaded
