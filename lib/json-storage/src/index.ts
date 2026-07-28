@@ -34,7 +34,8 @@ export const JsonStorageUpdateMode = {
      */
     Replace: 1,
     /**
-     * Same behavior as {@link JsonStorageUpdateMode.Replace}, but for the intial load of the storage.
+     * Same behavior as {@link JsonStorageUpdateMode.Replace}, but for when the storage is being synced from disk.
+     * E.g. on initial load, or when the storage file is deleted and recreated.
      */
     Load: 2,
 } as const
@@ -221,7 +222,8 @@ export interface JsonStorage<T extends AnyObject> {
      */
     subscribe(callback: JsonStorageSubscription<T>): () => void
     /**
-     * Get the storage.
+     * Reads the storage from disk.
+     * If the storage does not exist, it will be created with the default value.
      */
     get(): Promise<T>
     /**
