@@ -1,9 +1,11 @@
 import { main } from 'bun'
 import chalk from 'chalk'
-import { mkdir, rm } from 'fs/promises'
+import { mkdir, readFile, rm, writeFile } from 'fs/promises'
 import { rolldown } from 'rolldown'
 import { dts } from 'rolldown-plugin-dts'
 import pkg from '../package.json'
+
+const TYPES_PACKAGE_NAME = '@revenge-mod/types'
 
 const PATHS = {
     lib: 'lib',
@@ -34,18 +36,20 @@ export default async function buildTypes(log = true): Promise<void> {
     if (log) console.info(chalk.gray('🏗️  Generating types...'))
 
     try {
-        const bundle = await rolldown({
-            input: {
-                ...Object.fromEntries(
-                    Libraries.flatMap(([libName, exports]) =>
-                        exports.map(([exportName, path]) => [
-                            `lib/${libName}${exportName && `/${exportName}`}`,
-                            path,
-                        ]),
-                    ),
+        const input: Record<string, string> = {
+            ...Object.fromEntries(
+                Libraries.flatMap(([libName, exports]) =>
+                    exports.map(([exportName, path]) => [
+                        `lib/${libName}${exportName && `/${exportName}`}`,
+                        path,
+                    ]),
                 ),
-                globals: './types/globals.consumers.ts',
-            },
+            ),
+            globals: './types/globals.consumers.ts',
+        }
+
+        const bundle = await rolldown({
+            input,
             external: Object.keys({
                 ...pkg.dependencies,
                 ...pkg.devDependencies,
@@ -64,6 +68,31 @@ export default async function buildTypes(log = true): Promise<void> {
         await bundle.write({
             dir: PATHS.output,
         })
+
+        await writeFile(
+            `${PATHS.output}/index.d.ts`,
+            await generateIndex(input),
+        )
+
+        // Make dist/types directly publishable
+        await writeFile(
+            `${PATHS.output}/package.json`,
+            `${JSON.stringify(
+                {
+                    name: TYPES_PACKAGE_NAME,
+                    version: pkg.version,
+                    types: 'index.d.ts',
+                    exports: {
+                        '.': { types: './index.d.ts' },
+                    },
+                    imports: {
+                        '#*': { types: './*.d.ts' },
+                    },
+                },
+                null,
+                4,
+            )}\n`,
+        )
 
         if (log) {
             const duration = (performance.now() - start).toFixed(2)
@@ -186,6 +215,42 @@ function library<
     }
 
     return [pkgName, mapped]
+}
+
+/**
+ * Generates `index.d.ts` for the published types package.
+ *
+ * Consumers install the types package and add it to their tsconfig `types`, which loads a file that:
+ *
+ * - References `globals.d.ts` so global declarations (eg. `plugin()`, `revenge`) apply.
+ * - Declares an ambient module for every public entry that re-exports the generated types file
+ *   via a package-private `imports` (eg. `#lib/assets`), which resolves inside the types package
+ *   without being importable to consumers.
+ */
+async function generateIndex(input: Record<string, string>): Promise<string> {
+    const shims: string[] = []
+
+    for (const entry of Object.keys(input).sort()) {
+        // not importable, it's included via the reference above
+        if (entry === 'globals') continue
+
+        const moduleName = entry.replace(/^lib\//, '@revenge-mod/')
+        const typesPath = `#${entry}`
+        const dts = await readFile(`${PATHS.output}/${entry}.d.ts`, 'utf8')
+        // `export *` does not re-export default exports
+        const hasDefault = /\bas default\b|\bexport default\b/.test(dts)
+
+        shims.push(
+            `declare module '${moduleName}' {\n` +
+                `    export * from '${typesPath}'\n` +
+                (hasDefault
+                    ? `    export { default } from '${typesPath}'\n`
+                    : '') +
+                '}',
+        )
+    }
+
+    return `/// <reference path="./globals.d.ts" />\n\n${shims.join('\n\n')}\n`
 }
 
 const Libraries = [
