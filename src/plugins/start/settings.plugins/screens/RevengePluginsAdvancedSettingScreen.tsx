@@ -4,6 +4,7 @@ import { styles } from '@revenge-mod/components/_'
 import Page from '@revenge-mod/components/Page'
 import TableRowAssetIcon from '@revenge-mod/components/TableRowAssetIcon'
 import { Design } from '@revenge-mod/discord/design'
+import { Clipboard } from '@revenge-mod/externals/react-native-clipboard'
 import { callNativeMethod } from '@revenge-mod/modules/native'
 import { resyncPluginSources } from '@revenge-mod/plugins/_'
 import {
@@ -46,9 +47,10 @@ const DownIconComponent = lookupGeneratedIconComponent('ArrowSmallDownIcon')!
 const TrashIconComponent = lookupGeneratedIconComponent('TrashIcon')!
 
 function repoSubLabel(repo: Repo, state?: RepoStateEvent['state']) {
-    if (state === 'refreshing') return `${repo.url} (refreshing...)`
-    if (state === 'error') return `${repo.url} (refresh failed)`
-    return repo.url
+    const start = repo.description || repo.url
+    if (state === 'refreshing') return `${start} (refreshing...)`
+    if (state === 'error') return `${start} (refresh failed)`
+    return start
 }
 
 interface UserRepoRowProps {
@@ -87,6 +89,13 @@ function UserRepoRow({
                     refreshRepo(repo.url).catch(e => {
                         showErrorToast(messageOf(e))
                     }),
+            },
+            {
+                label: 'Copy URL',
+                IconComponent: lookupGeneratedIconComponent('CopyIcon')!,
+                action: () => {
+                    Clipboard.setString(repo.url)
+                },
             },
             {
                 label: 'Delete',
