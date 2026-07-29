@@ -19,7 +19,7 @@
     "@types/react": "^19.2.17",
     "buffer": "^6.0.3",
     "react": "19.1.0",
-    "react-native": "0.81.4",
+    "react-native": "0.86.0",
     "typescript": "^7.0.2"
   },
   "private": true,
@@ -53,6 +53,7 @@
     "@revenge-mod/utils": "workspace:*",
     "@swc/core": "^1.15.43",
     "chalk": "^5.6.2",
+    "hermes-compiler": "250829098.0.15",
     "magic-string": "^1.1.0",
     "react-native-click-outside": "^0.1.1",
     "rolldown": "1.2.0"

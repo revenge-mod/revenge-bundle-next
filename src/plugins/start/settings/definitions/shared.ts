@@ -1,5 +1,6 @@
 import { ToastActionCreators } from '@revenge-mod/discord/actions'
 import { Clipboard } from '@revenge-mod/externals/react-native-clipboard'
+import { ReactNative } from '@revenge-mod/react'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import type { SettingsItem } from '@revenge-mod/discord/modules/settings'
 
@@ -21,3 +22,9 @@ export const CopyableSetting = (
         })
     },
 })
+
+export const getRNVersion = () => {
+    const { major, minor, patch, prerelease } =
+        ReactNative.Platform.constants.reactNativeVersion
+    return `${major}.${minor}.${patch}${prerelease ? `-${prerelease}` : ''}`
+}

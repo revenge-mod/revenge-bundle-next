@@ -10,18 +10,11 @@ import type { DiscordModules } from './types'
 const [, _asyncToGeneratorModuleId] = lookupModule(
     withName('_asyncToGenerator'),
 )
-const [, _classCallCheckModuleId] = lookupModule(withName('_classCallCheck'))
-const [, _createClassModuleId] = lookupModule(withName('_createClass'))
 
 // ../discord_common/js/packages/app-start-performance/AppStartPerformance.tsx
 export const [AppStartPerformance] = lookupModule(
     withProps<DiscordModules.AppStartPerformance>('markAndLog').and(
-        withDependencies([
-            _asyncToGeneratorModuleId,
-            _classCallCheckModuleId,
-            _createClassModuleId,
-            2,
-        ]),
+        withDependencies([_asyncToGeneratorModuleId, 2]),
     ),
 ) as [DiscordModules.AppStartPerformance, Metro.ModuleID]
 

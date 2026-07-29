@@ -3,7 +3,6 @@ import { Setting } from '../constants'
 import { CopyableSetting } from './shared'
 import type { SettingsItem } from '@revenge-mod/discord/modules/settings'
 
-// @ts-expect-error
 const props = HermesInternal.getRuntimeProperties()
 
 const HermesVersionSetting: SettingsItem = CopyableSetting(

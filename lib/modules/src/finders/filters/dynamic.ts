@@ -213,6 +213,10 @@ function depCompare(
 
         const id = a[i]
 
+        // Very rare case where a module dependency has an unused `null` dependency
+        // TODO: Probably a Metro/Discord bug?
+        if (id === null) return false
+
         switch (typeof compare) {
             case 'function': {
                 const filter = compare

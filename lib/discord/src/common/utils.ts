@@ -17,12 +17,15 @@ export let TypedEventEmitter: typeof DiscordModules.Utils.TypedEventEmitter =
             withName<typeof DiscordModules.Utils.TypedEventEmitter>(
                 'TypedEventEmitter',
             ).and(
-                withDependencies([
-                    withName('_classCallCheck'),
-                    withName('_createClass'),
-                    [],
-                    ImportTrackerModuleId,
-                ]),
+                withDependencies([[], ImportTrackerModuleId]).or(
+                    // TODO: Remove when stable > 341202
+                    withDependencies([
+                        withName('_classCallCheck'),
+                        withName('_createClass'),
+                        [],
+                        ImportTrackerModuleId,
+                    ]),
+                ),
             ),
         )
 

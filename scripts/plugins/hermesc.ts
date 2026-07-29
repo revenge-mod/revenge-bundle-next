@@ -20,15 +20,17 @@ export default function hermesCPlugin({
     if (!(process.platform in paths))
         throw new Error(`Unsupported platform: ${process.platform}`)
 
-    const sdksDir = './node_modules/react-native/sdks'
-    const binPath = `${sdksDir}/hermesc/${paths[process.platform as keyof typeof paths]}`
+    const sdksDir = './node_modules/hermes-compiler/hermesc'
+    const binPath = `${sdksDir}/${paths[process.platform as keyof typeof paths]}`
 
     if (!existsSync(binPath))
         throw new Error(
             `Hermes compiler not found at ${binPath}. Please ensure you have react-native installed.`,
         )
 
-    const ver = readFileSync(`${sdksDir}/.hermesversion`).toString()
+    const ver = JSON.parse(
+        readFileSync(`${sdksDir}/../package.json`).toString(),
+    ).version
 
     return {
         name: 'hermesc',
