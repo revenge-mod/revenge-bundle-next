@@ -26,7 +26,6 @@
     "src",
     "types",
     "./types/*.d.ts",
-    "node_modules/@types/node/events.d.ts",
     "node_modules/@types/node/util.d.ts",
     "node_modules/react-native/types/index.d.ts",
     // Build artifacts required to emit types

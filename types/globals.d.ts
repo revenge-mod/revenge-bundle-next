@@ -23,8 +23,6 @@ declare module 'react' {
 /// HERMES
 
 declare global {
-    const HermesInternal: HermesInternalObject
-
     function setTimeout(
         cb: (...args: unknown[]) => unknown,
         timeout?: number,
@@ -95,10 +93,7 @@ declare global {
     var __METRO_GLOBAL_PREFIX__: ''
 
     var __d: Metro.DefineFn
-    var __r: Metro.RequireFn & {
-        importDefault: Metro.ImportDefaultFn
-        importAll: Metro.ImportAllFn
-    }
+    var __r: Metro.Require
     var __c: Metro.ClearFn
     var __registerSegment: Metro.RegisterSegmentFn
 }

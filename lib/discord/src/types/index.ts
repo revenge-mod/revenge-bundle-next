@@ -1,4 +1,3 @@
-import { EventEmitter } from 'node:events'
 import type { StackScreenProps } from '@react-navigation/stack'
 import type { ReactNavigationParamList } from '@revenge-mod/externals/react-navigation'
 import type {
@@ -699,10 +698,40 @@ export namespace DiscordModules {
         export namespace TypedEventEmitter {
             export type DefaultEventMap = [never]
             export type EventMap<T> = Record<keyof T, any[]> | DefaultEventMap
+            export type Listener<T, K extends keyof T> = T[K] extends any[]
+                ? (...args: T[K]) => void
+                : never
         }
 
-        export class TypedEventEmitter<
+        export declare class TypedEventEmitter<
             T extends Record<string, any[]> = Record<string, any[]>,
-        > extends EventEmitter<T> {}
+        > {
+            addListener<K extends keyof T>(
+                event: K,
+                listener: TypedEventEmitter.Listener<T, K>,
+            ): this
+            on<K extends keyof T>(
+                event: K,
+                listener: TypedEventEmitter.Listener<T, K>,
+            ): this
+            once<K extends keyof T>(
+                event: K,
+                listener: TypedEventEmitter.Listener<T, K>,
+            ): this
+            removeListener<K extends keyof T>(
+                event: K,
+                listener: TypedEventEmitter.Listener<T, K>,
+            ): this
+            off<K extends keyof T>(
+                event: K,
+                listener: TypedEventEmitter.Listener<T, K>,
+            ): this
+            removeAllListeners(event?: keyof T): this
+            emit<K extends keyof T>(event: K, ...args: T[K]): boolean
+            listenerCount<K extends keyof T>(
+                event: K,
+                listener?: TypedEventEmitter.Listener<T, K>,
+            ): number
+        }
     }
 }
