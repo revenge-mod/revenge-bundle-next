@@ -21,6 +21,7 @@ import {
 } from '.'
 import { pPending } from './dependency-graph'
 import { registerRepositoryEvents } from './repositories'
+import type { AnyFunction } from '@revenge-mod/utils/types'
 import type {
     PluginLifecycles,
     PluginManifest,
@@ -229,7 +230,7 @@ export function confirmInstall(
 function assertIsFunction(
     name: string,
     value: unknown,
-): asserts value is (...args: any[]) => any {
+): asserts value is AnyFunction {
     if (typeof value !== 'function')
         throw new Error(`${name} must be a function, got ${typeof value}`)
 }

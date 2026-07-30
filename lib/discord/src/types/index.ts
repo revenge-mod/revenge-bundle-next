@@ -1,5 +1,6 @@
 import type { StackScreenProps } from '@react-navigation/stack'
 import type { ReactNavigationParamList } from '@revenge-mod/externals/react-navigation'
+import type { AnyFunction } from '@revenge-mod/utils/types'
 import type {
     ComponentProps,
     ComponentType,
@@ -128,13 +129,7 @@ export namespace DiscordModules {
     }
 
     export interface Constants {
-        [K: string]:
-            | string
-            | number
-            | boolean
-            | null
-            | ((...args: any[]) => any)
-            | Constants
+        [K: string]: string | number | boolean | null | AnyFunction | Constants
     }
 
     /**

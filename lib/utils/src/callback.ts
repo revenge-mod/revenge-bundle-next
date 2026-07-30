@@ -1,3 +1,5 @@
+import type { AnyFunction } from '@revenge-mod/utils/types'
+
 export function debounce<F extends (...args: any[]) => any>(
     func: F,
     timeout: number,
@@ -20,7 +22,7 @@ const now = (cb: () => any) => {
  * A function that runs the callback as soon as possible.
  * @param cb The callback to run.
  */
-export const asap = (cb: (...args: any[]) => any) => {
+export const asap = (cb: AnyFunction) => {
     // @ts-expect-error
     ;(HermesInternal.useEngineQueue()
         ? // @ts-expect-error

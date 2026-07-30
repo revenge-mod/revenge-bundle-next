@@ -1,4 +1,5 @@
 import { getCurrentStack, getErrorStack } from '@revenge-mod/utils/error'
+import type { AnyFunction } from '@revenge-mod/utils/types'
 
 const turboModuleProxy = globalThis.__turboModuleProxy
 
@@ -104,8 +105,6 @@ export function getBridgeInfo(): BridgeInfo | null {
         return null
     }
 }
-
-type AnyFunction = (...args: any[]) => any
 
 const CallableReturnNativeMethodName = 'revenge.__callableReturn' as const
 const CallableModuleName = 'RevengeBridge'
