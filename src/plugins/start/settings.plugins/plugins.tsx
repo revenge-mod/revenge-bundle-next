@@ -4,7 +4,7 @@ import {
     ToastActionCreators,
 } from '@revenge-mod/discord/actions'
 import {
-    refreshSettingsNavigator,
+    refreshSettings,
     registerSettingsItem,
 } from '@revenge-mod/discord/modules/settings'
 import {
@@ -72,12 +72,10 @@ pEmitter.on('started', plugin => {
                     getComponent: () => PluginSettings,
                 },
             }),
-            refreshSettingsNavigator,
-            // TODO(PalmDevs): In the future, we may allow pinning plugin settings, so we'll need this cleanup
-            // () => refreshSettingsOverviewScreen(),
+            refreshSettings,
         )
 
-        refreshSettingsNavigator()
+        refreshSettings()
     }
 })
 

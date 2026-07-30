@@ -4,6 +4,7 @@ import type {
     ComponentProps,
     ComponentType,
     FC,
+    MemoExoticComponent,
     ReactElement,
     ReactNode,
     RefAttributes,
@@ -623,6 +624,7 @@ export namespace DiscordModules {
         export namespace Settings {
             export interface SettingListRenderer {
                 SettingsList: SettingsList
+                SearchableSettingsList: SearchableSettingsList
             }
 
             export interface SettingsListProps {
@@ -640,7 +642,14 @@ export namespace DiscordModules {
                 }
             }
 
-            export type SettingsList = FC<SettingsListProps>
+            export type SettingsList = MemoExoticComponent<
+                FC<SettingsListProps>
+            >
+
+            // TODO: Type props properly
+            export type SearchableSettingsList = MemoExoticComponent<
+                FC<SettingsListProps>
+            >
 
             export interface SettingsSection {
                 label: string

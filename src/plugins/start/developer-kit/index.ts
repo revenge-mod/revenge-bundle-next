@@ -1,7 +1,6 @@
 import {
     onSettingsModulesLoaded,
-    refreshSettingsNavigator,
-    refreshSettingsOverviewScreen,
+    refreshSettings,
 } from '@revenge-mod/discord/modules/settings'
 import {
     InternalPluginFlags,
@@ -57,8 +56,7 @@ registerInternalPlugin<{ jsonStorage: Storage }>(
             onSettingsModulesLoaded(utils.register)
 
             if (isPluginStartedLate(api_.plugin)) {
-                refreshSettingsOverviewScreen()
-                refreshSettingsNavigator()
+                refreshSettings()
             }
 
             const settings = await api.jsonStorage.get()
@@ -71,7 +69,7 @@ registerInternalPlugin<{ jsonStorage: Storage }>(
             if (settings.reactDevTools.autoConnect) rdt.connect()
         },
         stop({ cleanup }) {
-            cleanup(refreshSettingsOverviewScreen, refreshSettingsNavigator)
+            cleanup(refreshSettings)
         },
     },
     PluginFlags.Enabled,

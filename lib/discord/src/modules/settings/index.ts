@@ -138,18 +138,22 @@ export function addSettingsItemToSection(
     }
 }
 
-/**
- * Refreshes the SettingsOverviewScreen.
- */
-export function refreshSettingsOverviewScreen() {
-    sRefresher.overviewScreen = true
+function refreshSettingsOverviewScreen() {
+    sRefresher.overviewScreen++
     sRefresher.callOverviewScreen()
 }
 
-/**
- * Refreshes the settings navigator.
- */
-export function refreshSettingsNavigator() {
-    sRefresher.navigator = true
+function refreshSettingsNavigator() {
+    sRefresher.navigator++
+    sRefresher.callHookHarness()
     sRefresher.callNavigator()
+    sRefresher.callSearchableSettingsList()
+}
+
+/**
+ * Refreshes the settings UI.
+ */
+export function refreshSettings() {
+    refreshSettingsOverviewScreen()
+    refreshSettingsNavigator()
 }

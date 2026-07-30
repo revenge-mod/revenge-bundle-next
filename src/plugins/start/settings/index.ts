@@ -1,8 +1,9 @@
 import { sRefresher, sSections } from '@revenge-mod/discord/_/modules/settings'
 import { onSettingsModulesLoaded } from '@revenge-mod/discord/modules/settings'
+import defer * as Renderer from '@revenge-mod/discord/modules/settings/renderer'
 import { waitForModuleWithImportedPath } from '@revenge-mod/discord/utils/modules/finders'
 import { waitForModules } from '@revenge-mod/modules/finders'
-import { withName } from '@revenge-mod/modules/finders/filters'
+import { withName, withProps } from '@revenge-mod/modules/finders/filters'
 import { instead } from '@revenge-mod/patcher'
 import {
     InternalPluginFlags,
@@ -14,9 +15,33 @@ import { asap, noop } from '@revenge-mod/utils/callback'
 import { getCurrentStack } from '@revenge-mod/utils/error'
 import { useReRender } from '@revenge-mod/utils/react'
 import { useEffect } from 'react'
-import type { FC } from 'react'
+import type { SettingsSection } from '@revenge-mod/discord/modules/settings'
+import type { AnyFunction, KeyWithType } from '@revenge-mod/utils/types'
+import type { FC, MemoExoticComponent, useMemo } from 'react'
+
+interface MemoComponentModule {
+    default: MemoExoticComponent<FC<any>>
+}
+
+interface UseSettingSearchResultsModule {
+    useSettingSearchResults: AnyFunction
+}
+
+interface SettingsOverviewScreenModule {
+    default: FC
+}
+
+interface OverviewSettingsNode {
+    sections?: SettingsSection[]
+}
+
+type UseMemoHook = (args: any[], useMemo_: typeof useMemo) => any
+
+type RefreshIdKey = KeyWithType<typeof sRefresher, number>
+type RefreshCallbackKey = KeyWithType<typeof sRefresher, () => void>
 
 let DEBUG_patchedNavigator = false
+let DEBUG_patchedHookHarness = false
 
 const pluginSettings = registerInternalPlugin(
     {
@@ -32,25 +57,42 @@ const pluginSettings = registerInternalPlugin(
                 // @as-require
                 import('./register')
 
-                // Debug warnings
-                asap(() => {
-                    if (__DEV__ && !DEBUG_patchedNavigator)
-                        DEBUG_warnUnpatchedNavigator()
-                })
+                patchSearchableSettingsList()
+
+                if (__DEV__) asap(DEBUG_warnUnpatchedModules)
             })
 
-            waitForModuleWithImportedPath(
+            waitForModuleWithImportedPath<MemoComponentModule>(
+                'modules/settings/native/renderer/SettingHookHarness.tsx',
+                patchSettingHookHarness,
+            )
+
+            waitForModuleWithImportedPath<MemoComponentModule>(
                 'modules/user_settings/core/native/SettingsNavigator.tsx',
-                exports => {
-                    patchSettingsNavigator(exports)
-                },
+                patchSettingsNavigator,
             )
 
             const unsubSOS = waitForModules(
                 withName('SettingsOverviewScreen'),
                 exports => {
                     unsubSOS()
-                    patchSettingsOverviewScreen(exports)
+                    patchSettingsOverviewScreen(
+                        exports as SettingsOverviewScreenModule,
+                    )
+                },
+                {
+                    cached: true,
+                    returnNamespace: true,
+                },
+            )
+
+            const unsubUSSR = waitForModules(
+                withProps('useSettingSearchResults'),
+                exports => {
+                    unsubUSSR()
+                    patchUseSettingSearchResults(
+                        exports as UseSettingSearchResultsModule,
+                    )
                 },
                 {
                     cached: true,
@@ -63,102 +105,193 @@ const pluginSettings = registerInternalPlugin(
     InternalPluginFlags.Internal | InternalPluginFlags.Essential,
 )
 
-function patchSettingsNavigator(exports: any) {
+export default pluginSettings
+
+// #region Patches
+
+function patchSettingHookHarness(exports: MemoComponentModule) {
     instead(exports.default, 'type', (args, orig) => {
-        const reRender = useReRender()
-        useEffect(() => {
-            sRefresher.callNavigator = reRender
+        useRefresherCallback('callHookHarness')
+        return Reflect.apply(orig, undefined, args)
+    })
 
-            return () => {
-                sRefresher.navigator = false
-                sRefresher.callNavigator = noop
-            }
-        }, [reRender])
+    DEBUG_patchedHookHarness = true
+}
 
-        // useMemo(() => getSettingScreens(), [])
-        const unpatchMemo = instead(React, 'useMemo', (args, orig) => {
-            if (!args[1]?.length && sRefresher.navigator) {
-                args[1] = undefined
-                sRefresher.navigator = false
-            }
+function patchSettingsNavigator(exports: MemoComponentModule) {
+    const shouldRefresh = createRefreshTracker('navigator')
 
-            return Reflect.apply(orig, React, args)
-        })
-
-        const el = Reflect.apply(orig, undefined, args)
-        unpatchMemo()
-        return el
+    // useMemo(() => getSettingScreens(), [])
+    instead(exports.default, 'type', (args, orig) => {
+        useRefresherCallback('callNavigator')
+        return applyWithMemoRefresh(orig, args, shouldRefresh())
     })
 
     DEBUG_patchedNavigator = true
 }
 
-let sectionsInst: object | undefined
+function patchSettingsOverviewScreen(exports: SettingsOverviewScreenModule) {
+    const shouldRefresh = createRefreshTracker('overviewScreen')
 
-function patchSettingsOverviewScreen(exports: any) {
+    // The sections array our sections were last added to.
+    let patchedSections: SettingsSection[] | undefined
+    let refreshing = false
+
+    /**
+     * In useOverviewSettings (called by SettingsOverviewScreen):
+     *
+     * const hasPremiumSubscriptionToDisplay = useHasPremiumSubscriptionToDisplay()
+     * const sections = useMemo(() =>
+     *   (...constructed sections array...),
+     * [hasPremiumSubscriptionToDisplay])
+     */
+    const useMemoHook: UseMemoHook = (args, useMemo) => {
+        // Reconstruct the sections, so newly registered ones are included
+        const node: OverviewSettingsNode | undefined = refreshing
+            ? refreshMemo(args, useMemo)
+            : Reflect.apply(useMemo, React, args)
+
+        const sections = node?.sections
+        if (!sections) return node
+
+        // Add our custom sections here, and only do this per instance
+        if (patchedSections !== sections) {
+            for (const section of Object.values(sSections))
+                if (section.index) sections.splice(section.index, 0, section)
+                else sections.unshift(section)
+
+            patchedSections = sections
+        }
+
+        // The screen only updates if the sections array changes identity
+        if (refreshing) {
+            node.sections = patchedSections = [...sections]
+            refreshing = false
+        }
+
+        return node
+    }
+
+    instead(exports, 'default', (args, orig) => {
+        useRefresherCallback('callOverviewScreen')
+
+        refreshing = shouldRefresh()
+        return applyWithUseMemoHook(useMemoHook, orig, args)
+    })
+}
+
+function patchSearchableSettingsList() {
+    const shouldRefresh = createRefreshTracker('navigator')
+
+    // Renders (and memoizes) the results of useSettingSearchResults
     instead(
-        exports as {
-            default: FC
-        },
-        'default',
+        Renderer.SettingListRenderer.SearchableSettingsList,
+        'type',
         (args, orig) => {
-            const reRender = useReRender()
-            useEffect(() => {
-                sRefresher.callOverviewScreen = reRender
-
-                return () => {
-                    sRefresher.overviewScreen = false
-                    sRefresher.callOverviewScreen = noop
-                }
-            }, [reRender])
-
-            /**
-             * In useOverviewSettings (called by SettingsOverviewScreen):
-             *
-             * const hasPremiumSubscriptionToDisplay = useHasPremiumSubscriptionToDisplay()
-             * const sections = useMemo(() =>
-             *   (...constructed sections array...),
-             * [hasPremiumSubscriptionToDisplay])
-             */
-            const unpatchMemo = instead(React, 'useMemo', (args, orig) => {
-                if (sRefresher.overviewScreen) args[1] = undefined
-
-                const node = Reflect.apply(orig, React, args)
-                const sections = node.sections
-
-                // Add our custom sections here, and only do this per instance!
-                if (sectionsInst !== sections) {
-                    for (const section of Object.values(sSections))
-                        if (section.index)
-                            sections.splice(section.index, 0, section)
-                        else sections.unshift(section)
-
-                    sectionsInst = sections
-                }
-
-                if (sRefresher.overviewScreen) {
-                    node.sections = sectionsInst = [...sections]
-                    sRefresher.overviewScreen = false
-                }
-
-                return node
-            })
-
-            const el = Reflect.apply(orig, undefined, args)
-            unpatchMemo()
-            return el
+            useRefresherCallback('callSearchableSettingsList')
+            return applyWithMemoRefresh(orig, args, shouldRefresh())
         },
     )
 }
 
-export default pluginSettings
+function patchUseSettingSearchResults(exports: UseSettingSearchResultsModule) {
+    const shouldRefresh = createRefreshTracker('navigator')
+
+    // useMemo(() => getSettingSearchableTitles(), [])
+    instead(exports, 'useSettingSearchResults', (args, orig) =>
+        applyWithMemoRefresh(orig, args, shouldRefresh()),
+    )
+}
+
+// #region Refreshing
 
 /**
- * Warns the developer that SettingsNavigator was not patched.
+ * Creates a tracker for a refresh ID, telling whether a refresh has been
+ * requested since it was last called.
+ *
+ * Every patch needs its own tracker, as they all render (and therefore consume
+ * refreshes) independently from each other.
+ *
+ * @param key The refresh ID to track.
  */
-function DEBUG_warnUnpatchedNavigator() {
-    nativeLoggingHook(
-        `\u001b[31mSettingsNavigator was not patched\n${getCurrentStack()}\u001b[0m`,
-        2,
-    )
+function createRefreshTracker(key: RefreshIdKey) {
+    let lastId = sRefresher[key]
+
+    return () => {
+        const id = sRefresher[key]
+        if (id === lastId) return false
+
+        lastId = id
+        return true
+    }
+}
+
+/**
+ * Registers the component's re-render function as a refresher callback for as long as it is mounted.
+ *
+ * @param key The callback to register as.
+ */
+function useRefresherCallback(key: RefreshCallbackKey) {
+    const reRender = useReRender()
+
+    useEffect(() => {
+        sRefresher[key] = reRender
+
+        return () => {
+            sRefresher[key] = noop
+        }
+    }, [key, reRender])
+}
+
+/** Recomputes a memo. */
+const refreshMemo: UseMemoHook = (args, useMemo) => {
+    // Pass no dependency array
+    args[1] = undefined
+    return Reflect.apply(useMemo, React, args)
+}
+
+/**
+ * Applies a component's render function (or a hook), refreshing the memos it creates if needed.
+ *
+ * @param fn The function to apply.
+ * @param args The arguments to apply the function with.
+ * @param refresh Whether the memos should be refreshed.
+ */
+function applyWithMemoRefresh(
+    fn: AnyFunction,
+    args: unknown[],
+    refresh: boolean,
+) {
+    return refresh
+        ? applyWithUseMemoHook(refreshMemo, fn, args)
+        : Reflect.apply(fn, undefined, args)
+}
+
+function applyWithUseMemoHook(
+    hook: UseMemoHook,
+    fn: AnyFunction,
+    args: unknown[],
+) {
+    const unpatch = instead(React, 'useMemo', hook)
+
+    try {
+        return Reflect.apply(fn, undefined, args)
+    } finally {
+        unpatch()
+    }
+}
+
+// #region Debug
+
+/**
+ * Warns the developer about settings modules that were never patched.
+ */
+function DEBUG_warnUnpatchedModules() {
+    if (!DEBUG_patchedNavigator) DEBUG_warn('SettingsNavigator was not patched')
+    if (!DEBUG_patchedHookHarness)
+        DEBUG_warn('SettingHookHarness was not patched')
+}
+
+function DEBUG_warn(message: string) {
+    nativeLoggingHook(`\u001b[31m${message}\n${getCurrentStack()}\u001b[0m`, 2)
 }

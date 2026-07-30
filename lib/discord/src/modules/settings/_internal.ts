@@ -12,9 +12,17 @@ export const sConfig: Record<string, SettingsItem> = {}
 
 export const sSubscriptions = new Set<SettingsModulesLoadedSubscription>()
 
+/**
+ * Refresh IDs and re-render callbacks for the settings UI.
+ *
+ * IDs increment when a refresh is requested.
+ * Patches check if they changed and recomputes/rerenders the hooks/components.
+ */
 export const sRefresher = {
-    navigator: false,
-    overviewScreen: false,
+    navigator: 0,
+    overviewScreen: 0,
     callNavigator: noop,
+    callHookHarness: noop,
     callOverviewScreen: noop,
+    callSearchableSettingsList: noop,
 }

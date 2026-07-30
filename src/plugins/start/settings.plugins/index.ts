@@ -1,13 +1,8 @@
 import { ToastActionCreators } from '@revenge-mod/discord/actions'
-import {
-    onSettingsModulesLoaded,
-    refreshSettingsNavigator,
-    refreshSettingsOverviewScreen,
-} from '@revenge-mod/discord/modules/settings'
+import { onSettingsModulesLoaded } from '@revenge-mod/discord/modules/settings'
 import { JsonStorageUpdateMode } from '@revenge-mod/json-storage'
 import {
     InternalPluginFlags,
-    isPluginStartedLate,
     PluginFlags,
     registerInternalPlugin,
 } from '@revenge-mod/plugins/_'
@@ -63,17 +58,9 @@ registerInternalPlugin<{ jsonStorage: Storage }>(
                 import('./register')
             })
 
-            if (isPluginStartedLate(api_.plugin)) {
-                refreshSettingsOverviewScreen()
-                refreshSettingsNavigator()
-            }
-
             const settings = await api.jsonStorage.get()
             autoUpdateService(settings)
             defaultRepoRestoreService(settings, api.jsonStorage)
-        },
-        stop({ cleanup }) {
-            cleanup(refreshSettingsOverviewScreen, refreshSettingsNavigator)
         },
     },
     PluginFlags.Enabled,
