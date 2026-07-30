@@ -145,7 +145,6 @@ function refreshSettingsOverviewScreen() {
 
 function refreshSettingsNavigator() {
     sRefresher.navigator++
-    sRefresher.callHookHarness()
     sRefresher.callNavigator()
     sRefresher.callSearchableSettingsList()
 }

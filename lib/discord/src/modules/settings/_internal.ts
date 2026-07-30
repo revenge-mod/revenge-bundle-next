@@ -22,7 +22,6 @@ export const sRefresher = {
     navigator: 0,
     overviewScreen: 0,
     callNavigator: noop,
-    callHookHarness: noop,
     callOverviewScreen: noop,
     callSearchableSettingsList: noop,
 }
