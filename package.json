@@ -41,8 +41,6 @@
   "dependencies": {
     "@revenge-mod/assets": "workspace:*",
     "@revenge-mod/components": "workspace:*",
-    "@revenge-mod/devtools-client": "^1.4.0",
-    "@revenge-mod/devtools-shared": "^1.3.0",
     "@revenge-mod/discord": "workspace:*",
     "@revenge-mod/externals": "workspace:*",
     "@revenge-mod/json-storage": "workspace:*",
