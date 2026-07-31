@@ -70,6 +70,7 @@ const Sorts: Record<BrowseSortKey, (a: BrowseEntry, b: BrowseEntry) => number> =
 
 function Screen() {
     const [entries, setEntries] = useState<BrowseEntry[]>([])
+    const [internalRepos, setInternalRepos] = useState<string[]>([])
 
     const [search, setSearch] = useState('')
     const debouncedSetSearch = useCallback(
@@ -85,6 +86,10 @@ function Screen() {
     const load = useCallback(async () => {
         const repos = await listRepos()
         const all: BrowseEntry[] = []
+
+        setInternalRepos(
+            repos.filter(repo => repo.internal).map(repo => repo.url),
+        )
 
         await Promise.all(
             repos
@@ -158,11 +163,12 @@ function Screen() {
                 entry.listing.id,
                 entry.version || undefined,
                 entry.channel,
-                [entry.repoUrl],
+                // Internal repos so external plugins can link against internal plugins as well
+                [...internalRepos, entry.repoUrl],
             )
             load()
         },
-        [load],
+        [internalRepos, load],
     )
 
     // Repositories that currently have entries, for the filter sheet
