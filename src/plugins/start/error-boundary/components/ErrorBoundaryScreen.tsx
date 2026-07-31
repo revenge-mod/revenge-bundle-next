@@ -1,5 +1,5 @@
 import { styles } from '@revenge-mod/components/_'
-import { Tokens } from '@revenge-mod/discord/common'
+import { Tokens } from '@revenge-mod/discord/common/tokens'
 import { Design } from '@revenge-mod/discord/design'
 import { ClientInfoModule } from '@revenge-mod/discord/native'
 import { Clipboard } from '@revenge-mod/externals/react-native-clipboard'

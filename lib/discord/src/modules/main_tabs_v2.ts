@@ -4,7 +4,7 @@ import {
     withProps,
 } from '@revenge-mod/modules/finders/filters'
 import { proxify } from '@revenge-mod/utils/proxy'
-import { ImportTrackerModuleId } from '../common'
+import { ImportTrackerModuleId } from '../common/import-tracker'
 import type { NavigationContainerRef } from '@react-navigation/core'
 
 const { loose, relative } = withDependencies

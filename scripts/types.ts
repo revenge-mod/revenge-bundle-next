@@ -246,8 +246,12 @@ function getLibraries() {
         ]),
         library(discord, [
             'actions',
-            'common',
+            'common/app-start-performance',
+            'common/constants',
             'common/flux',
+            'common/import-tracker',
+            'common/logger',
+            'common/tokens',
             'common/utils',
             'design',
             'flux',

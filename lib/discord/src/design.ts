@@ -10,7 +10,7 @@ import {
     ReactNativeModuleId,
 } from '@revenge-mod/react'
 import { proxify } from '@revenge-mod/utils/proxy'
-import { ImportTrackerModuleId } from './common'
+import { ImportTrackerModuleId } from './common/import-tracker'
 import type { DiscordModules } from './types'
 
 const { loose } = withDependencies

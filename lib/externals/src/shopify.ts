@@ -1,4 +1,4 @@
-import { ImportTrackerModuleId } from '@revenge-mod/discord/common'
+import { ImportTrackerModuleId } from '@revenge-mod/discord/common/import-tracker'
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
     withDependencies,

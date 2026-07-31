@@ -26,7 +26,7 @@ export interface UnscopedPreInitPluginApi<
     react: PluginApiReact
     assets: typeof import('@revenge-mod/assets')
     externals: PluginApiExternals
-    /** This API is not available in the `preInit` phase. */
+    /** This API is available in and after the `init` phase. */
     components: unknown
     discord: PreInitPluginApiDiscord
 }

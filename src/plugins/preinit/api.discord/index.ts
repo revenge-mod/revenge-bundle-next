@@ -18,7 +18,9 @@ registerInternalPlugin(
             decorate,
             unscoped: {
                 discord: {
-                    common: { Logger },
+                    common: {
+                        logger: { Logger },
+                    },
                 },
             },
         }) {

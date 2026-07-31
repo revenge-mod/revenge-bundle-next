@@ -9,8 +9,23 @@
     "./common": {
       "default": "./src/common/index.ts"
     },
+    "./common/app-start-performance": {
+      "default": "./src/common/app-start-performance.ts"
+    },
+    "./common/constants": {
+      "default": "./src/common/constants.ts"
+    },
     "./common/flux": {
       "default": "./src/common/flux.ts"
+    },
+    "./common/import-tracker": {
+      "default": "./src/common/import-tracker.ts"
+    },
+    "./common/logger": {
+      "default": "./src/common/logger.ts"
+    },
+    "./common/tokens": {
+      "default": "./src/common/tokens.ts"
     },
     "./common/utils": {
       "default": "./src/common/utils.ts"

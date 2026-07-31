@@ -1,5 +1,5 @@
 import { getAssetByName } from '@revenge-mod/assets'
-import { TokensModuleId } from '@revenge-mod/discord/common'
+import { TokensModuleId } from '@revenge-mod/discord/common/tokens'
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
     createFilterGenerator,

@@ -1,4 +1,4 @@
-import { Tokens } from '@revenge-mod/discord/common'
+import { Tokens } from '@revenge-mod/discord/common/tokens'
 import { Design } from '@revenge-mod/discord/design'
 import { StyleSheet } from 'react-native'
 

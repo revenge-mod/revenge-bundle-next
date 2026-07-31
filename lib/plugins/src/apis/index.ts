@@ -43,7 +43,7 @@ defineLazyProperties(pUnscopedApi, {
 export function guardIndexInitialized(name: string) {
     if (!isModuleInitialized(0))
         throw new Error(
-            `Cannot access ${name} API before index module (ID 0) is initialized`,
+            `Cannot access ${name} API before the init phase: Index module (ID 0) must be initialized first.`,
         )
 }
 

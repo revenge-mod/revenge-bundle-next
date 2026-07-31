@@ -1,5 +1,5 @@
 import { getAssetIdByName } from '@revenge-mod/assets'
-import { Tokens } from '@revenge-mod/discord/common'
+import { Tokens } from '@revenge-mod/discord/common/tokens'
 import { Design } from '@revenge-mod/discord/design'
 import { Image } from 'react-native'
 

@@ -1,0 +1,1 @@
+export { AppStartPerformance } from '../preinit'
