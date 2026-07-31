@@ -160,7 +160,7 @@ export function registerExternalPlugin(external: ExternalPlugin) {
     const id = internal
         ? registerInternalPlugin(
               manifest,
-              createOptionsFactory(script),
+              createOptionsFactory(manifest.id, script),
               essential || enabledByDefault ? PluginFlags.Enabled : 0,
               InternalPluginFlags.Internal |
                   (essential ? InternalPluginFlags.Essential : 0) |
@@ -168,7 +168,7 @@ export function registerExternalPlugin(external: ExternalPlugin) {
           )
         : registerPlugin(
               manifest,
-              createOptionsFactory(script),
+              createOptionsFactory(manifest.id, script),
               enabledByDefault ? PluginFlags.Enabled : 0,
           )
 
@@ -235,11 +235,18 @@ function assertIsFunction(
         throw new Error(`${name} must be a function, got ${typeof value}`)
 }
 
-function createOptionsFactory(script?: string): PluginOptionsFactory {
+function createOptionsFactory(
+    id: string,
+    script?: string,
+): PluginOptionsFactory {
     if (!script) return () => ({})
 
     return () => {
-        const opts = new Function('revenge', 'plugin', `return ${script}`)(
+        const opts = new Function(
+            'revenge',
+            'plugin',
+            `return ${script}\n//# sourceURL=Revenge:Plugin:${id}`,
+        )(
             pUnscopedApi,
             // See types.consumers.ts
             (opts: PluginOptions) => opts,
