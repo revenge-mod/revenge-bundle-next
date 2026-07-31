@@ -3,6 +3,7 @@ import * as PluginApiModulesFindersFilters from '@revenge-mod/modules/finders/fi
 import * as PluginApiModulesMetroSubscriptions from '@revenge-mod/modules/metro/subscriptions'
 import * as PluginApiModulesMetroUtils from '@revenge-mod/modules/metro/utils'
 import * as PluginApiModulesNative_ from '@revenge-mod/modules/native'
+import * as PluginApiModulesNativeApp from '@revenge-mod/modules/native/app'
 import * as PluginApiModulesNativeFileSystem from '@revenge-mod/modules/native/fs'
 import { spreadDescriptors } from '.'
 
@@ -13,6 +14,7 @@ export interface PluginApiModules {
 }
 
 export type PluginApiModulesNative = typeof PluginApiModulesNative_ & {
+    app: typeof PluginApiModulesNativeApp
     fs: typeof PluginApiModulesNativeFileSystem
 }
 
@@ -34,6 +36,7 @@ export const modules: PluginApiModules = {
         spreadDescriptors(PluginApiModulesMetroSubscriptions, {}),
     ),
     native: spreadDescriptors(PluginApiModulesNative_, {
+        app: PluginApiModulesNativeApp,
         fs: PluginApiModulesNativeFileSystem,
     }),
 }

@@ -27,7 +27,10 @@ export default function RevengeSettingScreen() {
                     },
                     {
                         label: 'Actions',
-                        settings: [Setting.Reload],
+                        settings: [
+                            Setting.Reload,
+                            Setting.RevengeEnterRecoveryMode,
+                        ],
                     },
                 ],
             }}

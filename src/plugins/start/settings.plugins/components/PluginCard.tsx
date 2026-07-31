@@ -3,6 +3,8 @@ import { styles } from '@revenge-mod/components/_'
 import FormSwitch from '@revenge-mod/components/FormSwitch'
 import { Design } from '@revenge-mod/discord/design'
 import {
+    isDefaultsOnlyBoot,
+    isPluginEnabledInSavedStates,
     isPluginEssential,
     isPluginPendingUpdate,
     isPluginStartable,
@@ -12,6 +14,7 @@ import { memo } from 'react'
 import { Pressable } from 'react-native'
 import { handleDisablePlugin, handleEnablePlugin } from '../utils/actions'
 import { openPluginSettings } from '../utils/alerts'
+import { messageOf, showErrorToast } from '../utils/repos'
 import {
     showBrowsePluginActionSheet,
     showPluginOptionsActionSheet,
@@ -136,6 +139,7 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
     meta: InternalPluginMeta
 }) {
     const enabled = usePluginEnabled(plugin)
+    const savedEnabled = isPluginEnabledInSavedStates(plugin)
 
     const {
         manifest: { name, description, version, author, icon },
@@ -208,18 +212,41 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
                         }}
                         ref={switchRef}
                     >
-                        <FormSwitch
-                            key={plugin.manifest.id}
-                            disabled={toggleDisabled}
-                            onValueChange={enabled => {
-                                if (enabled) handleEnablePlugin(plugin)
-                                else handleDisablePlugin(plugin)
-                            }}
-                            value={enabled}
+                        <InstalledPluginSwitch
+                            plugin={plugin}
+                            enabled={enabled}
+                            savedEnabled={savedEnabled}
+                            toggleDisabled={toggleDisabled}
                         />
                     </Pressable>
                 </>
             }
+        />
+    )
+})
+
+export const InstalledPluginSwitch = memo(function InstalledPluginSwitch({
+    plugin,
+    enabled,
+    savedEnabled,
+    toggleDisabled,
+}: {
+    plugin: AnyPlugin
+    enabled: boolean
+    savedEnabled: boolean
+    toggleDisabled: boolean
+}) {
+    return (
+        <FormSwitch
+            key={plugin.manifest.id}
+            disabled={toggleDisabled}
+            onValueChange={enabled => {
+                ;(enabled
+                    ? handleEnablePlugin(plugin)
+                    : handleDisablePlugin(plugin)
+                ).catch(e => showErrorToast(messageOf(e)))
+            }}
+            value={isDefaultsOnlyBoot ? savedEnabled : enabled}
         />
     )
 })

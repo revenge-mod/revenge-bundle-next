@@ -1,5 +1,5 @@
 import { Design } from '@revenge-mod/discord/design'
-import { BundleUpdaterManager } from '@revenge-mod/discord/native'
+import { reloadApp } from '@revenge-mod/modules/native/app'
 import type { AnyPlugin } from '@revenge-mod/plugins/_'
 
 const { AlertModal, AlertActionButton, Text } = Design
@@ -36,8 +36,7 @@ export default function PluginsRequireReloadAlert({
                         variant="destructive"
                         text="Reload"
                         onPress={() => {
-                            // TODO: Replace with bridge call
-                            BundleUpdaterManager.reload()
+                            reloadApp()
                         }}
                     />
                     <AlertActionButton variant="secondary" text="Not now" />

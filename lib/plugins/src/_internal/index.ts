@@ -232,10 +232,29 @@ const pMetadata = new WeakMap<AnyPlugin, InternalPluginMeta>()
 
 /// STATE-SYNC
 
-const { states: InitialPersistedStates }: PersistedPluginStates =
-    callNativeMethodSync('revenge.plugins.states.read', []) ?? {
-        states: {},
-    }
+const { states: InitialPersistedStates, savedStates }: PersistedPluginStates =
+    callNativeMethodSync('revenge.plugins.states.read', [])
+
+/**
+ * Whether this boot is running with default plugins only, ignoring the user's saved states.
+ */
+export const isDefaultsOnlyBoot = savedStates != null
+
+/**
+ * The user's real saved states, only sent when this boot ignores them (recovery/defaults-only).
+ *
+ * @see {@link isDefaultsOnlyBoot}
+ */
+export const SavedPluginStates = savedStates ?? null
+
+/**
+ * Whether a plugin is enabled in the user's saved setup, which in a defaults-only boot is not
+ * what's running. Falls back to the session state on a normal boot.
+ */
+export function isPluginEnabledInSavedStates(plugin: AnyPlugin): boolean {
+    const saved = SavedPluginStates?.[plugin.manifest.id]
+    return saved ? Boolean(saved.enabled) : isPluginEnabled(plugin)
+}
 
 export function forgetInitialPluginState(id: PluginManifest['id']) {
     delete InitialPersistedStates[id]
@@ -660,11 +679,40 @@ function tryPreparePluginStart(plugin: AnyPlugin) {
 }
 
 /**
+ * Writes the enabled state of a plugin to the native side, and updates the real saved states.
+ */
+async function writePluginEnabledState(plugin: AnyPlugin, enabled: boolean) {
+    const result = await callNativeMethod('revenge.plugins.setEnabled', [
+        plugin.manifest.id,
+        enabled,
+    ])
+
+    if (result?.code === 'DEPENDENCIES_UNSATISFIED') {
+        const details = result.problems
+            .map(
+                p =>
+                    `"${p.id}" (requires ${p.required}, installed: ${p.installed ?? 'none'}${p.installed && !p.enabled ? ', disabled' : ''})`,
+            )
+            .join(', ')
+
+        throw new Error(
+            `Cannot enable plugin "${plugin.manifest.id}": unsatisfied dependencies: ${details}`,
+        )
+    }
+
+    if (SavedPluginStates)
+        SavedPluginStates[plugin.manifest.id] = {
+            ...SavedPluginStates[plugin.manifest.id],
+            enabled,
+        }
+}
+
+/**
  * Disables a plugin, as well as all its dependents.
  */
 export async function disablePlugin(plugin: AnyPlugin) {
     // PendingReload/PendingUpdate never block disabling
-    if (!isPluginEnabled(plugin))
+    if (!isPluginEnabledInSavedStates(plugin))
         throw new Error(`Plugin "${plugin.manifest.id}" is not enabled`)
 
     const meta = getInternalPluginMeta(plugin)
@@ -686,10 +734,7 @@ export async function disablePlugin(plugin: AnyPlugin) {
     if (plugin.status && !(plugin.status & Status.Stopping))
         await stopPlugin(plugin)
 
-    await callNativeMethod('revenge.plugins.setEnabled', [
-        plugin.manifest.id,
-        false,
-    ])
+    await writePluginEnabledState(plugin, false)
 
     meta.flags &= ~Flag.Enabled
     pEmitter.emit('disabled', plugin)
@@ -699,32 +744,16 @@ export async function disablePlugin(plugin: AnyPlugin) {
  * Enables a plugin, as well as all its dependencies.
  */
 export async function enablePlugin(plugin: AnyPlugin) {
-    if (isPluginEnabled(plugin))
+    if (isPluginEnabledInSavedStates(plugin))
         throw new Error(`Plugin "${plugin.manifest.id}" is already enabled`)
 
     await Promise.all(
         getPluginDependencies(plugin).map(dep => {
-            if (!isPluginEnabled(dep)) return enablePlugin(dep)
+            if (!isPluginEnabledInSavedStates(dep)) return enablePlugin(dep)
         }),
     )
 
-    const result = await callNativeMethod('revenge.plugins.setEnabled', [
-        plugin.manifest.id,
-        true,
-    ])
-
-    if (result?.code === 'DEPENDENCIES_UNSATISFIED') {
-        const details = result.problems
-            .map(
-                p =>
-                    `"${p.id}" (requires ${p.required}, installed: ${p.installed ?? 'none'}${p.installed && !p.enabled ? ', disabled' : ''})`,
-            )
-            .join(', ')
-
-        throw new Error(
-            `Cannot enable plugin "${plugin.manifest.id}": unsatisfied dependencies: ${details}`,
-        )
-    }
+    await writePluginEnabledState(plugin, true)
 
     const meta = getInternalPluginMeta(plugin)
     meta.flags |= Flag.Enabled
@@ -733,6 +762,11 @@ export async function enablePlugin(plugin: AnyPlugin) {
 }
 
 export async function runPluginLate(plugin: AnyPlugin) {
+    if (isDefaultsOnlyBoot)
+        throw new Error(
+            `Cannot start plugin "${plugin.manifest.id}" while running with default plugins. Reload to apply your changes.`,
+        )
+
     requirePluginStartableState(plugin)
 
     if (plugin.status & Status.Started)
@@ -1013,6 +1047,13 @@ export async function deleteStorageForPlugin(plugin: Plugin<any, any>) {
     if (await exists(dir)) await rm(dir)
 }
 
+export function requestNextBootDefaultsOnly() {
+    callNativeMethodSync(
+        'revenge.plugins.states.requestNextBootDefaultsOnly',
+        [],
+    )
+}
+
 export {
     confirmInstall,
     resyncPluginSources,
@@ -1022,7 +1063,8 @@ export {
 declare module '@revenge-mod/modules/native' {
     interface NativeMethods {
         'revenge.plugins.startNative': [[id: PluginManifest['id']], null]
-        'revenge.plugins.states.read': [[], PersistedPluginStates | null]
+        'revenge.plugins.states.read': [[], PersistedPluginStates]
+        'revenge.plugins.states.requestNextBootDefaultsOnly': [[], void]
         'revenge.plugins.setEnabled': [
             [id: PluginManifest['id'], enabled: boolean],
             SetEnabledError | null,
@@ -1053,6 +1095,9 @@ interface PluginStateObject {
 
 interface PersistedPluginStates {
     states: {
+        [id: PluginManifest['id']]: PluginStateObject
+    }
+    savedStates?: {
         [id: PluginManifest['id']]: PluginStateObject
     }
 }

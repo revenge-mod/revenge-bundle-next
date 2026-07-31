@@ -305,6 +305,7 @@ export namespace DiscordModules {
         export interface FloatingActionButtonProps {
             icon: number
             onPress: () => void
+            disabled?: boolean
             positionBottom?: number
             accessibilityLabel?: string
         }
@@ -513,14 +514,6 @@ export namespace DiscordModules {
 
         export type TableRowIconVariant =
             | 'default'
-            | 'blurple'
-            | 'boosting-pink'
-            | 'status-online'
-            | 'status-idle'
-            | 'status-dnd'
-            | 'status-offline'
-            | 'xbox'
-            | 'playstation'
             | 'danger'
             | 'secondary'
             | 'translucent'

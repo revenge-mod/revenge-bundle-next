@@ -53,8 +53,10 @@ export function PluginFlashList({
 }
 
 export function InstalledPluginMasonryFlashList({
+    ListHeaderComponent,
     plugins,
 }: {
+    ListHeaderComponent?: React.ComponentType | null
     plugins: (readonly [AnyPlugin, InternalPluginMeta])[]
 }) {
     const numColumns = useNumColumns()
@@ -71,6 +73,7 @@ export function InstalledPluginMasonryFlashList({
             fadingEdgeLength={16}
             keyExtractor={([plugin]) => plugin.manifest.id}
             numColumns={numColumns}
+            ListHeaderComponent={ListHeaderComponent}
             ListEmptyComponent={NoPlugins}
             renderItem={({ item: [plugin, meta] }) => (
                 <InstalledPluginCard plugin={plugin} meta={meta} />

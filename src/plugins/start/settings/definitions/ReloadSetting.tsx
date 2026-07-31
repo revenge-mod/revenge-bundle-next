@@ -1,5 +1,5 @@
 import TableRowAssetIcon from '@revenge-mod/components/TableRowAssetIcon'
-import { BundleUpdaterManager } from '@revenge-mod/discord/native'
+import { reloadApp } from '@revenge-mod/modules/native/app'
 import { Setting } from '../constants'
 import type { SettingsItem } from '@revenge-mod/discord/modules/settings'
 
@@ -8,7 +8,7 @@ const ReloadSetting: SettingsItem = {
     IconComponent: () => <TableRowAssetIcon name="RetryIcon" />,
     useTitle: () => 'Reload App',
     onPress: () => {
-        BundleUpdaterManager.reload()
+        reloadApp()
     },
     type: 'pressable',
 }

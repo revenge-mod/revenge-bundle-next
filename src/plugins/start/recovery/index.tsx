@@ -2,16 +2,25 @@ import { AlertActionCreators } from '@revenge-mod/discord/actions'
 import { Design } from '@revenge-mod/discord/design'
 import { onFluxEventDispatched } from '@revenge-mod/discord/flux'
 import { RootNavigationRef } from '@revenge-mod/discord/modules/main_tabs_v2'
+import {
+    onSettingsModulesLoaded,
+    registerSettingsItem,
+} from '@revenge-mod/discord/modules/settings'
 import { callNativeMethod } from '@revenge-mod/modules/native'
 import {
     InternalPluginFlags,
+    isDefaultsOnlyBoot,
     PluginFlags,
     registerInternalPlugin,
 } from '@revenge-mod/plugins/_'
-import { isDefaultsOnlyBoot } from '@revenge-mod/plugins/constants'
 import { asap } from '@revenge-mod/utils/callback'
+import { AppState } from 'react-native'
 import { FullVersion } from '~constants'
+import { mErrorChain } from '../../../../lib/modules/src/metro/runtime'
+import pluginSettings from '../settings'
+import { Setting } from '../settings/constants'
 import { RouteNames } from '../settings.plugins/constants'
+import RevengeEnterRecoveryModeSetting from './definitions/RevengeEnterRecoveryModeSetting'
 
 registerInternalPlugin(
     {
@@ -19,28 +28,52 @@ registerInternalPlugin(
         name: 'Recovery',
         description: 'Provides troubleshooting options.',
         author: 'Revenge',
-        icon: 'WrenchIcon',
+        icon: 'ShieldIcon',
+        dependencies: { [pluginSettings]: {} },
     },
     {
         start() {
+            onSettingsModulesLoaded(() => {
+                registerSettingsItem(
+                    Setting.RevengeEnterRecoveryMode,
+                    RevengeEnterRecoveryModeSetting,
+                )
+            })
+
             // Freeze detection
-            const id = setTimeout(() => {
-                try {
-                    callNativeMethod('revenge.alertError', [
-                        'Application seems frozen. This is likely caused by a plugin.\n\nYou can launch with default plugins in the Recovery menu.',
-                        FullVersion,
-                    ])
-                } catch (e) {
-                    console.error(
-                        'Failed to call native method "revenge.alertError":',
-                        e,
-                    )
-                }
-            }, 10000)
+            let currentId: number
+
+            const setTimer = () => {
+                if (currentId) clearTimeout(currentId)
+
+                currentId = setTimeout(() => {
+                    if (AppState.currentState !== 'active') return
+
+                    try {
+                        callNativeMethod('revenge.alertError', [
+                            `App was unable to start. This is likely caused by a plugin.\n\nYou can launch Recovery Mode in the Recovery menu.\n\nErroring modules chain: ${mErrorChain.join(', ') || 'None'}`,
+                            FullVersion,
+                        ])
+                    } catch (e) {
+                        console.error(
+                            'Failed to call native method "revenge.alertError":',
+                            e,
+                        )
+                    }
+                }, 5000)
+            }
+
+            const sub = AppState.addEventListener('change', state => {
+                if (state === 'active') setTimer()
+                else clearTimeout(currentId)
+            })
+
+            if (AppState.currentState === 'active') setTimer()
 
             const unsub = onFluxEventDispatched('APP_STATE_UPDATE', e => {
-                clearTimeout(id)
+                clearTimeout(currentId)
                 unsub()
+                sub.remove()
                 return e
             })
 
@@ -65,7 +98,7 @@ function RecoveryModal() {
         <Design.AlertModal
             title="Recovery Mode"
             content={
-                'Running with default plugins. Your enabled plugins are saved and will come back when you reload.\n\nUninstall plugins that might be causing issues, then reload the app to get back on track.'
+                "You are now running with default plugins. Additional plugins can't be started in Recovery Mode.\n\nDisable or uninstall plugins that might be causing issues, then reload the app to exit Recovery Mode."
             }
             actions={
                 <>

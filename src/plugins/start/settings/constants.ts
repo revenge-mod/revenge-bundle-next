@@ -9,6 +9,7 @@ export const Setting = {
     RevengeSourceRepository: 'RevengeSourceRepository',
     RevengeLicense: 'RevengeLicense',
     Reload: 'Reload',
+    RevengeEnterRecoveryMode: 'RevengeEnterRecoveryMode',
 
     RevengeVersion: 'RevengeVersion',
     ReactVersion: 'ReactVersion',

@@ -5,10 +5,11 @@ import Page from '@revenge-mod/components/Page'
 import SearchInput from '@revenge-mod/components/SearchInput'
 import { ActionSheetActionCreators } from '@revenge-mod/discord/actions'
 import { Design } from '@revenge-mod/discord/design'
-import { BundleUpdaterManager } from '@revenge-mod/discord/native'
+import { reloadApp } from '@revenge-mod/modules/native/app'
 import {
     getInternalPluginMeta,
     InternalPluginFlags,
+    isDefaultsOnlyBoot,
     isPluginEnabled,
     isPluginEssential,
     isPluginInternal,
@@ -17,7 +18,6 @@ import {
     pEmitter,
     pList,
 } from '@revenge-mod/plugins/_'
-import { isDefaultsOnlyBoot } from '@revenge-mod/plugins/constants'
 import { debounce } from '@revenge-mod/utils/callback'
 import {
     useCallback,
@@ -26,7 +26,7 @@ import {
     useMemo,
     useState,
 } from 'react'
-import { View } from 'react-native'
+import { Image, View } from 'react-native'
 import { ClickOutsideProvider } from 'react-native-click-outside'
 import RevengeIcon from '~assets/RevengeIcon'
 import { InstalledPluginMasonryFlashList } from '../components/PluginList'
@@ -137,11 +137,12 @@ function HeaderButton() {
     )
 }
 
-function BrowseFloatingActionButton() {
+function BrowseFloatingActionButton({ disabled }: { disabled?: boolean }) {
     const navigation = useNavigation<NavigationProp<any>>()
 
     return (
         <FloatingActionButton
+            disabled={disabled}
             icon={PlusLargeIcon}
             accessibilityLabel="Browse plugins"
             onPress={() =>
@@ -151,34 +152,34 @@ function BrowseFloatingActionButton() {
     )
 }
 
-function DefaultsOnlyBanner() {
-    const [hide, setHide] = useState(false)
-
-    if (!isDefaultsOnlyBoot || hide) return null
-
+function RecoveryModeBanner() {
     return (
-        <Card>
-            <Stack spacing={16}>
+        <Card style={{ marginHorizontal: 6, marginVertical: 6, boxShadow: '' }}>
+            <Stack spacing={12}>
+                <Stack direction="horizontal" spacing={8} align="center">
+                    <Image
+                        source={getAssetIdByName('ShieldIcon')!}
+                        style={{
+                            width: 18,
+                            height: 18,
+                        }}
+                    />
+                    <Text variant="text-md/semibold">Recovery Mode</Text>
+                </Stack>
                 <Text variant="text-sm/medium">
-                    Running with default plugins. Your enabled plugins are saved
-                    and will come back when you reload.{'\n\n'}
-                    Uninstall plugins that might be causing issues, then reload
-                    the app to get back on track.
+                    You are now running with default plugins. Additional plugins
+                    can't be started in Recovery Mode.{'\n\n'}
+                    Disable or uninstall plugins that might be causing issues,
+                    then reload the app to exit Recovery Mode.
                 </Text>
                 <Stack spacing={8}>
                     <Design.Button
                         icon={getAssetIdByName('RetryIcon')!}
                         size="sm"
-                        text="Reload with all plugins enabled"
-                        onPress={() => BundleUpdaterManager.reload()}
-                    />
-                    {/* In case it's taking too much vertical space */}
-                    <Design.Button
-                        icon={getAssetIdByName('EyeSlashIcon')!}
-                        size="sm"
-                        variant="secondary"
-                        text="Hide this message"
-                        onPress={() => setHide(true)}
+                        text="Exit Recovery Mode"
+                        onPress={() => {
+                            reloadApp()
+                        }}
                     />
                 </Stack>
             </Stack>
@@ -263,7 +264,6 @@ function Screen() {
 
     return (
         <>
-            <DefaultsOnlyBanner />
             <Stack direction="horizontal">
                 <View style={styles.grow}>
                     <SearchInput onChange={debouncedSetSearch} size="md" />
@@ -294,8 +294,13 @@ function Screen() {
                     }
                 />
             </Stack>
-            <InstalledPluginMasonryFlashList plugins={plugins} />
-            <BrowseFloatingActionButton />
+            <InstalledPluginMasonryFlashList
+                ListHeaderComponent={
+                    isDefaultsOnlyBoot ? RecoveryModeBanner : null
+                }
+                plugins={plugins}
+            />
+            <BrowseFloatingActionButton disabled={isDefaultsOnlyBoot} />
         </>
     )
 }

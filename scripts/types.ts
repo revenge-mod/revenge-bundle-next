@@ -276,6 +276,7 @@ function getLibraries() {
             ['metro/subscriptions', 'metro'],
             ['metro/utils', 'metro'],
             'native',
+            'native/app',
             'native/fs',
             'types',
         ]),

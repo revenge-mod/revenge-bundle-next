@@ -1,5 +1,5 @@
 import { getAssetIdByName } from '@revenge-mod/assets'
-import { FormSwitch, TableRowAssetIcon } from '@revenge-mod/components'
+import { TableRowAssetIcon } from '@revenge-mod/components'
 import {
     ActionSheetActionCreators,
     ToastActionCreators,
@@ -12,6 +12,8 @@ import {
     getPluginDependencies,
     getPluginDependents,
     InternalPluginFlags,
+    isDefaultsOnlyBoot,
+    isPluginEnabledInSavedStates,
     isPluginEssential,
     isPluginInternal,
     isPluginPendingUpdate,
@@ -27,14 +29,13 @@ import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import { useEffect, useState } from 'react'
 import { Pressable } from 'react-native'
 import { ClickOutsideProvider } from 'react-native-click-outside'
-import { handleDisablePlugin, handleEnablePlugin } from '../utils/actions'
 import {
     openPluginSettings,
     showPluginClearDataConfirmation,
     showPluginUninstallConfirmation,
 } from '../utils/alerts'
 import { messageOf, showErrorToast } from '../utils/repos'
-import { PluginInfo } from './PluginCard'
+import { InstalledPluginSwitch, PluginInfo } from './PluginCard'
 import { usePluginEnabled, usePluginStatus } from './PluginStateProvider'
 import {
     EnablePluginTooltipProvider,
@@ -77,13 +78,13 @@ export default function PluginOptionsActionSheet({
                     icon={icon}
                     actions={
                         !essential && (
-                            <FormSwitch
-                                value={enabled}
-                                disabled={pendingUpdate}
-                                onValueChange={v => {
-                                    if (v) handleEnablePlugin(plugin)
-                                    else handleDisablePlugin(plugin)
-                                }}
+                            <InstalledPluginSwitch
+                                enabled={enabled}
+                                plugin={plugin}
+                                savedEnabled={isPluginEnabledInSavedStates(
+                                    plugin,
+                                )}
+                                toggleDisabled={pendingUpdate}
                             />
                         )
                     }
@@ -291,7 +292,8 @@ function PluginActions({
                     size="lg"
                     icon={running ? StopIcon : PlayIcon}
                     label={running ? 'Stop' : 'Start'}
-                    disabled={!running && !startable}
+                    // Nothing can start in a defaults-only boot, stopping a default plugin is still fine
+                    disabled={!running && (!startable || isDefaultsOnlyBoot)}
                     onPress={async () => {
                         try {
                             if (running) await stopPlugin(plugin)

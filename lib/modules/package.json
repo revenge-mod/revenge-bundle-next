@@ -21,6 +21,9 @@
     "./native": {
       "default": "./src/native/index.ts"
     },
+    "./native/app": {
+      "default": "./src/native/app.ts"
+    },
     "./native/fs": {
       "default": "./src/native/fs.ts"
     },
