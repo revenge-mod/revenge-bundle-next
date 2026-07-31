@@ -5,9 +5,14 @@
  * Also avoids cloning exports, allowing for patches to be applied directly without checking for clones.
  */
 
-import { loadModuleFromSegment, mList } from './patches'
+import { callNativeMethodSync } from '@revenge-mod/modules/native'
+import { getErrorStack } from '@revenge-mod/utils/error'
+import { FullVersion } from '~constants'
+import { loadModuleFromSegment, mInitializingId, mList } from './patches'
 import { executeInitializeSubscriptions } from './subscriptions/_internal'
 import type { Metro } from '../types'
+
+export const mErrorChain: Metro.ModuleID[] = []
 
 export const Initialized = 1 << 0
 const HasError = 1 << 1
@@ -30,7 +35,11 @@ export const metroRequire = (moduleId => {
     let { flags, module: moduleObject } = mod
 
     if (flags & InitializedOrInitializing) return moduleObject!.exports
-    if (flags & HasError) throw mod.error
+    if (flags & HasError) {
+        // Swallow the error and return an empty object, like what Metro does.
+        // throw mod.error
+        return moduleObject!.exports
+    }
 
     mod.flags |= Initializing
 
@@ -44,21 +53,37 @@ export const metroRequire = (moduleId => {
         mod.factory = undefined
 
         factory!()
-
-        mod.flags = (flags & NotInitializedOrInitializingMask) | Initialized
-
-        executeInitializeSubscriptions(moduleId, moduleObject.exports)
-
-        return moduleObject.exports
     } catch (e) {
         mod.flags = (flags & NotInitializedOrInitializingMask) | HasError
         mod.error = e
-        mod.module = undefined
 
-        // @ts-expect-error: Not documented, but used by React Native
-        if (global.ErrorUtils) global.ErrorUtils.reportFatalError(e)
-        else throw e
+        const msg = `Module ${mInitializingId} failed to initialize:\n\n${getErrorStack(e)}`
+
+        if (__DEV__) {
+            callNativeMethodSync('revenge.alertError', [msg, FullVersion])
+        } else {
+            nativeLoggingHook(msg, 2)
+        }
+
+        // Some modifications can cause modules to fail by initializing them in the wrong order, we can't just blacklist them
+        // cacheBlacklistedModule(mInitializingId)
+
+        // So... it wasn't a great idea to throw, Discord has pushed a broken build that has some failing modules
+        // Vanilla Metro would swallow the error and just return an empty object as the exports..., insanity
+
+        // // @ts-expect-error: Not documented, but used by React Native
+        // if (global.ErrorUtils) global.ErrorUtils.reportFatalError(e)
+        // else throw e
+
+        mErrorChain.push(moduleId)
+
+        return (moduleObject.exports = {})
     }
+
+    mod.flags = (flags & NotInitializedOrInitializingMask) | Initialized
+    executeInitializeSubscriptions(moduleId, moduleObject.exports)
+
+    return moduleObject.exports
 }) as Metro.Require
 
 global.__r = metroRequire
