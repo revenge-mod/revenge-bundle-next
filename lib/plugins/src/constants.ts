@@ -13,10 +13,17 @@ export const PluginStatus = {
     Stopping: 1 << 6,
 }
 
-const { storageRootPath } = callNativeMethodSync(
+const { storageRootPath, defaultsOnly } = callNativeMethodSync(
     'revenge.plugins.getConstants',
     [],
 )
+
+/**
+ * Whether this boot ignores saved plugin states.
+ *
+ * Only essential and enabled-by-default plugins run. Saved states will come back on the next reload.
+ */
+export const isDefaultsOnlyBoot = defaultsOnly
 
 /**
  * Absolute path to per-plugin storage directory.

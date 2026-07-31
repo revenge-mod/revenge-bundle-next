@@ -5,6 +5,7 @@ import Page from '@revenge-mod/components/Page'
 import SearchInput from '@revenge-mod/components/SearchInput'
 import { ActionSheetActionCreators } from '@revenge-mod/discord/actions'
 import { Design } from '@revenge-mod/discord/design'
+import { BundleUpdaterManager } from '@revenge-mod/discord/native'
 import {
     getInternalPluginMeta,
     InternalPluginFlags,
@@ -16,6 +17,7 @@ import {
     pEmitter,
     pList,
 } from '@revenge-mod/plugins/_'
+import { isDefaultsOnlyBoot } from '@revenge-mod/plugins/constants'
 import { debounce } from '@revenge-mod/utils/callback'
 import {
     useCallback,
@@ -38,7 +40,8 @@ import type { NavigationProp, RouteProp } from '@react-navigation/core'
 import type { ReactNavigationParamList } from '@revenge-mod/externals/react-navigation'
 import type { FilterAndSortActionSheetProps } from '../components/FilterAndSortActionSheet'
 
-const { Stack, IconButton, FloatingActionButton, LayerScope } = Design
+const { Stack, IconButton, FloatingActionButton, LayerScope, Card, Text } =
+    Design
 
 const FiltersHorizontalIcon = getAssetIdByName('FiltersHorizontalIcon', 'png')!
 const SettingsIcon = getAssetIdByName('SettingsIcon')!
@@ -148,6 +151,41 @@ function BrowseFloatingActionButton() {
     )
 }
 
+function DefaultsOnlyBanner() {
+    const [hide, setHide] = useState(false)
+
+    if (!isDefaultsOnlyBoot || hide) return null
+
+    return (
+        <Card>
+            <Stack spacing={16}>
+                <Text variant="text-sm/medium">
+                    Running with default plugins. Your enabled plugins are saved
+                    and will come back when you reload.{'\n\n'}
+                    Uninstall plugins that might be causing issues, then reload
+                    the app to get back on track.
+                </Text>
+                <Stack spacing={8}>
+                    <Design.Button
+                        icon={getAssetIdByName('RetryIcon')!}
+                        size="sm"
+                        text="Reload with all plugins enabled"
+                        onPress={() => BundleUpdaterManager.reload()}
+                    />
+                    {/* In case it's taking too much vertical space */}
+                    <Design.Button
+                        icon={getAssetIdByName('EyeSlashIcon')!}
+                        size="sm"
+                        variant="secondary"
+                        text="Hide this message"
+                        onPress={() => setHide(true)}
+                    />
+                </Stack>
+            </Stack>
+        </Card>
+    )
+}
+
 function snapshotPlugins() {
     return [...pList.values()].map(
         plugin => [plugin, getInternalPluginMeta(plugin)] as const,
@@ -225,6 +263,7 @@ function Screen() {
 
     return (
         <>
+            <DefaultsOnlyBanner />
             <Stack direction="horizontal">
                 <View style={styles.grow}>
                     <SearchInput onChange={debouncedSetSearch} size="md" />

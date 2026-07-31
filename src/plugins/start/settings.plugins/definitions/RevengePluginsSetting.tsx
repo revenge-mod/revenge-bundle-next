@@ -1,5 +1,6 @@
 import TableRowAssetIcon from '@revenge-mod/components/TableRowAssetIcon'
 import { isPluginEnabled, pEmitter, pList } from '@revenge-mod/plugins/_'
+import { isDefaultsOnlyBoot } from '@revenge-mod/plugins/constants'
 import { useReRender } from '@revenge-mod/utils/react'
 import { useEffect } from 'react'
 import { RouteNames, Setting } from '../constants'
@@ -11,7 +12,9 @@ const RevengePluginsSetting: SettingsItem = {
     type: 'route',
     IconComponent: () => <TableRowAssetIcon name="PuzzlePieceIcon" />,
     useTitle: () => 'Plugins',
-    useTrailing: () => `${useEnabledPluginCount()} enabled`,
+    useTrailing: () =>
+        `${useEnabledPluginCount()} enabled` +
+        (isDefaultsOnlyBoot ? ' (recovery)' : ''),
     screen: {
         route: RouteNames[Setting.RevengePlugins],
         getComponent: () => RevengePluginsSettingScreen.default,
