@@ -37,7 +37,7 @@ export default function PluginsFailedToStartAlert({
                 <>
                     <AlertActionButton
                         variant="primary"
-                        text="View plugins"
+                        text="View failed plugins"
                         onPress={() => {
                             /**
                              * Discord's navigator hierarchy:
