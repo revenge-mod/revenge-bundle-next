@@ -120,12 +120,14 @@ export const discord = defineLazyProperties(
     } as PluginApiDiscord,
     {
         actions: () => {
+            guardIndexInitialized('Discord.actions')
             return DiscordActions
         },
         flux: () => {
             return DiscordFlux
         },
         design: () => {
+            guardIndexInitialized('Discord.design')
             return DiscordDesign
         },
         native: () => {
