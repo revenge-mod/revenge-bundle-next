@@ -26,7 +26,8 @@ registerInternalPlugin(
     {
         id: 'revenge.recovery',
         name: 'Recovery',
-        description: 'Provides troubleshooting options.',
+        description:
+            'Handles errors and provides troubleshooting options for Revenge.',
         author: 'Revenge',
         icon: 'ShieldIcon',
         dependencies: { [pluginSettings]: {} },
