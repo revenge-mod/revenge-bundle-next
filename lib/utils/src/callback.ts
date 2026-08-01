@@ -19,7 +19,7 @@ const now = (cb: () => any) => {
 }
 
 /**
- * A function that runs the callback as soon as possible.
+ * A non-blocking function that runs the callback as soon as possible.
  * @param cb The callback to run.
  */
 export const asap = (cb: AnyFunction) => {

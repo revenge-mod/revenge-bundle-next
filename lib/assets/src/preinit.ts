@@ -81,10 +81,10 @@ const unsubAR = waitForModules(
 )
 
 /**
- * If you need to use this ID, unproxify {@link AssetsRegistry} first.
+ * If you need to use this ID during `preInit`, unproxify {@link AssetsRegistry} first.
  *
  * ```js
- * preinit() {
+ * preInit() {
  *   unproxify(AssetsRegistry)
  *   // Module ID will now be set!
  *   AssetsRegistryModuleId // ...

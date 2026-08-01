@@ -237,7 +237,8 @@ export interface PluginLifecycles<
      */
     init?: (this: Plugin<O, 'Init'>, api: InitPluginApi<O>) => any
     /**
-     * Runs when the plugin can be started with all APIs available.
+     * Runs during the `AppRegistry.runApplication` call,
+     * when the plugin can be started with all APIs available.
      *
      * @param api Plugin API.
      */

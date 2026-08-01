@@ -15,6 +15,7 @@ let RtCount = 0
 const unsubRt = waitForModules(
     withProps<typeof React>('useState'),
     (exports, id) => {
+        // React has 2 modules re-exporting it, the second of which, is the one that modules requires from
         if (RtCount++ === 2) return unsubRt()
 
         ReactModuleId = id
@@ -43,6 +44,7 @@ let RJsxRCount = 0
 const unsubRJSXR = waitForModules(
     withProps<typeof ReactJSXRuntime>('jsxs'),
     (exports, id) => {
+        // React/JSXRuntime has 2 modules re-exporting it, the second of which, is the one that modules requires from
         if (RJsxRCount++ === 2) return unsubRJSXR()
 
         ReactJSXRuntimeModuleId = id
