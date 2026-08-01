@@ -270,7 +270,7 @@ function Screen() {
                 </View>
                 <IconButton
                     icon={FiltersHorizontalIcon}
-                    variant="tertiary"
+                    variant={filter.length > 0 ? 'primary' : 'tertiary'}
                     onPress={() =>
                         ActionSheetActionCreators.openLazy(
                             import('../components/FilterAndSortActionSheet'),
