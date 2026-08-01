@@ -1,8 +1,5 @@
 import { lookupModule, lookupModules } from '@revenge-mod/modules/finders'
-import {
-    withDependencies,
-    withProps,
-} from '@revenge-mod/modules/finders/filters'
+import { withDependencies } from '@revenge-mod/modules/finders/filters'
 import { getModuleDependencies } from '@revenge-mod/modules/metro/utils'
 import {
     ReactJSXRuntimeModuleId,
@@ -15,31 +12,41 @@ import type { DiscordModules } from './types'
 
 const { loose } = withDependencies
 
+/**
+ * The lowest amount of dependencies `design/native.tsx` is expected to have.
+ *
+ * It's a barrel module exporting the whole design system,
+ * so it always has a lot of dependencies (~140 as of 341202).
+ *
+ * This is only used as a filter, and is checked before anything else for performance reasons.
+ */
+const DesignMinimumDependencies = 64
+
 // design/native.tsx
 export let Design: Design = proxify(
     () => {
-        // ID: 3236
-        // [3237, 1366, 3238, 3239, 2, ...];
-        const [module] = lookupModule(
-            withProps<Design>('TableRow', 'Button')
-                .and(
-                    withDependencies(
-                        loose([
-                            null,
-                            null,
-                            withDependencies([
-                                ReactNativeModuleId,
-                                ImportTrackerModuleId,
-                            ]),
-                            withDependencies([ImportTrackerModuleId]),
-                            ImportTrackerModuleId,
-                        ]),
-                    ),
-                )
-                .keyAs('revenge.discord.design.Design'),
+        // ID: 13171
+        // [3909, 4608, 5182, 13172, 2, ...] (141 dependencies)
+        const [, id] = lookupModule(
+            withDependencies<Design>(
+                loose([
+                    [ImportTrackerModuleId],
+                    [ImportTrackerModuleId],
+                    [ReactNativeModuleId, ImportTrackerModuleId],
+                    [ImportTrackerModuleId],
+                    ImportTrackerModuleId,
+                    ...Array<null>(DesignMinimumDependencies - 5).fill(null),
+                ]),
+            ).keyAs('revenge.discord.design.Design'),
+            {
+                initialize: false,
+            },
         )
 
-        if (module) return (Design = module)
+        if (id === undefined) return
+
+        const module = __r(id)!
+        if (module.TableRow && module.Button) return (Design = module)
     },
     {
         hint: {},
