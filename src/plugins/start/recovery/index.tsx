@@ -1,6 +1,6 @@
 import { AlertActionCreators } from '@revenge-mod/discord/actions'
 import { Design } from '@revenge-mod/discord/design'
-import { onFluxEventDispatched } from '@revenge-mod/discord/flux'
+import { onFluxEventDispatched, Stores } from '@revenge-mod/discord/flux'
 import { RootNavigationRef } from '@revenge-mod/discord/modules/main_tabs_v2'
 import {
     onSettingsModulesLoaded,
@@ -40,42 +40,7 @@ registerInternalPlugin(
                 )
             })
 
-            // Freeze detection
-            let currentId: number
-
-            const setTimer = () => {
-                if (currentId) clearTimeout(currentId)
-
-                currentId = setTimeout(() => {
-                    if (AppState.currentState !== 'active') return
-
-                    try {
-                        callNativeMethod('revenge.alertError', [
-                            `App was unable to start. This is likely caused by a plugin.\n\nYou can launch Recovery Mode in the Recovery menu.\n\nErroring modules chain: ${mErrorChain.join(', ') || 'None'}`,
-                            FullVersion,
-                        ])
-                    } catch (e) {
-                        console.error(
-                            'Failed to call native method "revenge.alertError":',
-                            e,
-                        )
-                    }
-                }, 5000)
-            }
-
-            const sub = AppState.addEventListener('change', state => {
-                if (state === 'active') setTimer()
-                else clearTimeout(currentId)
-            })
-
-            if (AppState.currentState === 'active') setTimer()
-
-            const unsub = onFluxEventDispatched('APP_STATE_UPDATE', e => {
-                clearTimeout(currentId)
-                unsub()
-                sub.remove()
-                return e
-            })
+            freezeDetectionService()
 
             if (isDefaultsOnlyBoot) {
                 asap(() => {
@@ -90,6 +55,52 @@ registerInternalPlugin(
     PluginFlags.Enabled,
     InternalPluginFlags.Internal | InternalPluginFlags.Essential,
 )
+
+function freezeDetectionService() {
+    if ('AppStateStore' in Stores)
+        // Stores already initialized, app is probably working fine
+        return console.log(
+            'AppStateStore already initialized, skipping freeze detection service...',
+        )
+
+    let currentId: number
+
+    const setTimer = () => {
+        if (currentId) clearTimeout(currentId)
+
+        currentId = setTimeout(() => {
+            if (AppState.currentState !== 'active') return
+
+            try {
+                callNativeMethod('revenge.alertError', [
+                    `App was unable to start. This is likely caused by a plugin.\n\nYou can launch Recovery Mode in the Recovery menu.\n\nErroring modules chain: ${mErrorChain.join(', ') || 'None'}`,
+                    FullVersion,
+                ])
+            } catch (e) {
+                console.error(
+                    'Failed to call native method "revenge.alertError":',
+                    e,
+                )
+            }
+        }, 5000)
+    }
+
+    const sub = AppState.addEventListener('change', state => {
+        if (state === 'active') setTimer()
+        else if (currentId !== undefined) clearTimeout(currentId)
+    })
+
+    if (AppState.currentState === 'active') setTimer()
+
+    const clear = <T,>(e?: T) => {
+        if (currentId !== undefined) clearTimeout(currentId)
+        sub.remove()
+        unsub()
+        return e
+    }
+
+    const unsub = onFluxEventDispatched('APP_STATE_UPDATE', clear)
+}
 
 function RecoveryModal() {
     const navigation = RootNavigationRef.getRootNavigationRef()
