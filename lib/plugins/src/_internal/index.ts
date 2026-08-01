@@ -345,6 +345,7 @@ export function registerInternalPlugin<O extends PluginApiExtensionsOptions>(
     iflags = 0,
 ) {
     manifest.version ??= InternalPluginVersion
+    // TODO: This has to be shared from native somehow.
     manifest.format ??= 1
     manifest.dependencies ??= {}
     manifest.dependencies[ApiDependencyId] ??= { version: '*' }
@@ -359,8 +360,13 @@ function register<O extends PluginApiExtensionsOptions>(
     defflags: number,
     iflags: number,
 ) {
-    if (pList.has(manifest.id))
-        throw new Error(`Plugin with ID "${manifest.id}" already registered`)
+    if (pList.has(manifest.id)) {
+        // Ignore re-registration if internal
+        if (!iflags)
+            throw new Error(
+                `Plugin with ID "${manifest.id}" already registered`,
+            )
+    }
 
     const factory = typeof options === 'function' ? options : undefined
     const resolved = typeof options === 'function' ? undefined : options
