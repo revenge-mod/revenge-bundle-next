@@ -59,9 +59,11 @@ export namespace PluginApiDiscord {
     export type Native = typeof import('@revenge-mod/discord/native')
 
     export interface Utils {
-        finders: typeof import('@revenge-mod/discord/utils/modules/finders')
-        metro: {
-            subscriptions: typeof import('@revenge-mod/discord/utils/modules/metro/subscriptions')
+        modules: {
+            finders: typeof import('@revenge-mod/discord/utils/modules/finders')
+            metro: {
+                subscriptions: typeof import('@revenge-mod/discord/utils/modules/metro/subscriptions')
+            }
         }
     }
 
@@ -109,14 +111,14 @@ export const discord = defineLazyProperties(
                 renderer: require('@revenge-mod/discord/modules/settings/renderer'),
             }),
         }),
-        utils: defineLazyProperties({} as PluginApiDiscord.Utils, {
-            finders: () => {
-                return DiscordUtilsFinders
+        utils: {
+            modules: {
+                finders: DiscordUtilsFinders,
+                metro: {
+                    subscriptions: DiscordUtilsMetroSubscriptions,
+                },
             },
-            metro: () => ({
-                subscriptions: DiscordUtilsMetroSubscriptions,
-            }),
-        }),
+        },
     } as PluginApiDiscord,
     {
         actions: () => {
