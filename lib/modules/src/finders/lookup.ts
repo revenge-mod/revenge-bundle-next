@@ -32,14 +32,16 @@ export type LookupModulesOptions<
 } & If<
         Not<Initialize>,
         {
+            initialize: false
+        },
+        {
             /**
              * Whether to initialize matching uninitialized modules.
              *
              * **This will initialize any modules that match the exportsless filter and may cause unintended side effects.**
              */
-            initialize: false
-        },
-        { initialize?: true }
+            initialize?: true
+        }
     >
 
 export type LookupModulesResult<
