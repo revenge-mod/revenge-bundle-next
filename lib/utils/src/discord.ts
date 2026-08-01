@@ -1,4 +1,5 @@
 import { getAssetByName } from '@revenge-mod/assets'
+import { ImportTrackerModuleId } from '@revenge-mod/discord/common/import-tracker'
 import { TokensModuleId } from '@revenge-mod/discord/common/tokens'
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
@@ -20,7 +21,7 @@ import type {
 } from '@revenge-mod/modules/finders/filters'
 import type { FC } from 'react'
 
-// [React, ReactJsxRuntime, (Tokens), (BaseIconImage), (Asset), 2]
+// [React, ReactJsxRuntime, (Tokens), (BaseIconImage), (Asset), ImportTracker]
 // Asset = relativeDep(1)
 const IconComponentFilter = [
     ReactModuleId,
@@ -28,11 +29,11 @@ const IconComponentFilter = [
     TokensModuleId,
     null,
     null,
-    2,
+    ImportTrackerModuleId,
 ]
 
 // Generated IconComponents that have multiple assets, there is no specific length, so the filter has to be generated on-the-fly.
-// [React, ReactNative, ReactJsxRuntime, (Tokens), (BaseIconImage), (...Assets), 2]
+// [React, ReactNative, ReactJsxRuntime, (Tokens), (BaseIconImage), (...Assets), ImportTracker]
 // ...Assets = relativeDep(1..n)
 const MultiIconComponentFilterBase = [
     ReactModuleId,
@@ -103,7 +104,11 @@ export const withGeneratedIconComponent = createFilterGenerator<
                     mids.push(mid)
                 }
 
-                filter = [...MultiIconComponentFilterBase, ...mids, 2]
+                filter = [
+                    ...MultiIconComponentFilterBase,
+                    ...mids,
+                    ImportTrackerModuleId,
+                ]
             } else {
                 const [name] = names
 

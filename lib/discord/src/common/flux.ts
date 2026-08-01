@@ -7,7 +7,7 @@ import { ImportTrackerModuleId } from '../patches/import-tracker'
 import type { Metro } from '@revenge-mod/modules/types'
 import type { DiscordModules } from '../types'
 
-const { relative } = withDependencies
+const { relative, loose } = withDependencies
 
 // ../discord_common/js/packages/flux
 
@@ -17,7 +17,7 @@ export const [Dispatcher, DispatcherModuleId] = lookupModule(
             relative(1),
             null,
             null,
-            null,
+            withDependencies(loose([relative(1), relative(2)])),
             null,
             ImportTrackerModuleId,
         ]),

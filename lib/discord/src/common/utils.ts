@@ -16,17 +16,19 @@ export let TypedEventEmitter: typeof DiscordModules.Utils.TypedEventEmitter =
         const [module] = lookupModule(
             withName<typeof DiscordModules.Utils.TypedEventEmitter>(
                 'TypedEventEmitter',
-            ).and(
-                withDependencies([[], ImportTrackerModuleId]).or(
-                    // TODO: Remove when stable > 341202
-                    withDependencies([
-                        withName('_classCallCheck'),
-                        withName('_createClass'),
-                        [],
-                        ImportTrackerModuleId,
-                    ]),
-                ),
-            ),
+            )
+                .and(
+                    withDependencies([[], ImportTrackerModuleId]).or(
+                        // TODO: Remove when stable > 341202
+                        withDependencies([
+                            withName('_classCallCheck'),
+                            withName('_createClass'),
+                            [],
+                            ImportTrackerModuleId,
+                        ]),
+                    ),
+                )
+                .keyAs('revenge.discord.common.utils.TypedEventEmitter'),
         )
 
         if (module) return (TypedEventEmitter = module)

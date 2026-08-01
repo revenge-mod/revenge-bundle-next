@@ -4,6 +4,7 @@ import {
     withName,
     withProps,
 } from '@revenge-mod/modules/finders/filters'
+import { ImportTrackerModuleId } from './patches/import-tracker'
 import type { Metro } from '@revenge-mod/modules/types'
 import type { DiscordModules } from './types'
 
@@ -16,13 +17,13 @@ const [, _createClassModuleId] = lookupModule(withName('_createClass'))
 // ../discord_common/js/packages/app-start-performance/AppStartPerformance.tsx
 export const [AppStartPerformance] = lookupModule(
     withProps<DiscordModules.AppStartPerformance>('markAndLog').and(
-        withDependencies([_asyncToGeneratorModuleId, 2]).or(
+        withDependencies([_asyncToGeneratorModuleId, ImportTrackerModuleId]).or(
             // TODO: Remove once stable >341202
             withDependencies([
                 _asyncToGeneratorModuleId,
                 _classCallCheckModuleId,
                 _createClassModuleId,
-                2,
+                ImportTrackerModuleId,
             ]),
         ),
     ),
@@ -30,5 +31,4 @@ export const [AppStartPerformance] = lookupModule(
 
 AppStartPerformance.mark('👊', 'Pre-init')
 
-import './patches/import-tracker'
 import './patches/flux'

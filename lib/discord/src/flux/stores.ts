@@ -1,3 +1,4 @@
+import { ImportTrackerModuleId } from '@revenge-mod/discord/common/import-tracker'
 import {
     lookupModule,
     lookupModules,
@@ -67,13 +68,13 @@ export function getStore<T>(
 
 /* 
     Flux Store dependencies: [
-        6, // _classCallCheck
-        5, // _createClass
-        14, // _possibleConstructorReturn
-        16, // bound getPrototypeOf
-        17, // _inherits
+        _classCallCheck
+        _createClass
+        _possibleConstructorReturn
+        bound getPrototypeOf
+        _inherits
         (...), // (any amount of dependencies)
-        2 // ImportTracker
+        ImportTracker
     ]
 */
 
@@ -107,7 +108,7 @@ export const withStore = createFilterGenerator(
         else {
             if (!withLeadingFluxStoreDeps(id)) return false
             const deps = getModuleDependencies(id)!
-            return deps[deps.length - 1] === 2
+            return deps[deps.length - 1] === ImportTrackerModuleId
         }
     },
     () => 'revenge.discord.store',
