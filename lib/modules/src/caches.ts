@@ -20,7 +20,7 @@ export let cache: Cache =
     callNativeMethodSync('revenge.caches.modules.read', []) ?? Uncached
 
 if (cache.version !== ExpectedCacheVersion) {
-    // TODO: Alert to user to update build
+    Uncached.outdated = true
     cache = Uncached
 }
 
@@ -34,6 +34,8 @@ export interface Cache {
     blacklist: Blacklist
     finds: Finds
     version: number
+    /** Indicates if the loader cache on an outdated format */
+    outdated?: boolean
 }
 
 const save = debounce(() => {

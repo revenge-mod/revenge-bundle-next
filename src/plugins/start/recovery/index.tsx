@@ -6,7 +6,7 @@ import {
     onSettingsModulesLoaded,
     registerSettingsItem,
 } from '@revenge-mod/discord/modules/settings'
-import { callNativeMethod } from '@revenge-mod/modules/native'
+import { callNativeMethod, getBridgeInfo } from '@revenge-mod/modules/native'
 import {
     InternalPluginFlags,
     isDefaultsOnlyBoot,
@@ -16,6 +16,8 @@ import {
 import { asap } from '@revenge-mod/utils/callback'
 import { AppState } from 'react-native'
 import { FullVersion } from '~constants'
+import { cache as assetsCache } from '../../../../lib/assets/src/caches'
+import { cache as modulesCache } from '../../../../lib/modules/src/caches'
 import { mErrorChain } from '../../../../lib/modules/src/metro/runtime'
 import pluginSettings from '../settings'
 import { Setting } from '../settings/constants'
@@ -48,6 +50,15 @@ registerInternalPlugin(
                     AlertActionCreators.openAlert(
                         'revenge-recovery',
                         <RecoveryModal />,
+                    )
+                })
+            }
+
+            if (assetsCache.outdated || modulesCache.outdated) {
+                asap(() => {
+                    AlertActionCreators.openAlert(
+                        'revenge-loader-outdated',
+                        <LoaderOutdatedModal />,
                     )
                 })
             }
@@ -129,6 +140,21 @@ function RecoveryModal() {
                         text="Got it"
                     />
                 </>
+            }
+        />
+    )
+}
+
+function LoaderOutdatedModal() {
+    const info = getBridgeInfo()
+    if (!info) throw new Error('Failed to get native bridge info')
+
+    return (
+        <Design.AlertModal
+            title="Loader Outdated"
+            content={`Your loader is outdated. Update to the latest version to receive fixes and ensure compatibility with all plugins.\n\nYou're currently running ${info.name} v${info.version}`}
+            actions={
+                <Design.AlertActionButton variant="primary" text="Got it" />
             }
         />
     )

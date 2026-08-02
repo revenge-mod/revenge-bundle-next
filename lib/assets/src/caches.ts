@@ -18,7 +18,7 @@ export let cache: Cache =
     callNativeMethodSync('revenge.caches.assets.read', []) ?? Uncached
 
 if (cache.version !== ExpectedCacheVersion) {
-    // TODO: Alert to user to update build
+    Uncached.outdated = true
     cache = Uncached
 }
 
@@ -29,6 +29,8 @@ export interface Cache {
         }
     }
     version: number
+    /** Indicates if the loader cache on an outdated format */
+    outdated?: boolean
 }
 
 const save = debounce(() => {
