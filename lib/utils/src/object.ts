@@ -35,7 +35,7 @@ export function cloneDeep<T>(source: T, cache = new WeakMap()): T {
         const sourceObj = source as AnyObject
         const cloneObj = clone as AnyObject
 
-        const keys = Object.keys(sourceObj)
+        const keys = Reflect.ownKeys(sourceObj)
         for (let i = 0; i < keys.length; i++) {
             const key = keys[i]
             cloneObj[key] = cloneDeep(sourceObj[key], cache)
