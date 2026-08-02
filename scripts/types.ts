@@ -102,6 +102,16 @@ export default async function buildTypes(log = true): Promise<void> {
             await generateIndex(input),
         )
 
+        const modules = Object.keys(input)
+            .filter(entry => entry.startsWith(`${PATHS.lib}/`))
+            .map(entry => entry.slice(`${PATHS.lib}/`.length))
+            .sort()
+
+        await writeFile(
+            `${PATHS.output}/modules.json`,
+            `${JSON.stringify(modules, null, 4)}\n`,
+        )
+
         // Make dist/types directly publishable
         await writeFile(
             `${PATHS.output}/package.json`,
@@ -110,8 +120,10 @@ export default async function buildTypes(log = true): Promise<void> {
                     name: TYPES_PACKAGE_NAME,
                     version: pkg.version,
                     types: 'index.d.ts',
+                    files: ['modules.json'],
                     exports: {
                         '.': { types: './index.d.ts' },
+                        './modules.json': { default: './modules.json' },
                     },
                     imports: {
                         '#*': { types: './*.d.ts' },
@@ -411,6 +423,8 @@ async function auditExternalSpecifiers(): Promise<void> {
     )
 
     for (const [name, path] of undeclared) {
+        if (name.startsWith('node:')) continue
+
         console.warn(
             chalk.yellow(
                 `⚠️  "${name}" is imported by ${path} but not declared by the types package`,
