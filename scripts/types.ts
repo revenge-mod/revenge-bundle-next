@@ -323,7 +323,15 @@ async function cleanup(dir: string, description: string): Promise<void> {
     }
 }
 
-/** Rewrites `@revenge-mod/*` to its package-private `#lib/*. */
+/**
+ * Rewrites `@revenge-mod/*` to its package-private `#lib/*`, **except** in module augmentation
+ * headers (`declare module '@revenge-mod/*'`).
+ *
+ * Augmentations must keep targeting the public module names, because that is what consumers
+ * augment too. TypeScript merges every augmentation of an ambient module into the same symbol,
+ * so mixing the two forms would split them: our own augmentations would land on the internal
+ * module while a consumer's landed on the ambient one, and neither would see the other.
+ */
 async function internalizeSpecifiers(
     input: Record<string, string>,
 ): Promise<void> {
@@ -334,10 +342,10 @@ async function internalizeSpecifiers(
     )
 
     const pattern = new RegExp(
-        `(['"])@revenge-mod/(${Array.from(entries)
+        `(declare\\s+module\\s+)?(['"])@revenge-mod/(${Array.from(entries)
             .sort((a, b) => b.length - a.length)
             .map(entry => entry.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-            .join('|')})\\1`,
+            .join('|')})\\2`,
         'g',
     )
 
@@ -354,7 +362,10 @@ async function internalizeSpecifiers(
             const code = await readFile(path, 'utf8')
             const rewritten = code.replace(
                 pattern,
-                (_, quote, entry) => `${quote}#${PATHS.lib}/${entry}${quote}`,
+                (match, augmentation, quote, entry) =>
+                    augmentation
+                        ? match
+                        : `${quote}#${PATHS.lib}/${entry}${quote}`,
             )
 
             if (rewritten !== code) await writeFile(path, rewritten)
