@@ -5,7 +5,6 @@ import {
     metroImportDefault,
     metroRequire,
 } from './runtime'
-import { executeRequireSubscriptions } from './subscriptions/_internal'
 import type { Metro, RevengeMetro } from '../types'
 
 export let mInitializingId: Metro.ModuleID | undefined
@@ -147,8 +146,6 @@ function handleFactoryCall(
 ) {
     const prevId = mInitializingId
     mInitializingId = moduleObject.id!
-
-    executeRequireSubscriptions(mInitializingId)
 
     try {
         factory(

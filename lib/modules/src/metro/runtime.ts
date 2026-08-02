@@ -9,7 +9,10 @@ import { callNativeMethodSync } from '@revenge-mod/modules/native'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import { FullVersion } from '~constants'
 import { loadModuleFromSegment, mInitializingId, mList } from './patches'
-import { executeInitializeSubscriptions } from './subscriptions/_internal'
+import {
+    executeInitializeSubscriptions,
+    executeRequireSubscriptions,
+} from './subscriptions/_internal'
 import type { Metro } from '../types'
 
 export const mErrorChain: Metro.ModuleID[] = []
@@ -47,6 +50,8 @@ export const metroRequire = (moduleId => {
         exports: {},
         id: moduleId,
     }
+
+    executeRequireSubscriptions(moduleId)
 
     try {
         const { factory } = mod
