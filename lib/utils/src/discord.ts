@@ -6,6 +6,7 @@ import {
     createFilterGenerator,
     withDependencies,
 } from '@revenge-mod/modules/finders/filters'
+import { isModuleExportBad } from '@revenge-mod/modules/metro/utils'
 import {
     ReactJSXRuntimeModuleId,
     ReactModuleId,
@@ -86,7 +87,7 @@ export const withGeneratedIconComponent = createFilterGenerator<
     Parameters<WithGeneratedIconComponent>
 >(
     (names, id, exports) => {
-        if (typeof exports === 'object') {
+        if (typeof exports === 'object' && isModuleExportBad(exports)) {
             if (typeof exports[names[0]] === 'function')
                 return Object.keys(exports).length === 1
         } else {

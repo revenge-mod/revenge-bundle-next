@@ -1,3 +1,4 @@
+import { isModuleExportBad } from '@revenge-mod/modules/metro/utils'
 import { FilterFlag, FilterScopes } from './constants'
 import { createFilterGenerator } from './utils'
 import type { Filter, FilterGenerator } from './utils'
@@ -26,6 +27,8 @@ type FilterRequiringExports<T> = Filter<{
 export const withProps = createFilterGenerator<Parameters<WithProps>>(
     (props, _, exports) => {
         const type = typeof exports
+        if (isModuleExportBad(exports)) return false
+
         if (type === 'object' || type === 'function') {
             for (const prop of props) {
                 if (prop in exports) continue
@@ -58,7 +61,7 @@ export type WithProps = FilterGenerator<
 export const withoutProps = createFilterGenerator<Parameters<WithoutProps>>(
     (props, _, exports) => {
         const type = typeof exports
-        if (type === 'object' || type === 'function')
+        if ((type === 'object' && exports !== null) || type === 'function')
             for (const prop of props) if (prop in exports) return false
 
         return true
@@ -88,8 +91,8 @@ export type WithoutProps = FilterGenerator<
  */
 export const withSingleProp = createFilterGenerator<Parameters<WithSingleProp>>(
     ([prop], _, exports) => {
-        if (typeof exports === 'object' && prop in exports)
-            return Object.keys(exports).length === 1
+        if (typeof exports === 'object' && exports !== null && prop in exports)
+            return Reflect.ownKeys(exports).length === 1
 
         return false
     },
@@ -133,7 +136,7 @@ export type WithSingleProp = FilterGenerator<
  * // const SomeClass: { new(): SomeClass, name: 'SomeClass' }
  */
 export const withName = createFilterGenerator<Parameters<WithName>>(
-    ([name], _, exports) => exports.name === name,
+    ([name], _, exports) => exports?.name === name,
     ([name]) => `revenge.name(${name})`,
     FilterFlag.RequiresExports,
     FilterScopes.Initialized,

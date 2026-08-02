@@ -2,7 +2,6 @@ import { getCurrentStack } from '@revenge-mod/utils/error'
 import { cacheFilterResultForId } from '../caches'
 import { mInitialized } from '../metro/patches'
 import { metroRequire } from '../metro/runtime'
-import { isModuleExportBad } from '../metro/utils'
 import { FilterFlag } from './filters'
 import type { If } from '@revenge-mod/utils/types'
 import type { Metro } from '../types'
@@ -66,6 +65,8 @@ export const FilterResultFlagToHumanReadable: Record<FilterResultFlag, string> =
         [FilterResultFlags.Found]: '\u001b[96mexportsless\u001b[0m',
     }
 
+const noDefaultExportsCache = new Set<Metro.ModuleID>()
+
 // The reason this returns a flag is because flags are never falsy, while exports may be falsy when using ID-only filters (eg. `withDependencies`).
 
 // Currently, we only have options that are relevant for checking exports
@@ -92,7 +93,13 @@ export function runFilter(
     if (exports === undefined) {
         if (filter.flags & FilterFlag.RequiresExports) return
 
-        if (filter(id)) {
+        const filter_ = filter as Filter<{
+            Result: any
+            RequiresExports: false
+            Scopes: any[]
+        }>
+
+        if (filter_(id)) {
             if (options?.initialize ?? true) {
                 const module = metroRequire(id)
                 // Check if the required module is not blacklisted
@@ -111,7 +118,13 @@ export function runFilter(
         return
     }
 
-    if (filter(id, exports))
+    const filter_ = filter as Filter<{
+        Result: any
+        RequiresExports: true
+        Scopes: any[]
+    }>
+
+    if (filter_(id, exports))
         return cacheFilterResultForId(
             filter.key,
             id,
@@ -119,9 +132,14 @@ export function runFilter(
         )
 
     if (options?.skipDefault) return
+    if (noDefaultExportsCache.has(id)) return
+    if (!('default' in exports)) {
+        noDefaultExportsCache.add(id)
+        return
+    }
 
     const { default: defaultExport } = exports
-    if (!isModuleExportBad(defaultExport) && filter(id, defaultExport))
+    if (filter_(id, defaultExport))
         return cacheFilterResultForId(filter.key, id, FilterResultFlags.Default)
 }
 

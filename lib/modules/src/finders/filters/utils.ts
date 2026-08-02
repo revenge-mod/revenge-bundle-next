@@ -157,6 +157,7 @@ const Helpers: FilterHelpers = Object.setPrototypeOf(
  * ```ts
  * const custom = createFilterGenerator<[arg1: number, arg2: string]>(
  *   ([arg1, arg2], id, exports) => {
+ *     // WARNING: exports can be Proxy or nullish, so be careful when using it
  *     // filter logic
  *     return true
  *   },

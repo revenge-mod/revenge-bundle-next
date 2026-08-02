@@ -1,4 +1,3 @@
-import { isProxy } from '@revenge-mod/utils/proxy'
 import { mDeps, mList } from './patches'
 import { Initialized } from './runtime'
 import type { Metro } from '../types'
@@ -38,8 +37,11 @@ export function getInitializedModuleExports(
     return mList.get(id)?.module?.exports
 }
 
+const CATCH_ALL_TEST = Symbol()
+
 /**
- * Returns whether a particular module export is bad. This is used for filter functions to check whether an export is filterable.
+ * Returns whether a particular module export is bad.
+ * This is used for filter functions to check whether an export is filterable.
  * @param exp The export to check.
  */
 export function isModuleExportBad(
@@ -48,9 +50,7 @@ export function isModuleExportBad(
     return (
         // Nullish?
         exp == null ||
-        // Is it a proxy? (discord-intl has proxy exports)
-        isProxy(exp) ||
         // Does it have some non-existent key? (Turbo modules)
-        (typeof exp === 'object' && '\u0001' in exp)
+        (typeof exp === 'object' && CATCH_ALL_TEST in exp)
     )
 }

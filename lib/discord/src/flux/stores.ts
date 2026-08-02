@@ -132,7 +132,7 @@ export type WithStoreName = FilterGenerator<
  */
 export const withStoreName = createFilterGenerator(
     ([name], _, exports) =>
-        exports.getName?.length === 0 && exports.getName() === name,
+        exports?.getName?.length === 0 && exports.getName() === name,
     ([name]) => `revenge.discord.storeName(${name})`,
     FilterFlag.RequiresExports,
     FilterScopes.Uninitialized | FilterScopes.Initialized,
