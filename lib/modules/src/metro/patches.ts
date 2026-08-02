@@ -172,7 +172,7 @@ function handleFactoryCall(
 
                 // biome-ignore lint/suspicious/noFallthroughSwitchClause: Intentional
                 case 'object': {
-                    if (Object.keys(exports).length) {
+                    if (Reflect.ownKeys(exports).length) {
                         mInitialized.add(mInitializingId)
                         break
                     }
