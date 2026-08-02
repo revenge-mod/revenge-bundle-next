@@ -1,3 +1,4 @@
+import { getErrorStack } from '@revenge-mod/utils/error'
 import { withProps } from '.'
 import { and, or } from './composite'
 import { FilterScopes } from './constants'
@@ -203,8 +204,17 @@ export function createFilterGenerator<A extends any[]>(
     const isDefaultScopesStatic = typeof defaultScopes === 'number'
 
     const generator: GeneratorType = (...args: A) => {
-        const filter_ = ((id: Metro.ModuleID, exports?: Metro.ModuleExports) =>
-            filter(args, id, exports)) as ReturnType<GeneratorType>
+        const filter_ = ((
+            id: Metro.ModuleID,
+            exports?: Metro.ModuleExports,
+        ) => {
+            try {
+                return filter(args, id, exports)
+            } catch (e) {
+                DEBUG_warnFilterThrown(id, keyFor(args), e)
+                return false
+            }
+        }) as ReturnType<GeneratorType>
 
         filter_.key = keyFor(args)
         filter_.flags = isFlagsStatic ? flagFor : flagFor(args)
@@ -225,4 +235,15 @@ export function createFilterGenerator<A extends any[]>(
     generator.keyFor = keyFor
 
     return generator
+}
+
+function DEBUG_warnFilterThrown(
+    id: Metro.ModuleID,
+    key: string,
+    error: unknown,
+) {
+    nativeLoggingHook(
+        `\u001b[31mFilter ${key} threw an error for module ${id}:\n${getErrorStack(error)}\u001b[0m`,
+        3,
+    )
 }
