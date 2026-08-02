@@ -5,16 +5,6 @@
 
 import { asap } from './callback'
 import { getCurrentStack } from './error'
-import { pTargets } from './patches/proxy'
-
-/**
- * Returns whether the object is a proxy.
- *
- * @param obj The object to check
- */
-export function isProxy(obj: object) {
-    return pTargets.has(obj)
-}
 
 /**
  * Returns whether the object is a proxified value.
@@ -25,16 +15,6 @@ export function isProxified(obj: object) {
     return pMetadata.has(obj)
 }
 
-/**
- * Returns the target of the proxy.
- *
- * @param obj The proxy
- * @returns The target of the proxy
- */
-export function getProxyTarget(obj: object) {
-    return pTargets.get(obj)
-}
-
 // Heavily inspired by Wintry's lazy utils, but more optimized and stripped down, with a few fixes.
 // https://github.com/pylixonly/wintry/blob/main/src/utils/lazy.ts
 
@@ -42,6 +22,7 @@ const pMetadata = new WeakMap<
     object,
     {
         factory: () => unknown
+        hint: object
         bind: boolean
         cacheable: boolean
         cache?: unknown
@@ -132,12 +113,6 @@ export function proxify<T>(signal: () => T, options?: ProxifyOptions): T {
     // biome-ignore lint/complexity/useArrowFunction: We need a function with a constructor
     const hint = options?.hint ?? function () {}
 
-    pMetadata.set(hint, {
-        factory: signal,
-        bind: options?.bindMethods ?? false,
-        cacheable: options?.cache ?? false,
-    })
-
     if (__BUILD_FLAG_DEBUG_LAZY_VALUES__)
         // Prevent race conditions where proxified values with a self modifying signal gets called,
         // modifying the original value to a non-proxified value, causing subsequent destructure() calls to fail
@@ -147,7 +122,16 @@ export function proxify<T>(signal: () => T, options?: ProxifyOptions): T {
                 DEBUG_warnNullishProxifiedValue()
         })
 
-    return new Proxy(hint, _handler) as T
+    const prox = new Proxy(hint, _handler) as T
+
+    pMetadata.set(hint, {
+        hint: hint,
+        factory: signal,
+        bind: options?.bindMethods ?? false,
+        cacheable: options?.cache ?? false,
+    })
+
+    return prox
 }
 
 /**
@@ -178,7 +162,7 @@ export function proxify<T>(signal: () => T, options?: ProxifyOptions): T {
  * ```
  */
 export function unproxify<T extends object>(proxified: T): T {
-    const hint = getProxyTarget(proxified)
+    const hint = pMetadata.get(proxified)?.hint
     if (!hint) return proxified
     return unproxifyFromHint(hint)
 }

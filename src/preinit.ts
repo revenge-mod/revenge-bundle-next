@@ -1,5 +1,4 @@
 import '@revenge-mod/modules/metro/patches'
-import '@revenge-mod/utils/patches/proxy'
 
 import {
     onModuleFirstRequired,
