@@ -1,6 +1,6 @@
 import { AlertActionCreators } from '@revenge-mod/discord/actions'
 import { Design } from '@revenge-mod/discord/design'
-import { onFluxEventDispatched, Stores } from '@revenge-mod/discord/flux'
+import { getStore, onFluxEventDispatched } from '@revenge-mod/discord/flux'
 import { RootNavigationRef } from '@revenge-mod/discord/modules/main_tabs_v2'
 import {
     onSettingsModulesLoaded,
@@ -48,9 +48,7 @@ registerInternalPlugin(
                 )
             })
 
-            cleanup(errorBoundaryService())
-
-            freezeDetectionService()
+            cleanup(errorBoundaryService(), freezeDetectionService())
 
             if (isDefaultsOnlyBoot) {
                 asap(() => {
@@ -75,19 +73,23 @@ registerInternalPlugin(
     InternalPluginFlags.Internal | InternalPluginFlags.Essential,
 )
 
-function freezeDetectionService() {
-    if ('AppStateStore' in Stores)
-        // Stores already initialized, app is probably working fine
-        return console.log(
-            'AppStateStore already initialized, skipping freeze detection service...',
-        )
+const FreezeDetectionTimeout = 5000
 
-    let currentId: number
+function freezeDetectionService() {
+    let currentId: number | undefined
+    let cleared = false
+
+    let sub: { remove(): void } | undefined
+    let unsubStore: (() => void) | undefined
+    let unsubFlux: (() => void) | undefined
 
     const setTimer = () => {
-        if (currentId) clearTimeout(currentId)
+        if (cleared) return
+        if (currentId !== undefined) clearTimeout(currentId)
 
         currentId = setTimeout(() => {
+            currentId = undefined
+
             if (AppState.currentState !== 'active') return
 
             try {
@@ -101,24 +103,49 @@ function freezeDetectionService() {
                     e,
                 )
             }
-        }, 5000)
+        }, FreezeDetectionTimeout)
     }
 
-    const sub = AppState.addEventListener('change', state => {
+    const clear = <T,>(e?: T) => {
+        cleared = true
+
+        if (currentId !== undefined) {
+            clearTimeout(currentId)
+            currentId = undefined
+        }
+
+        sub?.remove()
+        unsubStore?.()
+        unsubFlux?.()
+
+        return e
+    }
+
+    // If the store initializes, the app is probably working fine, so we can cancel the timer
+    unsubStore = getStore('AppStateStore', clear)
+    // clear() may have run before unsubStore was assigned, so run it again to unsub
+    if (cleared) {
+        clear()
+        return clear
+    }
+
+    unsubFlux = onFluxEventDispatched('APP_STATE_UPDATE', clear)
+    if (cleared) {
+        clear()
+        return clear
+    }
+
+    sub = AppState.addEventListener('change', state => {
         if (state === 'active') setTimer()
-        else if (currentId !== undefined) clearTimeout(currentId)
+        else if (currentId !== undefined) {
+            clearTimeout(currentId)
+            currentId = undefined
+        }
     })
 
     if (AppState.currentState === 'active') setTimer()
 
-    const clear = <T,>(e?: T) => {
-        if (currentId !== undefined) clearTimeout(currentId)
-        sub.remove()
-        unsub()
-        return e
-    }
-
-    const unsub = onFluxEventDispatched('APP_STATE_UPDATE', clear)
+    return clear
 }
 
 function errorBoundaryService() {
