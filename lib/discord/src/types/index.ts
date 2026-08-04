@@ -229,7 +229,7 @@ export namespace DiscordModules {
                 | 'redesign/heading-18/bold'
                 | 'eyebrow'
 
-            export type TextStyleSheet = Record<TextVariant, RNTextProps>
+            export type TextStyleSheet = Record<TextVariant, TextStyle>
             export type CreateStylesFunction = <
                 const S extends Record<
                     string,

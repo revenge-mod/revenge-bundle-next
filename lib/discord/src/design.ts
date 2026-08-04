@@ -84,6 +84,8 @@ export interface Design {
     createStyles: DiscordModules.Components.Styles.CreateStylesFunction
     useTooltip: DiscordModules.Components.UseTooltipFunction
 
+    TextStyleSheet: DiscordModules.Components.Styles.TextStyleSheet
+
     ActionSheet: DiscordModules.Components.ActionSheet
     ActionSheetRow: DiscordModules.Components.ActionSheetRow
     ActionSheetSwitchRow: DiscordModules.Components.ActionSheetSwitchRow
