@@ -1,9 +1,10 @@
 import { useNavigation, useRoute } from '@react-navigation/native'
-import { getAssetIdByName } from '@revenge-mod/assets'
+import { getAssetByName, getAssetIdByName } from '@revenge-mod/assets'
 import { styles } from '@revenge-mod/components/_'
 import Page from '@revenge-mod/components/Page'
 import SearchInput from '@revenge-mod/components/SearchInput'
 import { ActionSheetActionCreators } from '@revenge-mod/discord/actions'
+import { Tokens } from '@revenge-mod/discord/common/tokens'
 import { Design } from '@revenge-mod/discord/design'
 import { reloadApp } from '@revenge-mod/modules/native/app'
 import {
@@ -152,19 +153,33 @@ function BrowseFloatingActionButton({ disabled }: { disabled?: boolean }) {
     )
 }
 
+const ShieldIcon = getAssetByName('ShieldIcon')!
+const RecoveryBannerTitleVariant = 'text-md/semibold'
+
+const useRecoveryBannerStyles = Design.createStyles({
+    icon: {
+        tintColor: Tokens.default.colors.TEXT_DEFAULT,
+        height: Design.TextStyleSheet[RecoveryBannerTitleVariant].lineHeight,
+        width: undefined,
+        aspectRatio: (ShieldIcon.width ?? 1) / (ShieldIcon.height ?? 1),
+    },
+})
+
 function RecoveryModeBanner() {
+    const styles = useRecoveryBannerStyles()
+
     return (
         <Card style={{ marginHorizontal: 6, marginVertical: 6, boxShadow: '' }}>
             <Stack spacing={12}>
                 <Stack direction="horizontal" spacing={8} align="center">
                     <Image
-                        source={getAssetIdByName('ShieldIcon')!}
-                        style={{
-                            width: 18,
-                            height: 18,
-                        }}
+                        source={ShieldIcon.id}
+                        resizeMode="contain"
+                        style={styles.icon}
                     />
-                    <Text variant="text-md/semibold">Recovery Mode</Text>
+                    <Text variant={RecoveryBannerTitleVariant}>
+                        Recovery Mode
+                    </Text>
                 </Stack>
                 <Text variant="text-sm/medium">
                     You are now running with default plugins. Additional plugins
@@ -174,7 +189,7 @@ function RecoveryModeBanner() {
                 </Text>
                 <Stack spacing={8}>
                     <Design.Button
-                        icon={getAssetIdByName('RetryIcon')!}
+                        icon={getAssetIdByName('RetryIcon')}
                         size="sm"
                         text="Exit Recovery Mode"
                         onPress={() => {
