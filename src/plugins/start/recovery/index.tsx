@@ -6,7 +6,10 @@ import {
     onSettingsModulesLoaded,
     registerSettingsItem,
 } from '@revenge-mod/discord/modules/settings'
+import { waitForModules } from '@revenge-mod/modules/finders'
+import { withName } from '@revenge-mod/modules/finders/filters'
 import { callNativeMethod, getBridgeInfo } from '@revenge-mod/modules/native'
+import { instead } from '@revenge-mod/patcher'
 import {
     InternalPluginFlags,
     isDefaultsOnlyBoot,
@@ -22,7 +25,9 @@ import { mErrorChain } from '../../../../lib/modules/src/metro/runtime'
 import pluginSettings from '../settings'
 import { Setting } from '../settings/constants'
 import { RouteNames } from '../settings.plugins/constants'
+import ErrorBoundaryScreen from './components/ErrorBoundaryScreen'
 import RevengeEnterRecoveryModeSetting from './definitions/RevengeEnterRecoveryModeSetting'
+import type { Component, ReactNode } from 'react'
 
 registerInternalPlugin(
     {
@@ -35,13 +40,15 @@ registerInternalPlugin(
         dependencies: { [pluginSettings]: {} },
     },
     {
-        start() {
+        start({ cleanup }) {
             onSettingsModulesLoaded(() => {
                 registerSettingsItem(
                     Setting.RevengeEnterRecoveryMode,
                     RevengeEnterRecoveryModeSetting,
                 )
             })
+
+            cleanup(errorBoundaryService())
 
             freezeDetectionService()
 
@@ -112,6 +119,55 @@ function freezeDetectionService() {
     }
 
     const unsub = onFluxEventDispatched('APP_STATE_UPDATE', clear)
+}
+
+function errorBoundaryService() {
+    const unsub = waitForModules(
+        withName<typeof DiscordErrorBoundary>('ErrorBoundary'),
+        exports => {
+            unsub()
+
+            instead(
+                exports.prototype,
+                'render',
+                function (this: DiscordErrorBoundary) {
+                    if (this.state.error)
+                        return (
+                            <ErrorBoundaryScreen
+                                error={this.state.error}
+                                reload={this.handleReload.bind(this)}
+                                rerender={() => {
+                                    this.setState({
+                                        error: null,
+                                        info: null,
+                                    })
+                                }}
+                            />
+                        )
+
+                    return this.props.children
+                },
+            )
+        },
+        {
+            cached: true,
+        },
+    )
+
+    return unsub
+}
+
+declare class DiscordErrorBoundary extends Component<
+    { children: ReactNode },
+    {
+        error: (Error & { componentStack?: string }) | unknown | null
+        info: { componentStack?: string } | null
+    }
+> {
+    // render() is always called with `this` as the instance of DiscordErrorBoundary
+    render(this: DiscordErrorBoundary): ReactNode
+    discordErrorsSet: boolean
+    handleReload(): void
 }
 
 function RecoveryModal() {
