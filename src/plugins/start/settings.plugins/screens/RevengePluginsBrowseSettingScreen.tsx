@@ -83,6 +83,11 @@ function Screen() {
     const [sort, setSort] = useState<BrowseSortKey>('name')
     const [reverse, setReverse] = useState(false)
 
+    const hasFilter = useMemo(
+        () => excluded.length > 0 || sort !== 'name' || reverse,
+        [excluded, sort, reverse],
+    )
+
     const load = useCallback(async () => {
         const repos = await listRepos()
         const all: BrowseEntry[] = []
@@ -211,7 +216,7 @@ function Screen() {
                 </View>
                 <IconButton
                     icon={FiltersHorizontalIcon}
-                    variant={repos.length > 0 ? 'primary' : 'tertiary'}
+                    variant={hasFilter ? 'primary' : 'tertiary'}
                     onPress={() =>
                         ActionSheetActionCreators.openLazy(
                             import(

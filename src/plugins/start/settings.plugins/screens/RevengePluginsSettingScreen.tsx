@@ -220,6 +220,15 @@ function Screen() {
     const reverse = route.params?.reverse ?? false
     const sort = route.params?.sort ?? DefaultSort
 
+    const hasFilter = useMemo(
+        () =>
+            filter.some(f => !DefaultFilters.includes(f)) ||
+            matchAll !== true ||
+            reverse !== false ||
+            sort !== DefaultSort,
+        [filter, matchAll, reverse, sort],
+    )
+
     const [allPlugins, setAllPlugins] = useState(snapshotPlugins)
 
     useEffect(() => {
@@ -270,7 +279,7 @@ function Screen() {
                 </View>
                 <IconButton
                     icon={FiltersHorizontalIcon}
-                    variant={filter.length > 0 ? 'primary' : 'tertiary'}
+                    variant={hasFilter ? 'primary' : 'tertiary'}
                     onPress={() =>
                         ActionSheetActionCreators.openLazy(
                             import('../components/FilterAndSortActionSheet'),
