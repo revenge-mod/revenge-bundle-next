@@ -1,16 +1,19 @@
+import { getAssetIdByName } from '@revenge-mod/assets'
 import { styles } from '@revenge-mod/components/_'
 import { Tokens } from '@revenge-mod/discord/common/tokens'
 import { Design } from '@revenge-mod/discord/design'
 import { ClientInfoModule } from '@revenge-mod/discord/native'
 import { Clipboard } from '@revenge-mod/externals/react-native-clipboard'
 import { ReactNativeSafeAreaContext } from '@revenge-mod/externals/react-native-safe-area-context'
+import { reloadApp } from '@revenge-mod/modules/native/app'
+import { requestNextBootDefaultsOnly } from '@revenge-mod/plugins/_'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import { ScrollView, StyleSheet, View } from 'react-native'
 import { FullVersion } from '~/constants'
 import { getRNVersion } from '~plugins/start/settings/definitions/shared'
 import type { ComponentProps } from 'react'
 
-const { createStyles, Button, Card, Stack, Text } = Design
+const { createStyles, Button, Card, IconButton, Stack, Text } = Design
 
 const useErrorBoundaryStyles = createStyles({
     view: {
@@ -34,6 +37,9 @@ const additionalStyles = StyleSheet.create({
         fontFamily: 'monospace',
         fontWeight: 'bold',
         marginBottom: 8,
+    },
+    actions: {
+        flexShrink: 0,
     },
 })
 
@@ -118,19 +124,31 @@ export default function ErrorBoundaryScreen({
                         </Text>
                     </LabeledCard>
                 )}
-            <Stack direction="horizontal" spacing={16}>
+            <Stack spacing={8} style={additionalStyles.actions}>
                 <Button
-                    style={styles.flex}
-                    variant="secondary"
-                    text="Retry Render"
-                    onPress={rerender}
+                    icon={getAssetIdByName('ShieldIcon')}
+                    text="Enter Recovery Mode"
+                    onPress={() => {
+                        requestNextBootDefaultsOnly()
+                        reloadApp()
+                    }}
                 />
-                <Button
-                    style={styles.flex}
-                    variant="destructive"
-                    text="Reload"
-                    onPress={reload}
-                />
+                <Stack direction="horizontal" spacing={16}>
+                    <Button
+                        icon={getAssetIdByName('SendMessageIcon')}
+                        style={styles.flex}
+                        variant="secondary"
+                        text="Retry Render"
+                        onPress={rerender}
+                    />
+                    <Button
+                        icon={getAssetIdByName('RetryIcon')}
+                        style={styles.flex}
+                        variant="destructive"
+                        text="Reload"
+                        onPress={reload}
+                    />
+                </Stack>
             </Stack>
         </ReactNativeSafeAreaContext.SafeAreaView>
     )
@@ -158,10 +176,11 @@ export function LabeledCard(props: LabeledCardProps) {
                     {props.label}
                 </Text>
                 {props.rawContent && (
-                    <Button
+                    <IconButton
+                        icon={getAssetIdByName('CopyIcon')!}
+                        accessibilityHint="Copy"
                         variant="secondary"
                         size="sm"
-                        text="Copy"
                         onPress={() => {
                             Clipboard.setString(props.rawContent as string)
                         }}
