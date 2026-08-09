@@ -96,7 +96,6 @@ function autoUpdateService(settings: Storage) {
     }, AUTO_UPDATE_CHECK_DELAY)
 }
 
-// TODO: Add UI for this?
 function defaultRepoRestoreService(
     settings: Storage,
     storage: JsonStorage<Storage>,
