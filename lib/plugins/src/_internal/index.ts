@@ -309,8 +309,7 @@ registerJSMethod(
 
         const meta = getInternalPluginMeta(plugin)
         meta.nativeErrors = Object.freeze(errors)
-        // TODO: Do we need an errored event specifically?
-        // Nudge open UI to re-render the errors row
+        pEmitter.emit('errored', plugin, errors)
         pEmitter.emit('flagUpdate', plugin)
     },
 )
@@ -577,9 +576,7 @@ export function isPluginStartable(plugin: AnyPlugin): boolean {
  */
 export async function handlePluginError(e: unknown, plugin: AnyPlugin) {
     ;(plugin.errors as unknown[]).push(e)
-
-    // TODO: Emit errored event so UI can update?
-    // Update: errored event removed (but status changes are still emitted), so UI should update fine
+    pEmitter.emit('errored', plugin, e)
 
     nativeLoggingHook(
         `\u001b[31mPlugin "${plugin.manifest.id}" encountered an error: ${
