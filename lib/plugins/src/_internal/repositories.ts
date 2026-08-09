@@ -160,6 +160,8 @@ export interface RepoUpdate {
     installed: string
     available: string
     channel: string
+    /** Repository URL this update was found in, added by {@link listAllUpdates}. */
+    repo?: string
 }
 
 /**
@@ -227,7 +229,7 @@ export async function listAllUpdates(): Promise<{
             .map(repo =>
                 listUpdates(repo.url).then(
                     result => {
-                        updates.push(...result)
+                        updates.push(...result.map(u => ({ ...u, repo: repo.url })))
                     },
                     error => {
                         errors.push({ url: repo.url, error })

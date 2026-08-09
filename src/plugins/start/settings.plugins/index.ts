@@ -7,12 +7,15 @@ import {
     registerInternalPlugin,
 } from '@revenge-mod/plugins/_'
 import {
+    listAllUpdates,
     refreshAllRepos,
     updateAllPlugins,
 } from '@revenge-mod/plugins/_/repositories'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import pluginSettings from '../settings'
+import { showPluginUpdatesFoundAlert } from './utils/alerts'
 import { addDefaultRepoIfNeeded } from './repos'
+import { showErrorToast } from './utils/repos'
 import type { JsonStorage } from '@revenge-mod/json-storage'
 import type { PluginApi } from '@revenge-mod/plugins/types'
 
@@ -78,12 +81,37 @@ function autoUpdateService(settings: Storage) {
     setTimeout(async () => {
         try {
             const { errors } = await refreshAllRepos()
-            await updateAllPlugins()
 
-            if (!errors.length)
-                await api.jsonStorage.set({
-                    lastUpdateCheck: Date.now(),
+            if (errors.length) {
+                ToastActionCreators.open({
+                    key: 'PLUGIN_UPDATE_CHECK_FAILED',
+                    content: 'Failed to refresh some plugin repositories',
+                    IconComponent: CircleXIconComponent,
                 })
+                return
+            }
+
+            const { updates } = await listAllUpdates()
+            await api.jsonStorage.set({ lastUpdateCheck: Date.now() })
+
+            if (!updates.length) return
+
+            showPluginUpdatesFoundAlert(updates, async () => {
+                const { errors: updateErrors } = await updateAllPlugins()
+
+                if (updateErrors.length) {
+                    showErrorToast(
+                        updateErrors
+                            .map(e => `${e.id}: ${e.error}`)
+                            .join('\n'),
+                    )
+                } else {
+                    ToastActionCreators.open({
+                        key: 'PLUGIN_UPDATES_INSTALLED',
+                        content: 'Plugins will update on the next reload',
+                    })
+                }
+            })
         } catch (e) {
             ToastActionCreators.open({
                 key: 'PLUGIN_UPDATE_CHECK_FAILED',
