@@ -11,7 +11,7 @@ import PluginClearDataConfirmationAlert from '../components/PluginClearDataConfi
 import PluginHasDependenciesAlert from '../components/PluginHasDependenciesAlert'
 import PluginHasDependentsAlert from '../components/PluginHasDependentsAlert'
 import PluginMissingDependenciesAlert from '../components/PluginMissingDependenciesAlert'
-import PluginStatesProvider from '../components/PluginStatesProvider'
+import PluginStatesProvider from '../components/PluginStateProvider'
 import PluginUninstallConfirmationAlert from '../components/PluginUninstallConfirmationAlert'
 import RepoRemoveConfirmationAlert from '../components/RepoRemoveConfirmationAlert'
 import type { Repo } from '@revenge-mod/plugins/_/repositories'
