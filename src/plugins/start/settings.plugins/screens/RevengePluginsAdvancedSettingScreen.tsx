@@ -20,7 +20,7 @@ import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import { useCallback, useEffect, useState } from 'react'
 import { ScrollView, View } from 'react-native'
 import { api } from '..'
-import { toConfig } from '../repos'
+import { addDefaultRepoIfNeeded, toConfig } from '../repos'
 import { formatBytes, messageOf, showErrorToast } from '../utils/repos'
 import { showRemoveRepoConfirmation } from '../utils/alerts'
 import type {
@@ -369,6 +369,16 @@ export default function RevengePluginsAdvancedSettingScreen() {
                                     [],
                                 )
                             }
+                        />
+                        <TableRow
+                            icon={<TableRowAssetIcon name="GlobeEarthIcon" />}
+                            label="Restore default repositories"
+                            subLabel="Add the bundled default repository if it's missing"
+                            onPress={() => {
+                                addDefaultRepoIfNeeded().catch(e =>
+                                    showErrorToast(messageOf(e)),
+                                )
+                            }}
                         />
                     </TableRowGroup>
                 </Stack>
