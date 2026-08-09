@@ -29,9 +29,18 @@ export let RootNavigationRef: RootNavigationRef = proxify(
                                 2,
                             ),
                         ]),
-                        // TODO: Decouple?
                         ImportTrackerModuleId,
-                    ]),
+                    ]).or(
+                        withDependencies([
+                            loose([
+                                relative.withDependencies([], 1),
+                                relative.withDependencies(
+                                    loose([relative(1), relative(2)]),
+                                    2,
+                                ),
+                            ]),
+                        ]),
+                    ),
                 )
                 .keyAs('revenge.discord.modules.mainTabsV2.RootNavigationRef'),
         )
