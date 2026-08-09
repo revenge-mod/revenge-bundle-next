@@ -25,7 +25,6 @@ export let FlashList: typeof import('@shopify/flash-list') = proxify(
                         null,
                         null,
                         null,
-                        // TODO: Decouple?
                         ImportTrackerModuleId,
                     ]).or(
                         // TODO: Remove when stable > 340206+
@@ -38,8 +37,31 @@ export let FlashList: typeof import('@shopify/flash-list') = proxify(
                             null,
                             null,
                             null,
-                            // TODO: Decouple?
                             ImportTrackerModuleId,
+                        ]),
+                    ).or(
+                        withDependencies([
+                            ReactModuleId,
+                            ReactNativeModuleId,
+                            ReactJSXRuntimeModuleId,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                        ]),
+                    ).or(
+                        // [React, JSXRuntime, (Platform), (FlashListExports), (Reanimated), (RNBottomSheet), (BottomSheet)]
+                        withDependencies([
+                            ReactModuleId,
+                            ReactJSXRuntimeModuleId,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
                         ]),
                     ),
                 )
