@@ -117,7 +117,7 @@ function StatusSection({ plugin }: { plugin: AnyPlugin }) {
         <TableRowGroup title="Status">
             <TableRow
                 icon={<TableRowAssetIcon name="CircleInformationIcon" />}
-                label="Status (TODO)"
+                label="Status"
                 subLabel={bitFieldToString(PluginStatus, status)}
             />
             {errors.length > 0 && (
@@ -175,15 +175,37 @@ function AdvancedSection({ plugin }: { plugin: AnyPlugin }) {
             {dependencies.length > 0 && (
                 <TableRow
                     icon={<TableRowAssetIcon name="ListBulletsIcon" />}
-                    label="Dependencies (TODO)"
+                    label="Dependencies"
                     subLabel={`${name} depends on ${dependencies.length} other plugins`}
+                    onPress={() => {
+                        ActionSheetActionCreators.openLazy(
+                            import('./PluginListActionSheet'),
+                            `plugin-deps-${id}`,
+                            {
+                                title: `Dependencies of ${name}`,
+                                plugins: dependencies,
+                                sheetKey: `plugin-deps-${id}`,
+                            },
+                        )
+                    }}
                 />
             )}
             {dependents.length > 0 && (
                 <TableRow
                     icon={<TableRowAssetIcon name="ListBulletsIcon" />}
-                    label="Dependents (TODO)"
+                    label="Dependents"
                     subLabel={`${dependents.length} other plugins depend on ${name}`}
+                    onPress={() => {
+                        ActionSheetActionCreators.openLazy(
+                            import('./PluginListActionSheet'),
+                            `plugin-dependents-${id}`,
+                            {
+                                title: `Dependents of ${name}`,
+                                plugins: dependents,
+                                sheetKey: `plugin-dependents-${id}`,
+                            },
+                        )
+                    }}
                 />
             )}
         </TableRowGroup>
