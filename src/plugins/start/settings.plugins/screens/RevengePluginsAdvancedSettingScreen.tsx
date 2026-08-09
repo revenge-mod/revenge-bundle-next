@@ -22,6 +22,7 @@ import { ScrollView, View } from 'react-native'
 import { api } from '..'
 import { toConfig } from '../repos'
 import { formatBytes, messageOf, showErrorToast } from '../utils/repos'
+import { showRemoveRepoConfirmation } from '../utils/alerts'
 import type {
     DownloadProgressEvent,
     Repo,
@@ -101,7 +102,7 @@ function UserRepoRow({
                 label: 'Delete',
                 IconComponent: TrashIconComponent,
                 variant: 'destructive' as const,
-                action: () => onRemove(repo),
+                action: () => showRemoveRepoConfirmation(repo, () => onRemove(repo)),
             },
         ],
     ]
@@ -212,7 +213,6 @@ export default function RevengePluginsAdvancedSettingScreen() {
 
     const removeRepo = useCallback(
         async (repo: Repo) => {
-            // TODO: Add warning for default repo removal, user can clear "Plugin Settings" data to restore the default repo
 
             await commit(toConfig(userRepos.filter(r => r.url !== repo.url)))
 
