@@ -49,9 +49,9 @@ export default function RevengePluginsBrowseSettingScreen() {
     )
 }
 
-// TODO: Let the user pick a release channel
-/** The channel a listing displays: `latest`, else its first channel. */
-function displayChannelOf(listing: RepoPluginListing): string | undefined {
+/** The channel a listing displays: preferred, `latest`, else its first channel. */
+function displayChannelOf(listing: RepoPluginListing, preferredChannel: string): string | undefined {
+    if (preferredChannel && listing.channels[preferredChannel]) return preferredChannel
     if (listing.channels.latest) return 'latest'
     return Object.keys(listing.channels)[0]
 }
@@ -82,15 +82,18 @@ function Screen() {
     const [excluded, setExcluded] = useState<string[]>([])
     const [sort, setSort] = useState<BrowseSortKey>('name')
     const [reverse, setReverse] = useState(false)
+    const [channel, setChannel] = useState('')
+    const [channels, setChannels] = useState<string[]>([])
 
     const hasFilter = useMemo(
-        () => excluded.length > 0 || sort !== 'name' || reverse,
-        [excluded, sort, reverse],
+        () => excluded.length > 0 || sort !== 'name' || reverse || channel !== '',
+        [excluded, sort, reverse, channel],
     )
 
     const load = useCallback(async () => {
         const repos = await listRepos()
         const all: BrowseEntry[] = []
+        const allChannels = new Set<string>()
 
         setInternalRepos(
             repos.filter(repo => repo.internal).map(repo => repo.url),
@@ -108,7 +111,9 @@ function Screen() {
 
                             for (const listing of listings) {
                                 const plugin = pList.get(listing.id)
-                                const displayChannel = displayChannelOf(listing)
+                                for (const c of Object.keys(listing.channels))
+                                    allChannels.add(c)
+                                const displayChannel = displayChannelOf(listing, channel)
                                 const displayVersion = displayChannel
                                     ? (listing.channels[displayChannel] ?? '')
                                     : ''
@@ -119,7 +124,6 @@ function Screen() {
                                     repoName: repo.name ?? null,
                                     repositoryText,
                                     version: displayVersion,
-                                    // TODO: Let the user pick a release channel
                                     channel: displayChannel,
                                     size:
                                         listing.versions[displayVersion]
@@ -139,8 +143,9 @@ function Screen() {
                 ),
         )
 
+        setChannels([...allChannels].sort())
         setEntries(all)
-    }, [])
+    }, [channel, setChannels])
 
     useEffect(() => {
         // Show cached indexes right away, then refresh everything
@@ -234,6 +239,9 @@ function Screen() {
                                             .map(repo => repo.url)
                                             .filter(url => !urls.includes(url)),
                                     ),
+                                channels,
+                                channel,
+                                setChannel,
                                 sort,
                                 setSort,
                                 reverse,
