@@ -22,7 +22,14 @@ import {
     runPluginLate,
     stopPlugin,
 } from '@revenge-mod/plugins/_'
-import { listRepos } from '@revenge-mod/plugins/_/repositories'
+import {
+    installFromRepo,
+    listRepos,
+    listUpdates,
+    planInstall,
+    refreshRepo,
+} from '@revenge-mod/plugins/_/repositories'
+import type { RepoUpdate } from '@revenge-mod/plugins/_/repositories'
 import { PluginStatus } from '@revenge-mod/plugins/constants'
 import { formatVersion } from '@revenge-mod/plugins/utils'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
@@ -34,7 +41,7 @@ import {
     showPluginClearDataConfirmation,
     showPluginUninstallConfirmation,
 } from '../utils/alerts'
-import { messageOf, showErrorToast } from '../utils/repos'
+import { confirmPlan, messageOf, showErrorToast } from '../utils/repos'
 import { InstalledPluginSwitch, PluginInfo } from './PluginCard'
 import { usePluginEnabled, usePluginStatus } from './PluginStateProvider'
 import {
@@ -143,6 +150,85 @@ function StatusSection({ plugin }: { plugin: AnyPlugin }) {
     )
 }
 
+function UpdateRow({ plugin }: { plugin: AnyPlugin }) {
+    const [busy, setBusy] = useState(false)
+    const [checked, setChecked] = useState(false)
+    const [update, setUpdate] = useState<RepoUpdate | null>(null)
+
+    const meta = getInternalPluginMeta(plugin)
+    const repoUrl = meta.source?.repo
+    if (isPluginInternal(meta) || !repoUrl) return null
+
+    const check = async () => {
+        setBusy(true)
+        try {
+            await refreshRepo(repoUrl)
+            const updates = await listUpdates(repoUrl)
+            const found =
+                updates.find(u => u.id === plugin.manifest.id) ?? null
+            setUpdate(found)
+            setChecked(true)
+        } catch (e) {
+            showErrorToast(messageOf(e))
+        } finally {
+            setBusy(false)
+        }
+    }
+
+    const doUpdate = async () => {
+        if (!update) return
+        setBusy(true)
+        try {
+            const plan = await planInstall(
+                update.id,
+                undefined,
+                update.channel,
+            )
+            const accepted = await confirmPlan(plan)
+            if (!accepted) return
+            await installFromRepo(plan)
+            setUpdate(null)
+            setChecked(true)
+            ToastActionCreators.open({
+                key: 'revenge-plugin-update-pending',
+                content: 'Update downloaded. Reload to apply.',
+            })
+        } catch (e) {
+            showErrorToast(messageOf(e))
+        } finally {
+            setBusy(false)
+        }
+    }
+
+    const icon = update
+        ? 'DownloadIcon'
+        : checked
+          ? 'CircleCheckIcon'
+          : 'RefreshIcon'
+
+    const label = update
+        ? 'Update'
+        : checked
+          ? 'Up to date'
+          : 'Check for updates'
+
+    const subLabel = update
+        ? `${update.installed} → ${update.available} (${update.channel})`
+        : checked
+          ? 'This plugin is on the latest available version'
+          : 'Tap to refresh this plugin\'s repository'
+
+    return (
+        <TableRow
+            icon={<TableRowAssetIcon name={icon} />}
+            label={label}
+            subLabel={subLabel}
+            onPress={update ? doUpdate : check}
+            disabled={busy}
+        />
+    )
+}
+
 function AdvancedSection({ plugin }: { plugin: AnyPlugin }) {
     const meta = getInternalPluginMeta(plugin)
     const dependents = getPluginDependents(plugin, true)
@@ -152,6 +238,7 @@ function AdvancedSection({ plugin }: { plugin: AnyPlugin }) {
 
     return (
         <TableRowGroup title="Advanced">
+            <UpdateRow plugin={plugin} />
             <IdRow id={id} />
             <RepositoryRow
                 text={repositoryText}
