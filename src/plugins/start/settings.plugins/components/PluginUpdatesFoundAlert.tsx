@@ -101,7 +101,7 @@ export default function PluginUpdatesFoundAlert({
                 <>
                     <AlertActionButton
                         onPress={action}
-                        text="Update"
+                        text="Update & Reload"
                         variant="primary"
                     />
                     <AlertActionButton text="Not now" variant="secondary" />

@@ -1,6 +1,7 @@
 import { ToastActionCreators } from '@revenge-mod/discord/actions'
 import { onSettingsModulesLoaded } from '@revenge-mod/discord/modules/settings'
 import { JsonStorageUpdateMode } from '@revenge-mod/json-storage'
+import { reloadApp } from '@revenge-mod/modules/native/app'
 import {
     InternalPluginFlags,
     PluginFlags,
@@ -106,10 +107,7 @@ function autoUpdateService(settings: Storage) {
                             .join('\n'),
                     )
                 } else {
-                    ToastActionCreators.open({
-                        key: 'PLUGIN_UPDATES_INSTALLED',
-                        content: 'Plugins will update on the next reload',
-                    })
+                    reloadApp()
                 }
             })
         } catch (e) {
