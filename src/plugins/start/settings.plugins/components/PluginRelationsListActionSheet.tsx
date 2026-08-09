@@ -4,16 +4,15 @@ import type { AnyPlugin } from '@revenge-mod/plugins/_'
 
 const { ActionSheet, Stack, TableRow, TableRowGroup } = Design
 
-export interface PluginListActionSheetProps {
+export interface PluginRelationsListActionSheetProps {
     title: string
     plugins: AnyPlugin[]
-    sheetKey: string
 }
 
-export default function PluginListActionSheet({
+export default function PluginRelationsListActionSheet({
     title,
     plugins,
-}: PluginListActionSheetProps) {
+}: PluginRelationsListActionSheetProps) {
     return (
         <ActionSheet>
             <Stack spacing={24} style={{ paddingTop: 8 }}>

@@ -27,6 +27,7 @@ import {
     useEssentialPluginTooltip,
 } from './TooltipProvider'
 import type { AnyPlugin, InternalPluginMeta } from '@revenge-mod/plugins/_'
+import type { RepoPluginListing } from '@revenge-mod/plugins/_/repositories'
 
 const { Card, Text, Stack, IconButton, Button, createStyles } = Design
 
@@ -262,6 +263,8 @@ export const BrowsePluginCard = memo(function BrowsePluginCard({
     author,
     icon,
     id,
+    listing,
+    channel,
     repositoryText,
     onInstall,
 }: {
@@ -271,8 +274,10 @@ export const BrowsePluginCard = memo(function BrowsePluginCard({
     author: string
     icon?: string
     id: string
+    listing: RepoPluginListing
+    channel: string
     repositoryText: string
-    onInstall: () => void
+    onInstall: (channel?: string, version?: string) => void
 }) {
     return (
         <PluginCard
@@ -295,6 +300,8 @@ export const BrowsePluginCard = memo(function BrowsePluginCard({
                                 version,
                                 icon,
                                 id,
+                                listing,
+                                channel,
                                 repositoryText,
                                 onInstall,
                             })

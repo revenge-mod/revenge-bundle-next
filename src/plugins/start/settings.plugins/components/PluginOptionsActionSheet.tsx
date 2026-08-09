@@ -179,12 +179,11 @@ function AdvancedSection({ plugin }: { plugin: AnyPlugin }) {
                     subLabel={`${name} depends on ${dependencies.length} other plugins`}
                     onPress={() => {
                         ActionSheetActionCreators.openLazy(
-                            import('./PluginListActionSheet'),
+                            import('./PluginRelationsListActionSheet'),
                             `plugin-deps-${id}`,
                             {
                                 title: `Dependencies of ${name}`,
                                 plugins: dependencies,
-                                sheetKey: `plugin-deps-${id}`,
                             },
                         )
                     }}
@@ -197,12 +196,11 @@ function AdvancedSection({ plugin }: { plugin: AnyPlugin }) {
                     subLabel={`${dependents.length} other plugins depend on ${name}`}
                     onPress={() => {
                         ActionSheetActionCreators.openLazy(
-                            import('./PluginListActionSheet'),
+                            import('./PluginRelationsListActionSheet'),
                             `plugin-dependents-${id}`,
                             {
                                 title: `Dependents of ${name}`,
                                 plugins: dependents,
-                                sheetKey: `plugin-dependents-${id}`,
                             },
                         )
                     }}

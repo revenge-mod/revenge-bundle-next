@@ -121,7 +121,11 @@ export function BrowsePluginMasonryFlashList({
     onInstall,
 }: {
     entries: BrowseEntry[]
-    onInstall: (entry: BrowseEntry) => void
+    onInstall: (
+        entry: BrowseEntry,
+        channel?: string,
+        version?: string,
+    ) => void
 }) {
     const numColumns = useNumColumns()
     const resetTooltips = useResetTooltips()
@@ -152,8 +156,12 @@ export function BrowsePluginMasonryFlashList({
                         author={listing.author}
                         icon={listing.icon ?? undefined}
                         id={listing.id}
+                        listing={listing}
+                        channel={entry.channel ?? ''}
                         repositoryText={entry.repositoryText}
-                        onInstall={() => onInstall(entry)}
+                        onInstall={(channel, version) =>
+                            onInstall(entry, channel, version)
+                        }
                     />
                 )
             }}

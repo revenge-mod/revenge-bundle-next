@@ -82,18 +82,15 @@ function Screen() {
     const [excluded, setExcluded] = useState<string[]>([])
     const [sort, setSort] = useState<BrowseSortKey>('name')
     const [reverse, setReverse] = useState(false)
-    const [channel, setChannel] = useState('')
-    const [channels, setChannels] = useState<string[]>([])
 
     const hasFilter = useMemo(
-        () => excluded.length > 0 || sort !== 'name' || reverse || channel !== '',
-        [excluded, sort, reverse, channel],
+        () => excluded.length > 0 || sort !== 'name' || reverse,
+        [excluded, sort, reverse],
     )
 
     const load = useCallback(async () => {
         const repos = await listRepos()
         const all: BrowseEntry[] = []
-        const allChannels = new Set<string>()
 
         setInternalRepos(
             repos.filter(repo => repo.internal).map(repo => repo.url),
@@ -111,9 +108,7 @@ function Screen() {
 
                             for (const listing of listings) {
                                 const plugin = pList.get(listing.id)
-                                for (const c of Object.keys(listing.channels))
-                                    allChannels.add(c)
-                                const displayChannel = displayChannelOf(listing, channel)
+                                const displayChannel = displayChannelOf(listing, '')
                                 const displayVersion = displayChannel
                                     ? (listing.channels[displayChannel] ?? '')
                                     : ''
@@ -143,9 +138,8 @@ function Screen() {
                 ),
         )
 
-        setChannels([...allChannels].sort())
         setEntries(all)
-    }, [channel, setChannels])
+    }, [])
 
     useEffect(() => {
         // Show cached indexes right away, then refresh everything
@@ -167,12 +161,24 @@ function Screen() {
     }, [load])
 
     const install = useCallback(
-        async (entry: BrowseEntry) => {
+        async (
+            entry: BrowseEntry,
+            channel?: string,
+            version?: string,
+        ) => {
+            const targetChannel = channel || entry.channel
+            const targetVersion =
+                version ||
+                (targetChannel
+                    ? (entry.listing.channels[targetChannel] ?? '')
+                    : '') ||
+                entry.version
+
             // Pin the displayed version, channel, and repository, so the plan matches the card
             await runInstallFlow(
                 entry.listing.id,
-                entry.version || undefined,
-                entry.channel,
+                targetVersion || undefined,
+                targetChannel,
                 // Internal repos so external plugins can link against internal plugins as well
                 [...internalRepos, entry.repoUrl],
             )
@@ -239,9 +245,6 @@ function Screen() {
                                             .map(repo => repo.url)
                                             .filter(url => !urls.includes(url)),
                                     ),
-                                channels,
-                                channel,
-                                setChannel,
                                 sort,
                                 setSort,
                                 reverse,

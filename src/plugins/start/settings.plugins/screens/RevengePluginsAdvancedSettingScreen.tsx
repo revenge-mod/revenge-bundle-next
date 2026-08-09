@@ -3,6 +3,7 @@ import { FormSwitch } from '@revenge-mod/components'
 import { styles } from '@revenge-mod/components/_'
 import Page from '@revenge-mod/components/Page'
 import TableRowAssetIcon from '@revenge-mod/components/TableRowAssetIcon'
+import { ToastActionCreators } from '@revenge-mod/discord/actions'
 import { Design } from '@revenge-mod/discord/design'
 import { Clipboard } from '@revenge-mod/externals/react-native-clipboard'
 import { callNativeMethod } from '@revenge-mod/modules/native'
@@ -373,11 +374,18 @@ export default function RevengePluginsAdvancedSettingScreen() {
                         <TableRow
                             icon={<TableRowAssetIcon name="GlobeEarthIcon" />}
                             label="Restore default repositories"
-                            subLabel="Add the bundled default repository if it's missing"
-                            onPress={() => {
-                                addDefaultRepoIfNeeded().catch(e =>
-                                    showErrorToast(messageOf(e)),
-                                )
+                            onPress={async () => {
+                                try {
+                                    const restored =
+                                        await addDefaultRepoIfNeeded(true)
+                                    if (!restored)
+                                        ToastActionCreators.open({
+                                            key: 'revenge-default-repo-nothing',
+                                            content: 'No default repository to restore',
+                                        })
+                                } catch (e) {
+                                    showErrorToast(messageOf(e))
+                                }
                             }}
                         />
                     </TableRowGroup>

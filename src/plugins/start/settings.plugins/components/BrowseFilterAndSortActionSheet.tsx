@@ -32,11 +32,6 @@ export interface BrowseFilterAndSortActionSheetProps {
     /** Checked repository URLs. */
     checked: string[]
     setChecked: (urls: string[]) => void
-    /** Available release channels across all listings. */
-    channels: string[]
-    /** Selected release channel. Empty string means default. */
-    channel: string
-    setChannel: (channel: string) => void
     sort: BrowseSortKey
     setSort: (sort: BrowseSortKey) => void
     reverse: boolean
@@ -47,9 +42,6 @@ export default function BrowseFilterAndSortActionSheet({
     repos,
     checked,
     setChecked,
-    channels,
-    channel,
-    setChannel,
     sort,
     setSort,
     reverse,
@@ -84,19 +76,6 @@ export default function BrowseFilterAndSortActionSheet({
                     )
                 })}
             </TableRowGroup>
-            <TableRadioGroup
-                title="Release channel"
-                defaultValue={channel}
-                onChange={v => setChannel(v as string)}
-            >
-                <TableRadioRow
-                    label="Default (latest / first available)"
-                    value=""
-                />
-                {channels.map(c => (
-                    <TableRadioRow key={c} label={c} value={c} />
-                ))}
-            </TableRadioGroup>
             <TableRadioGroup
                 title="Sort by"
                 defaultValue={sort}
