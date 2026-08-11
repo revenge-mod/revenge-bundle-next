@@ -8,7 +8,7 @@
 import { callNativeMethodSync } from '@revenge-mod/modules/native'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import { FullVersion } from '~constants'
-import { loadModuleFromSegment, mInitializingId, mList } from './patches'
+import { loadModuleFromSegment, mList } from './patches'
 import {
     executeInitializeSubscriptions,
     executeRequireSubscriptions,
@@ -62,7 +62,7 @@ export const metroRequire = (moduleId => {
         mod.flags = (flags & NotInitializedOrInitializingMask) | HasError
         mod.error = e
 
-        const msg = `Module ${mInitializingId} failed to initialize:\n\n${getErrorStack(e)}`
+        const msg = `Module ${moduleId} failed to initialize:\n\n${getErrorStack(e)}`
 
         if (__DEV__) {
             callNativeMethodSync('revenge.alertError', [msg, FullVersion])
@@ -71,7 +71,7 @@ export const metroRequire = (moduleId => {
         }
 
         // Some modifications can cause modules to fail by initializing them in the wrong order, we can't just blacklist them
-        // cacheBlacklistedModule(mInitializingId)
+        // cacheBlacklistedModule(moduleId)
 
         // So... it wasn't a great idea to throw, Discord has pushed a broken build that has some failing modules
         // Vanilla Metro would swallow the error and just return an empty object as the exports..., insanity
