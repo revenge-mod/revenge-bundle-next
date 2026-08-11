@@ -183,11 +183,19 @@ export function* lookupModules(filter: Filter, options?: LookupModulesOptions) {
             }
 
         if (includeUninit)
-            for (const id of mUninitialized) {
+            // Must snapshot because partial matches can cause modules that haven't been looped over to be initialized
+            // which would remove them from the Set
+            for (const id of Array.from(mUninitialized)) {
                 // biome-ignore lint/complexity/useOptionalChain: Hot path should be optimized
                 if (cached && cached.has(id)) continue
 
-                const flag = runFilter(filter, id, undefined, options)
+                const flag = runFilter(
+                    filter,
+                    id,
+                    // Could be initialized by a previous partial match
+                    getInitializedModuleExports(id),
+                    options,
+                )
                 if (flag) {
                     notFound = false
 
@@ -308,8 +316,15 @@ export function lookupModule(filter: Filter, options?: LookupModulesOptions) {
             }
 
         if (includeUninit)
-            for (const id of mUninitialized) {
-                const flag = runFilter(filter, id, undefined, options)
+            // See equivalent code in `lookupModules` for why this is snapshotted
+            for (const id of [...mUninitialized]) {
+                const flag = runFilter(
+                    filter,
+                    id,
+                    // See equivalent code in `lookupModules` for why this isn't undefined
+                    getInitializedModuleExports(id),
+                    options,
+                )
                 if (flag) {
                     if (__BUILD_FLAG_DEBUG_MODULE_LOOKUPS__)
                         DEBUG_logLookupMatched(filter.key, flag, id)

@@ -17,10 +17,7 @@ import {
     Uncached,
 } from '../../../modules/src/caches'
 import { FilterResultFlags } from '../../../modules/src/finders/_internal'
-import {
-    FilterFlag,
-    FilterScopes,
-} from '../../../modules/src/finders/filters/constants'
+import { FilterScopes } from '../../../modules/src/finders/filters/constants'
 import type {
     Filter,
     FilterGenerator,
@@ -91,7 +88,6 @@ const withLeadingFluxStoreDeps = withDependencies(
 export type WithStore = FilterGenerator<
     <T>() => Filter<{
         Result: DiscordModules.Flux.Store<T>
-        RequiresExports: boolean
         Scopes: [
             typeof FilterScopes.Uninitialized,
             typeof FilterScopes.Initialized,
@@ -103,27 +99,21 @@ export type WithStore = FilterGenerator<
  * A dynamic filter that matches all Flux stores.
  */
 export const withStore = createFilterGenerator(
-    (_, id, exports) => {
-        if (exports) return Boolean(exports._dispatchToken)
-        else {
-            if (!withLeadingFluxStoreDeps(id)) return false
-            const deps = getModuleDependencies(id)!
-            return deps[deps.length - 1] === ImportTrackerModuleId
-        }
+    (_, id, exports, initialized) => {
+        if (initialized) return Boolean(exports?._dispatchToken)
+
+        if (!withLeadingFluxStoreDeps(id)) return false
+        const deps = getModuleDependencies(id)!
+        return deps[deps.length - 1] === ImportTrackerModuleId
     },
     () => 'revenge.discord.store',
-    FilterFlag.Dynamic,
     FilterScopes.Uninitialized | FilterScopes.Initialized,
 ) as WithStore
 
 export type WithStoreName = FilterGenerator<
     <T>(name: string) => Filter<{
         Result: DiscordModules.Flux.Store<T>
-        RequiresExports: true
-        Scopes: [
-            typeof FilterScopes.Uninitialized,
-            typeof FilterScopes.Initialized,
-        ]
+        Scopes: [typeof FilterScopes.Initialized]
     }>
 >
 
@@ -132,10 +122,12 @@ export type WithStoreName = FilterGenerator<
  */
 export const withStoreName = createFilterGenerator(
     ([name], _, exports) =>
-        exports?.getName?.length === 0 && exports.getName() === name,
+        typeof exports?.getName === 'function' &&
+        exports.getName.length === 0 &&
+        exports.getName() === name,
     ([name]) => `revenge.discord.storeName(${name})`,
-    FilterFlag.RequiresExports,
-    FilterScopes.Uninitialized | FilterScopes.Initialized,
+    // Uninitialized to make sure cached results resolve immediately
+    FilterScopes.Initialized | FilterScopes.Uninitialized,
 ) as WithStoreName
 
 /// STORE CACHING

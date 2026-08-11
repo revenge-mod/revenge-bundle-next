@@ -12,10 +12,7 @@ import {
     ReactModuleId,
     ReactNativeModuleId,
 } from '@revenge-mod/react'
-import {
-    FilterFlag,
-    FilterScopes,
-} from '../../modules/src/finders/filters/constants'
+import { FilterScopes } from '../../modules/src/finders/filters/constants'
 import type {
     Filter,
     FilterGenerator,
@@ -50,7 +47,6 @@ export type WithGeneratedIconComponent = FilterGenerator<
         ...assets: string[]
     ) => Filter<{
         Result: { [K in N]: FC<any> }
-        RequiresExports: boolean
         Scopes: [
             typeof FilterScopes.Uninitialized,
             typeof FilterScopes.Initialized,
@@ -126,7 +122,6 @@ export const withGeneratedIconComponent = createFilterGenerator<
         return false
     },
     names => `revenge.utils.discord.generatedIconComponent(${names.join(',')})`,
-    FilterFlag.Dynamic,
     FilterScopes.Uninitialized | FilterScopes.Initialized,
 ) as WithGeneratedIconComponent
 

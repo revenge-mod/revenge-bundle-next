@@ -4,7 +4,7 @@ import {
     getModuleDependencies,
 } from '../../metro/utils'
 import { runFilter } from '../_internal'
-import { FilterFlag, FilterScopes } from './constants'
+import { FilterScopes } from './constants'
 import { createFilterGenerator } from './utils'
 import type { Metro } from '../../types'
 import type { Filter, FilterGenerator } from './utils'
@@ -76,7 +76,6 @@ export interface ComparableDependencyMap
 const withDependencies_ = createFilterGenerator<Parameters<WithDependencies>>(
     ([deps], id) => depCompare(getModuleDependencies(id)!, deps, id, id),
     deps => `revenge.deps(${depGenFilterKey(deps)})`,
-    FilterFlag.Dynamic,
     FilterScopes.Uninitialized | FilterScopes.Initialized,
 ) as WithDependencies
 
@@ -98,7 +97,6 @@ withDependencies.relative = relative
 type WithDependencies = FilterGenerator<
     <T>(deps: ComparableDependencyMap) => Filter<{
         Result: T
-        RequiresExports: false
         Scopes: [
             typeof FilterScopes.Uninitialized,
             typeof FilterScopes.Initialized,

@@ -1,40 +1,32 @@
+import { isModuleInitialized } from '@revenge-mod/modules/metro/utils'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import { withProps } from '.'
 import { and, or } from './composite'
 import { FilterScopes } from './constants'
 import type { Metro } from '@revenge-mod/modules/types'
-import type { If, LogicalAnd } from '@revenge-mod/utils/types'
 import type {
     DefaultFilterInfo,
-    FilterFlag,
     FilterInfo,
     FilterScope,
-    FilterScopes as FilterScopesObject,
     FilterScopeValue,
 } from './constants'
 
 export type FilterResult<F> = F extends Filter<infer I> ? I['Result'] : never
 
-export type FilterRequiresExports<F> =
-    F extends Filter<infer I> ? I['RequiresExports'] : never
-
 export type FilterInfoOf<F> = F extends Filter<infer I> ? I : FilterInfo
+
+declare const FilterInfoBrand: unique symbol
 
 export interface FilterBase<Info extends FilterInfo = DefaultFilterInfo> {
     (
-        ...args: If<
-            Info['RequiresExports'],
-            [id: Metro.ModuleID, exports: Metro.ModuleExports],
-            [id: Metro.ModuleID, exports?: never]
-        >
+        id: Metro.ModuleID,
+        exports?: Metro.ModuleExports,
+        initialized?: boolean,
     ): boolean
     key: string
-    flags: If<
-        Info['RequiresExports'],
-        (typeof FilterFlag)['RequiresExports'],
-        FilterFlag
-    >
     scopes: FilterScopeValue
+    /** @internal */
+    readonly [FilterInfoBrand]?: Info
 }
 
 export type Filter<Info extends FilterInfo = DefaultFilterInfo> =
@@ -42,13 +34,11 @@ export type Filter<Info extends FilterInfo = DefaultFilterInfo> =
 
 export type MergeFilterInfo<I1 extends FilterInfo, I2 extends FilterInfo> = {
     Result: I1['Result'] & I2['Result']
-    RequiresExports: LogicalAnd<I1['RequiresExports'], I2['RequiresExports']>
     Scopes: [...I1['Scopes'], ...I2['Scopes']]
 }
 
 export type UnionFilterInfo<I1 extends FilterInfo, I2 extends FilterInfo> = {
     Result: I1['Result'] | I2['Result']
-    RequiresExports: LogicalAnd<I1['RequiresExports'], I2['RequiresExports']>
     Scopes: [...I1['Scopes'], ...I2['Scopes']]
 }
 
@@ -91,25 +81,12 @@ export interface FilterHelpers<Info extends FilterInfo = DefaultFilterInfo> {
      */
     scope<T extends Filter<Info>, const S extends FilterScope[]>(
         this: T,
-        ...scopes: If<
-            Info['RequiresExports'],
-            [typeof FilterScopesObject.Initialized],
-            S
-        >
-    ): Filter<
-        Info & {
-            Scopes: If<
-                Info['RequiresExports'],
-                [typeof FilterScopesObject.Initialized],
-                S
-            >
-        }
-    >
+        ...scopes: S
+    ): Filter<Info & { Scopes: S }>
 }
 
 export type FilterGenerator<G extends (...args: any[]) => Filter> = G & {
     keyFor(args: Parameters<G>): string
-    flagsFor(args: Parameters<G>): FilterFlag
     defaultScopesFor(args: Parameters<G>): FilterScopeValue
 }
 
@@ -129,7 +106,8 @@ const Helpers: FilterHelpers = Object.setPrototypeOf(
             const newFilter = ((
                 id: Metro.ModuleID,
                 exports?: Metro.ModuleExports,
-            ) => this(id, exports)) as typeof this
+                initialized?: boolean,
+            ) => this(id, exports, initialized)) as typeof this
 
             Object.assign(newFilter, this)
 
@@ -139,7 +117,9 @@ const Helpers: FilterHelpers = Object.setPrototypeOf(
             const filter = this.new()
             filter.scopes = 0
             for (const scope of scopes) filter.scopes |= scope
-            return filter
+            return filter as Filter<
+                FilterInfoOf<typeof filter> & { Scopes: typeof scopes }
+            >
         },
     } satisfies FilterHelpers,
     Function.prototype,
@@ -150,15 +130,14 @@ const Helpers: FilterHelpers = Object.setPrototypeOf(
  *
  * @param filter The function that filters the modules.
  * @param keyFor The function that generates the key for the filter.
- * @param flagFor The function that generates the flags for the filter, or a static flag.
  * @param defaultScopesFor The function that generates the default scopes for the filter, or static scopes. Defaults to {@link FilterScopes.Initialized}.
  * @returns A function that generates a filter with the specified arguments.
  *
  * @example
  * ```ts
  * const custom = createFilterGenerator<[arg1: number, arg2: string]>(
- *   ([arg1, arg2], id, exports) => {
- *     // WARNING: exports can be Proxy or nullish, so be careful when using it
+ *   ([arg1, arg2], id, exports, initialized) => {
+ *     // WARNING: exports can be a Proxy, nullish, or a primitive, so be careful when using it
  *     // filter logic
  *     return true
  *   },
@@ -173,16 +152,15 @@ export function createFilterGenerator<A extends any[]>(
         args: A,
         id: Metro.ModuleID,
         exports: Metro.ModuleExports,
+        initialized: boolean,
     ) => boolean,
     keyFor: (args: A) => string,
-    flagFor: ((args: A) => FilterFlag) | FilterFlag,
     defaultScopesFor?: ((args: A) => FilterScopeValue) | FilterScopeValue,
 ): FilterGenerator<(...args: A) => Filter>
 
 export function createFilterGenerator<A extends any[]>(
     filter: (args: A, id: Metro.ModuleID) => boolean,
     keyFor: (args: A) => string,
-    flagFor: ((args: A) => FilterFlag) | FilterFlag,
     defaultScopesFor?: ((args: A) => FilterScopeValue) | FilterScopeValue,
 ): FilterGenerator<(...args: A) => Filter>
 
@@ -190,15 +168,13 @@ export function createFilterGenerator<A extends any[]>(
     filter: (
         args: A,
         id: Metro.ModuleID,
-        exports?: Metro.ModuleExports,
+        exports: Metro.ModuleExports,
+        initialized: boolean,
     ) => boolean,
     keyFor: (args: A) => string,
-    flagFor: ((args: A) => FilterFlag) | FilterFlag,
     defaultScopesFor?: ((args: A) => FilterScopeValue) | FilterScopeValue,
 ): FilterGenerator<(...args: A) => Filter> {
     type GeneratorType = ReturnType<typeof createFilterGenerator<A>>
-
-    const isFlagsStatic = typeof flagFor === 'number'
 
     const defaultScopes = defaultScopesFor ?? FilterScopes.Initialized
     const isDefaultScopesStatic = typeof defaultScopes === 'number'
@@ -207,9 +183,10 @@ export function createFilterGenerator<A extends any[]>(
         const filter_ = ((
             id: Metro.ModuleID,
             exports?: Metro.ModuleExports,
+            initialized: boolean = Boolean(isModuleInitialized(id)),
         ) => {
             try {
-                return filter(args, id, exports)
+                return filter(args, id, exports, initialized)
             } catch (e) {
                 DEBUG_warnFilterThrown(id, keyFor(args), e)
                 return false
@@ -217,16 +194,11 @@ export function createFilterGenerator<A extends any[]>(
         }) as ReturnType<GeneratorType>
 
         filter_.key = keyFor(args)
-        filter_.flags = isFlagsStatic ? flagFor : flagFor(args)
         filter_.scopes = isDefaultScopesStatic
             ? defaultScopes
             : defaultScopes(args)
         return Object.setPrototypeOf(filter_, Helpers)
     }
-
-    generator.flagsFor = isFlagsStatic
-        ? () => flagFor
-        : (args: A) => flagFor(args)
 
     generator.defaultScopesFor = isDefaultScopesStatic
         ? () => defaultScopes
