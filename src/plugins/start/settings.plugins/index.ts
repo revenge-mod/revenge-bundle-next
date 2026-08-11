@@ -22,7 +22,7 @@ export interface Storage {
     defaultRepoRestored?: boolean
 }
 
-const OUTDATED_THRESHOLD = 24 * 60 * 60 * 1000 // 1 day
+const OUTDATED_THRESHOLD = 60 * 60 * 1000 // 1 hour
 const AUTO_UPDATE_CHECK_DELAY = 10_000
 
 const CircleXIconComponent = lookupGeneratedIconComponent(
