@@ -9,7 +9,7 @@ import {
     PLUGIN_CARD_HALF_GUTTER,
     PluginCard,
 } from './PluginCard'
-import { useResetTooltips } from './TooltipProvider'
+import { useHidePluginTooltips } from './TooltipProvider'
 import type { AnyPlugin, InternalPluginMeta } from '@revenge-mod/plugins/_'
 import type { RepoPluginListing } from '@revenge-mod/plugins/_/repositories'
 import type { FlashListProps } from '@shopify/flash-list'
@@ -25,14 +25,14 @@ export function PluginFlashList({
     FlashListProps<AnyPlugin>,
     'onContentSizeChange'
 >) {
-    const resetTooltips = useResetTooltips()
+    const hideTooltips = useHidePluginTooltips()
 
     return (
         <FlashList
             style={gutterCompensation}
             onContentSizeChange={onContentSizeChange}
             data={plugins}
-            onScrollBeginDrag={resetTooltips}
+            onScrollBeginDrag={hideTooltips}
             fadingEdgeLength={plugins.length === 1 ? 0 : 16}
             keyExtractor={plugin => plugin.manifest.id}
             renderItem={({
@@ -60,7 +60,7 @@ export function InstalledPluginMasonryFlashList({
     plugins: (readonly [AnyPlugin, InternalPluginMeta])[]
 }) {
     const numColumns = useNumColumns()
-    const resetTooltips = useResetTooltips()
+    const hideTooltips = useHidePluginTooltips()
 
     return (
         <FlashList
@@ -69,7 +69,7 @@ export function InstalledPluginMasonryFlashList({
             // FAB is 56px tall, plus 16px spacing on top and bottom
             contentContainerStyle={{ paddingBottom: 56 + 2 * 16 }}
             data={plugins}
-            onScrollBeginDrag={resetTooltips}
+            onScrollBeginDrag={hideTooltips}
             fadingEdgeLength={16}
             keyExtractor={([plugin]) => plugin.manifest.id}
             numColumns={numColumns}
@@ -124,7 +124,7 @@ export function BrowsePluginMasonryFlashList({
     onInstall: (entry: BrowseEntry) => void
 }) {
     const numColumns = useNumColumns()
-    const resetTooltips = useResetTooltips()
+    const hideTooltips = useHidePluginTooltips()
 
     return (
         <FlashList
@@ -132,7 +132,7 @@ export function BrowsePluginMasonryFlashList({
             style={gutterCompensation}
             contentContainerStyle={{ paddingBottom: 16 }}
             data={entries}
-            onScrollBeginDrag={resetTooltips}
+            onScrollBeginDrag={hideTooltips}
             fadingEdgeLength={16}
             keyExtractor={entry => entry.key}
             numColumns={numColumns}
