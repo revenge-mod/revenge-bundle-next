@@ -7,23 +7,18 @@ import {
     PluginFlags,
     registerInternalPlugin,
 } from '@revenge-mod/plugins/_'
-import { afterJSX, beforeJSX } from '@revenge-mod/react/jsx-runtime'
-import { findInReactFiber } from '@revenge-mod/utils/react'
+import { insteadJSX } from '@revenge-mod/react/jsx-runtime'
+import { createElement, isValidElement } from 'react'
 import { Image } from 'react-native'
 import { Badges, UsersWithBadges } from './constants'
 import { styles, useBadgeStyles } from './styles'
-import { afterRendered } from './utils'
-import type { FC, ReactElement } from 'react'
-import type {
-    ImageProps,
-    ImageSourcePropType,
-    ImageStyle,
-    PressableProps,
-    StyleProp,
-} from 'react-native'
+import { mapElementTree, patchRender } from './utils'
+import type { FC, ReactElement, ReactNode } from 'react'
+import type { ImageSourcePropType } from 'react-native'
 import type { Badge, BadgeId } from './constants'
+import type { RenderPatch } from './utils'
 
-const DUMMY_SYMBOL = {} as unknown as string
+type BadgeStyles = ReturnType<typeof useBadgeStyles>
 
 interface ProfileBadgeProps {
     id: string
@@ -46,9 +41,10 @@ interface ProfileBadgeRowsProps {
     showToastOnPress?: boolean
 }
 
-type ViewWithProfileBadges = ReactElement<{
-    children: Array<ReactElement<ProfileBadgeProps, FC<ProfileBadgeProps>>>
-}>
+const DummyBadgeId = {} as unknown as string
+const DummyBadges = [
+    { id: DummyBadgeId },
+] as unknown as ProfileBadgeRowsProps['badges']
 
 registerInternalPlugin(
     {
@@ -66,28 +62,25 @@ registerInternalPlugin(
                 ),
                 ({ ProfileBadgeRows }) => {
                     cleanup(
-                        beforeJSX(ProfileBadgeRows, args => {
-                            const [, props] = args
+                        insteadJSX(
+                            ProfileBadgeRows,
+                            ([type, props, key], jsx) => {
+                                if (
+                                    !UsersWithBadges[props.userId] ||
+                                    typeof type !== 'function'
+                                )
+                                    return jsx(type, props, key)
 
-                            // Inject dummy badge for users with custom badges to ensure ProfileBadge components exist
-                            if (
-                                // has custom badges
-                                UsersWithBadges[props.userId] &&
-                                // but no actual badges
-                                !props.badges.length
-                            )
-                                // @ts-expect-error: This will never be rendered
-                                props.badges.push({ id: DUMMY_SYMBOL })
-
-                            return args
-                        }),
-                    )
-
-                    cleanup(
-                        afterJSX(ProfileBadgeRows, el => {
-                            patchProfileBadgeRows(el)
-                            return el
-                        }),
+                                // Inject dummy badge for users with custom badges to ensure ProfileBadge components exist
+                                return jsx(
+                                    patchRender(type, injectCustomBadges),
+                                    props.badges.length
+                                        ? props
+                                        : { ...props, badges: DummyBadges },
+                                    key,
+                                )
+                            },
+                        ),
                     )
                 },
             )
@@ -103,92 +96,102 @@ registerInternalPlugin(
     InternalPluginFlags.Internal | InternalPluginFlags.Essential,
 )
 
-function patchProfileBadgeRows(
-    element: ReactElement<ProfileBadgeRowsProps, FC<ProfileBadgeRowsProps>>,
-): void {
-    const unpatch = afterRendered(element, el => {
-        unpatch()
+/** Matched structurally, as minified builds don't preserve `type.name`. */
+function isProfileBadgeElement(
+    node: ReactNode,
+): node is ReactElement<ProfileBadgeProps, FC<ProfileBadgeProps>> {
+    if (!isValidElement(node) || typeof node.type !== 'function') return false
 
-        const container = findInReactFiber(
-            el as ReactElement,
-            isViewContainingProfileBadgeElements,
-        )
+    const props = node.props as Partial<ProfileBadgeProps> | null
+    return props != null && 'badgeSize' in props && 'userId' in props
+}
 
-        if (!container) return el
+const injectCustomBadges: RenderPatch<ProfileBadgeRowsProps> = (
+    rendered,
+    { userId },
+) => {
+    const userBadges = UsersWithBadges[userId]
+    if (!userBadges) return rendered
 
-        const [{ type: ProfileBadge, props }] = container.props.children
-        const userBadges = UsersWithBadges[props.userId]
+    return mapElementTree(rendered, element => {
+        const { children } = element.props
+        if (!Array.isArray(children)) return
 
-        if (userBadges) {
-            for (const badgeId of userBadges) {
-                const badge = Badges[badgeId]
-                if (!badge) continue
+        const template = children.find(isProfileBadgeElement)
+        if (!template) return
 
-                const badgeElement = (
-                    <ProfileBadge
-                        {...props}
-                        key={badgeId}
-                        id={badgeId}
-                        label={badge.label}
-                        source={badge.icon}
-                    />
-                )
+        const ProfileBadge = template.type
+        const customBadges: ReactElement[] = []
 
-                patchProfileBadge(badgeElement, badgeId, badge)
-                container.props.children.push(badgeElement)
-            }
+        for (const id of userBadges) {
+            const badge = Badges[id]
+            if (!badge) continue
 
-            // Remove dummy badge if it exists
-            if (props.id === DUMMY_SYMBOL) container.props.children.shift()
+            customBadges.push(
+                createElement(
+                    patchRender(ProfileBadge, patchCustomBadge, useBadgeStyles),
+                    {
+                        ...template.props,
+                        key: `revenge-badge-${id}`,
+                        id,
+                        label: badge.label,
+                        source: badge.icon,
+                    },
+                ),
+            )
         }
 
-        return el
+        if (!customBadges.length) return
+
+        return {
+            children: [
+                ...children.filter(
+                    child =>
+                        !isProfileBadgeElement(child) ||
+                        child.props.id !== DummyBadgeId,
+                ),
+                ...customBadges,
+            ],
+        }
     })
 }
 
-function patchProfileBadge(
-    element: ReactElement<ProfileBadgeProps, FC<ProfileBadgeProps>>,
-    id: BadgeId,
-    badge: Badge,
-): void {
+const patchCustomBadge: RenderPatch<ProfileBadgeProps, BadgeStyles> = (
+    rendered,
+    { id },
+    badgeStyles,
+) => {
+    const badge = Badges[id as BadgeId]
+    if (!badge) return rendered
+
     const { bnw, showDialog } = badge
-    // Return early if we don't actually need to patch this badge
-    if (!bnw && !showDialog) return
+    if (!bnw && !showDialog) return rendered
 
-    const unpatch = afterRendered(element, el => {
-        unpatch()
+    let tinted = false
+    let pressablePatched = false
 
-        // This will not result in a conditional hook error because badges do not change flags during runtime
-        const badgeStyles = useBadgeStyles()
-
-        if (showDialog) {
-            const pressable = findInReactFiber(
-                el as ReactElement,
-                (node): node is ReactElement<PressableProps> =>
-                    node.type?.render,
-            )
-
-            if (pressable)
-                pressable.props.onPress = () =>
-                    openBadgeDialog(id, badge, badgeStyles)
+    // Only patched the most shallow Pressable
+    return mapElementTree(rendered, element => {
+        if (bnw && !tinted && element.type === Image) {
+            tinted = true
+            return { style: [element.props.style, badgeStyles.tinted] }
         }
 
-        if (bnw) {
-            const image = findInReactFiber(
-                el as ReactElement,
-                (node): node is ReactElement<ImageProps> => node.type === Image,
-            )
-
-            if (image) {
-                const styles = image.props.style as Extract<
-                    StyleProp<ImageStyle>,
-                    any[]
-                >
-                styles.push(badgeStyles.tinted)
+        if (
+            showDialog &&
+            !pressablePatched &&
+            // Match by behaviour, as matching .type === Image picks whichever wrapper component happens to come first
+            ('onPress' in element.props ||
+                element.props.accessibilityRole === 'button')
+        ) {
+            pressablePatched = true
+            return {
+                onPress: () =>
+                    openBadgeDialog(id as BadgeId, badge, badgeStyles),
             }
         }
 
-        return el
+        return undefined
     })
 }
 
@@ -197,10 +200,10 @@ const { AlertActionButton, AlertModal, Stack, Text } = Design
 function openBadgeDialog(
     id: BadgeId,
     { label, description, bnw, icon }: Badge,
-    badgeStyles: ReturnType<typeof useBadgeStyles>,
+    badgeStyles: BadgeStyles,
 ): void {
     AlertActionCreators.openAlert(
-        `REVENGE_PROFILE_BADGE-${id}`,
+        `revenge-profile-badge-${id}`,
         <AlertModal
             title={
                 <Stack style={styles.stack}>
@@ -217,12 +220,7 @@ function openBadgeDialog(
                 </Stack>
             }
             content={description}
-            actions={<AlertActionButton text="Okay" />}
+            actions={<AlertActionButton text="OK" />}
         />,
     )
 }
-
-const isViewContainingProfileBadgeElements = (
-    node: any,
-): node is ViewWithProfileBadges =>
-    node.props?.children?.[0]?.type.name === 'ProfileBadge'
