@@ -1,3 +1,4 @@
+import { DispatcherModuleId } from '@revenge-mod/discord/common/flux'
 import { ImportTrackerModuleId } from '@revenge-mod/discord/common/import-tracker'
 import {
     lookupModule,
@@ -7,8 +8,8 @@ import {
 import {
     createFilterGenerator,
     withDependencies,
-    withName,
 } from '@revenge-mod/modules/finders/filters'
+import { isModuleExportBad } from '@revenge-mod/modules/metro/utils'
 import { asap, noop } from '@revenge-mod/utils/callback'
 import {
     cache,
@@ -62,31 +63,11 @@ export function getStore<T>(
 
 /// STORE FILTERING
 
-/* 
-    Flux Store dependencies: [
-        _classCallCheck
-        _createClass
-        _possibleConstructorReturn
-        bound getPrototypeOf
-        _inherits
-        (...), // (any amount of dependencies)
-        ImportTracker
-    ]
-*/
+const { last, includes } = withDependencies
 
-const { last, loose } = withDependencies
-
-// The import tracker is checked first, as it is far cheaper than resolving the leading dependencies' exports
+// The import tracker is checked first, as it is far cheaper than resolving includes
 const withFluxStoreDeps = withDependencies(last([ImportTrackerModuleId])).and(
-    withDependencies(
-        loose([
-            withName('_classCallCheck'),
-            withName('_createClass'),
-            withName('_possibleConstructorReturn'),
-            withName('bound getPrototypeOf'),
-            withName('_inherits'),
-        ]),
-    ),
+    withDependencies(includes([DispatcherModuleId])),
 )
 
 export type WithStore = FilterGenerator<
@@ -104,7 +85,10 @@ export type WithStore = FilterGenerator<
  */
 export const withStore = createFilterGenerator(
     (_, id, exports, initialized) => {
-        if (initialized) return Boolean(exports?._dispatchToken)
+        if (initialized)
+            return (
+                !isModuleExportBad(exports) && Boolean(exports._dispatchToken)
+            )
 
         return withFluxStoreDeps(id, undefined, false)
     },
@@ -123,10 +107,18 @@ export type WithStoreName = FilterGenerator<
  * A with-exports filter that matches a Flux store by its name.
  */
 export const withStoreName = createFilterGenerator(
-    ([name], _, exports) =>
-        typeof exports?.getName === 'function' &&
-        exports.getName.length === 0 &&
-        exports.getName() === name,
+    ([name], _, exports) => {
+        if (isModuleExportBad(exports)) return false
+
+        const getNameMethod = exports.getName
+
+        return (
+            typeof getNameMethod === 'function' &&
+            getNameMethod.length === 0 &&
+            // Needs to be bound to exports since it's a class
+            exports.getName() === name
+        )
+    },
     ([name]) => `revenge.discord.storeName(${name})`,
     // Uninitialized to make sure cached results resolve immediately
     FilterScopes.Initialized | FilterScopes.Uninitialized,
@@ -149,5 +141,6 @@ if (cache === Uncached)
     asap(() => {
         const lookup = lookupModules(withStore())
 
-        while (lookup.next().done);
+        // Initialize all stores
+        for (const _ of lookup);
     })
