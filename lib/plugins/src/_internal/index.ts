@@ -21,6 +21,7 @@ import {
     ApiDependencyId,
     computePendingNodes,
     DiscordDependencyId,
+    isReservedDependency,
     pLeafOrSingleNodes,
     pListOrdered,
     pPending,
@@ -347,9 +348,12 @@ export function registerInternalPlugin<O extends PluginApiExtensionsOptions>(
     manifest.version ??= InternalPluginVersion
     // TODO: This has to be shared from native somehow.
     manifest.format ??= 1
-    manifest.dependencies ??= {}
-    manifest.dependencies[ApiDependencyId] ??= { version: '*' }
-    manifest.dependencies[DiscordDependencyId] ??= { version: '*' }
+
+    if (!isReservedDependency(manifest.id)) {
+        manifest.dependencies ??= {}
+        manifest.dependencies[ApiDependencyId] ??= { version: '*' }
+        manifest.dependencies[DiscordDependencyId] ??= { version: '*' }
+    }
 
     return register(manifest as PluginManifest, options, defflags, iflags)
 }
