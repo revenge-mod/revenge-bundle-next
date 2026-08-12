@@ -18,12 +18,12 @@ import {
     updateAllPlugins,
 } from '@revenge-mod/plugins/_/repositories'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useReducer, useState } from 'react'
 import { ScrollView, View } from 'react-native'
 import { api } from '..'
 import { addDefaultRepoIfNeeded, toConfig } from '../repos'
-import { formatBytes, messageOf, showErrorToast } from '../utils/repos'
 import { showRemoveRepoConfirmation } from '../utils/alerts'
+import { formatBytes, messageOf, showErrorToast } from '../utils/repos'
 import type {
     DownloadProgressEvent,
     Repo,
@@ -103,7 +103,8 @@ function UserRepoRow({
                 label: 'Delete',
                 IconComponent: TrashIconComponent,
                 variant: 'destructive' as const,
-                action: () => showRemoveRepoConfirmation(repo, () => onRemove(repo)),
+                action: () =>
+                    showRemoveRepoConfirmation(repo, () => onRemove(repo)),
             },
         ],
     ]
@@ -147,6 +148,7 @@ export default function RevengePluginsAdvancedSettingScreen() {
         Record<string, RepoStateEvent['state']>
     >({})
     const [progress, setProgress] = useState<DownloadProgressEvent | null>(null)
+    const [n, forceUpdate] = useReducer(x => ~x, 0)
 
     useEffect(() => {
         const onRepoState = (event: RepoStateEvent) => {
@@ -170,7 +172,8 @@ export default function RevengePluginsAdvancedSettingScreen() {
         listRepos().then(setReposState, e => showErrorToast(messageOf(e)))
     }, [])
 
-    useEffect(refresh, [refresh])
+    // biome-ignore lint/correctness/useExhaustiveDependencies: forceUpdate so we can refresh the screen
+    useEffect(refresh, [refresh, n])
 
     const commit = useCallback(
         async (config: RepoConfigEntry[]) => {
@@ -214,7 +217,6 @@ export default function RevengePluginsAdvancedSettingScreen() {
 
     const removeRepo = useCallback(
         async (repo: Repo) => {
-
             await commit(toConfig(userRepos.filter(r => r.url !== repo.url)))
 
             // Plugins installed from the removed repository turn Sideloaded
@@ -378,11 +380,16 @@ export default function RevengePluginsAdvancedSettingScreen() {
                                 try {
                                     const restored =
                                         await addDefaultRepoIfNeeded(true)
-                                    if (!restored)
+                                    if (!restored) {
                                         ToastActionCreators.open({
                                             key: 'revenge-default-repo-nothing',
-                                            content: 'No default repository to restore',
+                                            content: 'Nothing to restore',
                                         })
+
+                                        return
+                                    }
+
+                                    forceUpdate()
                                 } catch (e) {
                                     showErrorToast(messageOf(e))
                                 }
