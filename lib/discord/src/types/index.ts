@@ -152,10 +152,14 @@ export namespace DiscordModules {
         verboseDangerously(...args: unknown[]): void
         verbose(...args: unknown[]): void
     }
-
     export namespace Actions {
         export interface AlertActionCreators {
-            openAlert(key: string, alert: ReactElement): void
+            openAlert(
+                key: string,
+                alert: ReactElement,
+                onDismiss?: () => unknown,
+                options?: { dismissable?: boolean },
+            ): void
             dismissAlert(key: string): void
             dismissAlerts(): void
             // TODO
