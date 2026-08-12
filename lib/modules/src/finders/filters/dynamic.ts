@@ -18,8 +18,18 @@ export interface ComparableDependencyMap
         | ComparableDependencyMap
         | Filter
     > {
+    // loose
     l?: boolean
+    // relative
     r?: number
+    // skip
+    s?: number
+    // atLeast
+    n?: number
+    // atMost
+    x?: number
+    // includes
+    i?: boolean
 }
 
 /**
@@ -30,6 +40,9 @@ export interface ComparableDependencyMap
  * To do proper fingerprinting for modules:
  * @see {@link withDependencies.loose} to loosen the checks.
  * @see {@link withDependencies.relative} to compare dependencies relatively.
+ * @see {@link withDependencies.skip} and {@link withDependencies.last} to move where comparison starts.
+ * @see {@link withDependencies.atLeast} and {@link withDependencies.atMost} to bound the dependency count.
+ * @see {@link withDependencies.includes} to compare without caring about order.
  *
  * @example
  * ```ts
@@ -75,24 +88,26 @@ export interface ComparableDependencyMap
  */
 const withDependencies_ = createFilterGenerator<Parameters<WithDependencies>>(
     ([deps], id) => depCompare(getModuleDependencies(id)!, deps, id, id),
+    // The dep map is keyed as a nested set, so its modifiers are already part of the key
     deps => `revenge.deps(${depGenFilterKey(deps)})`,
     FilterScopes.Uninitialized | FilterScopes.Initialized,
 ) as WithDependencies
 
 export const withDependencies = __DEV__
-    ? (((deps: ComparableDependencyMap) => {
-          // Warn about using undefined in deps, which is likely a mistake
-          for (let i = 0; i < deps.length; i++) {
-              if (deps[i] === undefined)
-                  DEBUG_warnBadWithDependenciesFilter(deps, i)
-          }
+    ? (Object.assign((deps: ComparableDependencyMap) => {
+          DEBUG_validateWithDependenciesFilter(deps)
 
           return withDependencies_(deps)
-      }) as WithDependencies)
+      }, withDependencies_) as WithDependencies)
     : withDependencies_
 
 withDependencies.loose = loose
 withDependencies.relative = relative
+withDependencies.skip = skip
+withDependencies.last = last
+withDependencies.atLeast = atLeast
+withDependencies.atMost = atMost
+withDependencies.includes = includes
 
 type WithDependencies = FilterGenerator<
     <T>(deps: ComparableDependencyMap) => Filter<{
@@ -105,6 +120,11 @@ type WithDependencies = FilterGenerator<
 > & {
     loose: typeof loose
     relative: typeof relative
+    skip: typeof skip
+    last: typeof last
+    atLeast: typeof atLeast
+    atMost: typeof atMost
+    includes: typeof includes
 }
 
 /**
@@ -118,6 +138,96 @@ type WithDependencies = FilterGenerator<
  */
 function loose(deps: ComparableDependencyMap) {
     deps.l = true
+    return deps
+}
+
+/**
+ * Skip a number of dependencies before comparing positionally.
+ *
+ * Passing `Infinity` anchors the set to the end, matching the **last** `deps.length` dependencies.
+ * Anything before them is unconstrained.
+ *
+ * @param amount The amount of dependencies to skip from the start, or `Infinity` to anchor to the end.
+ * @param deps The dependency map to skip in. This permanently modifies the array.
+ * @returns The modified dependency map.
+ *
+ * @see {@link withDependencies.last} for the `Infinity` shorthand.
+ */
+function skip(amount: number, deps: ComparableDependencyMap = []) {
+    deps.s = amount
+    return deps
+}
+
+/**
+ * Match the **last** `deps.length` dependencies, leaving anything before them unconstrained.
+ *
+ * Shorthand for {@link withDependencies.skip} with `Infinity`.
+ * Prefer this over leading comparisons when a module's trailing dependencies are the stable part of its fingerprint.
+ *
+ * @param deps The dependency map to anchor to the end. This permanently modifies the array.
+ * @returns The modified dependency map.
+ *
+ * @example
+ * ```ts
+ * const { last, relative } = withDependencies
+ *
+ * // Matches modules whose last three dependencies are [Any, module ID + 1, 2]
+ * withDependencies(last([null, relative(1), 2]))
+ * ```
+ */
+function last(deps: ComparableDependencyMap = []) {
+    deps.s = Infinity
+    return deps
+}
+
+/**
+ * Require the module to have at least `count` dependencies.
+ *
+ * This implies {@link withDependencies.loose}, as an exact length check would never pass alongside a bound.
+ *
+ * @param count The minimum amount of dependencies.
+ * @param deps The dependency map to bound. This permanently modifies the array.
+ * @returns The modified dependency map.
+ */
+function atLeast(count: number, deps: ComparableDependencyMap = []) {
+    deps.n = count
+    deps.l = true
+    return deps
+}
+
+/**
+ * Require the module to have at most `count` dependencies.
+ *
+ * This implies {@link withDependencies.loose}, as an exact length check would never pass alongside a bound.
+ *
+ * @param count The maximum amount of dependencies.
+ * @param deps The dependency map to bound. This permanently modifies the array.
+ * @returns The modified dependency map.
+ */
+function atMost(count: number, deps: ComparableDependencyMap = []) {
+    deps.x = count
+    deps.l = true
+    return deps
+}
+
+/**
+ * Compare the set without caring about order or position, only that every dependency exists somewhere.
+ *
+ * Entries are matched independently, so two identical entries can both match the same dependency.
+ * Dynamic (`null`) entries are meaningless here and are ignored.
+ *
+ * **This is much more expensive than positional comparison**, as every entry is compared against every dependency.
+ * Bound it with {@link withDependencies.atLeast} or {@link withDependencies.atMost} where possible, as those are checked first.
+ *
+ * @param deps The dependency map to compare unordered. This permanently modifies the array.
+ * @returns The modified dependency map.
+ */
+function includes(deps: ComparableDependencyMap) {
+    if (__DEV__)
+        for (let i = 0; i < deps.length; i++)
+            if (deps[i] == null) DEBUG_warnBadIncludesDependency(deps, i)
+
+    deps.i = true
     return deps
 }
 
@@ -190,6 +300,70 @@ function DEBUG_warnBadWithDependenciesFilter(
     )
 }
 
+/**
+ * Warns the developer about a dynamic dependency in a `withDependencies.includes` set, which matches anything and is therefore a no-op.
+ */
+function DEBUG_warnBadIncludesDependency(
+    deps: ComparableDependencyMap,
+    index: number,
+) {
+    nativeLoggingHook(
+        `\u001b[33mBad withDependencies.includes set, dynamic ID at index ${index} matches anything: [${depGenFilterKey(deps)}]\n${getCurrentStack()}\u001b[0m`,
+        2,
+    )
+}
+
+/**
+ * Warns the developer about dependency count bounds that contradict, or are already implied by, the set being compared.
+ */
+function DEBUG_warnBadDependencyBounds(
+    deps: ComparableDependencyMap,
+    reason: string,
+) {
+    nativeLoggingHook(
+        `\u001b[33mBad withDependencies filter, ${reason}: [${depGenFilterKey(deps)}]\n${getCurrentStack()}\u001b[0m`,
+        2,
+    )
+}
+
+/**
+ * Validates a dependency map and its nested sets, warning about mistakes that would otherwise silently never match.
+ */
+function DEBUG_validateWithDependenciesFilter(deps: ComparableDependencyMap) {
+    const { n: min, x: max, s: skip } = deps
+
+    // The lowest dependency count the set itself can match.
+    // Unordered sets have no window, so they only ever constrain the count through bounds.
+    const floor = deps.i
+        ? 0
+        : (skip === undefined || skip === Infinity ? 0 : skip) + deps.length
+
+    if (max !== undefined && max < floor)
+        DEBUG_warnBadDependencyBounds(
+            deps,
+            `atMost(${max}) can never match, the set requires at least ${floor} dependencies`,
+        )
+    else if (min !== undefined && max !== undefined && min > max)
+        DEBUG_warnBadDependencyBounds(
+            deps,
+            `atLeast(${min}) can never match, atMost(${max}) is lower`,
+        )
+    else if (min !== undefined && min <= floor)
+        DEBUG_warnBadDependencyBounds(
+            deps,
+            `atLeast(${min}) does nothing, the set already requires at least ${floor} dependencies`,
+        )
+
+    for (let i = 0; i < deps.length; i++) {
+        const dep = deps[i]
+
+        // Warn about using undefined in deps, which is likely a mistake
+        if (dep === undefined) DEBUG_warnBadWithDependenciesFilter(deps, i)
+        else if (typeof dep === 'object' && dep !== null)
+            DEBUG_validateWithDependenciesFilter(dep)
+    }
+}
+
 function depCompare(
     a: Metro.ModuleID[],
     b: ComparableDependencyMap,
@@ -198,7 +372,29 @@ function depCompare(
 ): boolean {
     const lenA = a.length
     const lenB = b.length
-    if (b.l ? lenA < lenB : lenA !== lenB) return false
+
+    const min = b.n
+    if (min !== undefined && lenA < min) return false
+
+    const max = b.x
+    if (max !== undefined && lenA > max) return false
+
+    if (b.i) return depIncludesCompare(a, b, root, parent)
+
+    // Index in a where positional comparison starts
+    let start = 0
+    const skip = b.s
+
+    if (skip === undefined) {
+        if (b.l ? lenA < lenB : lenA !== lenB) return false
+    } else if (skip === Infinity) {
+        // Anchor to the end, so everything before the last lenB dependencies is unconstrained
+        start = lenA - lenB
+        if (start < 0) return false
+    } else {
+        start = skip
+        if (b.l ? lenA < start + lenB : lenA !== start + lenB) return false
+    }
 
     for (let i = 0; i < lenB; i++) {
         const compare = b[i]
@@ -209,41 +405,69 @@ function depCompare(
         // Skip dynamic
         if (compare == null) continue
 
-        const id = a[i]
+        const id = a[start + i]
 
         // Very rare case where a module dependency has an unused `null` dependency
         // TODO: Probably a Metro/Discord bug?
         if (id === null) return false
 
-        switch (typeof compare) {
-            case 'function': {
-                const filter = compare
-                if (!runFilter(filter, id, getInitializedModuleExports(id)))
-                    return false
-
-                continue
-            }
-            case 'object': {
-                const nested = compare as ComparableDependencyMap
-
-                // relative.withDependencies?
-                if (nested.r && !depShallowCompare(nested.r, id, root, parent))
-                    return false
-
-                if (depCompare(getModuleDependencies(id)!, nested, root, id))
-                    continue
-
-                return false
-            }
-            default: {
-                if (depShallowCompare(compare as number, id, root, parent))
-                    continue
-                return false
-            }
-        }
+        if (!depMatches(compare, id, root, parent)) return false
     }
 
     return true
+}
+
+function depIncludesCompare(
+    a: Metro.ModuleID[],
+    b: ComparableDependencyMap,
+    root: Metro.ModuleID,
+    parent: Metro.ModuleID,
+): boolean {
+    const lenA = a.length
+
+    for (let i = 0; i < b.length; i++) {
+        const compare = b[i]
+
+        // Dynamic dependencies match anything, so they carry no meaning when unordered
+        if (compare == null) continue
+
+        let found = false
+
+        for (let j = 0; j < lenA; j++) {
+            const id = a[j]
+            if (id !== null && depMatches(compare, id, root, parent)) {
+                found = true
+                break
+            }
+        }
+
+        if (!found) return false
+    }
+
+    return true
+}
+
+function depMatches(
+    compare: NonNullable<ComparableDependencyMap[number]>,
+    id: Metro.ModuleID,
+    root: Metro.ModuleID,
+    parent: Metro.ModuleID,
+): boolean {
+    switch (typeof compare) {
+        case 'function':
+            return !!runFilter(compare, id, getInitializedModuleExports(id))
+        case 'object': {
+            const nested = compare
+
+            // relative.withDependencies?
+            if (nested.r && !depShallowCompare(nested.r, id, root, parent))
+                return false
+
+            return depCompare(getModuleDependencies(id)!, nested, root, id)
+        }
+        default:
+            return depShallowCompare(compare, id, root, parent)
+    }
 }
 
 function depShallowCompare(
@@ -289,11 +513,7 @@ function depGenFilterKey(deps: ComparableDependencyMap): string {
             case 'object': {
                 // It's a nested dependency array
                 const nested = dep as ComparableDependencyMap
-                if (nested.l) key += '#'
-                // relative.withDependencies?
-                if (nested.r) key += `${depGenRelativeKeyPart(nested.r)}:`
-
-                key += `[${depGenFilterKey(nested)}],`
+                key += `${depGenModifierKey(nested)}[${depGenFilterKey(nested)}],`
                 break
             }
             default: {
@@ -307,6 +527,20 @@ function depGenFilterKey(deps: ComparableDependencyMap): string {
     }
 
     return key.substring(0, key.length - 1)
+}
+
+function depGenModifierKey(deps: ComparableDependencyMap): string {
+    let key = ''
+
+    if (deps.i) key += '?'
+    if (deps.l) key += '#'
+    if (deps.n !== undefined) key += `>${deps.n}`
+    if (deps.x !== undefined) key += `<${deps.x}`
+    if (deps.s !== undefined) key += `+${deps.s === Infinity ? '*' : deps.s}`
+    // relative.withDependencies?
+    if (deps.r) key += `${depGenRelativeKeyPart(deps.r)}:`
+
+    return key
 }
 
 function depGenRelativeKeyPart(dep: number) {
