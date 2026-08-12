@@ -375,7 +375,7 @@ export default function RevengePluginsAdvancedSettingScreen() {
                         />
                         <TableRow
                             icon={<TableRowAssetIcon name="GlobeEarthIcon" />}
-                            label="Restore default repositories"
+                            label="Restore default repository"
                             onPress={async () => {
                                 try {
                                     const restored =
