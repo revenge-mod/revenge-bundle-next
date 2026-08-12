@@ -19,6 +19,7 @@ import {
     isPluginPendingUpdate,
     isPluginStartable,
     PluginFlags,
+    pList,
     runPluginLate,
     stopPlugin,
 } from '@revenge-mod/plugins/_'
@@ -197,8 +198,15 @@ function AdvancedSection({ plugin }: { plugin: AnyPlugin }) {
                             `plugin-deps-${id}`,
                             {
                                 title: `Dependencies of ${name}`,
+                                unsatisfiedTitle: `Unsatisfied dependencies of ${name}`,
+                                unsatisfiedPlugins:
+                                    meta.unsatisfiedOptionalDependencies.map(
+                                        id => pList.get(id) ?? id,
+                                    ),
                                 plugins: dependencies,
+                                dependencyMap: plugin.manifest.dependencies!,
                             },
+                            'stack',
                         )
                     }}
                 />
@@ -216,6 +224,7 @@ function AdvancedSection({ plugin }: { plugin: AnyPlugin }) {
                                 title: `Dependents of ${name}`,
                                 plugins: dependents,
                             },
+                            'stack',
                         )
                     }}
                 />
