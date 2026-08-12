@@ -79,7 +79,8 @@ export default async function build(dev = Dev, log = true) {
                         .trim(),
                 ),
                 __DEV__: String(dev),
-                // __BUILD_DEFAULT_PLUGIN_REPOSITORY_URL__: ...,
+                __BUILD_DEFAULT_PLUGIN_REPOSITORY_URL__: 'undefined',
+                __BUILD_DONATE_URL__: 'undefined',
 
                 // See types/build.d.ts for what these flags do
                 __BUILD_FLAG_DEBUG_MODULE_LOOKUPS__: String(dev),
