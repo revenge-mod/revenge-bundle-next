@@ -1,10 +1,11 @@
 import type { StackScreenProps } from '@react-navigation/stack'
 import type { ReactNavigationParamList } from '@revenge-mod/externals/react-navigation'
-import type { AnyFunction } from '@revenge-mod/utils/types'
+import type { AnyFunction, AnyObject } from '@revenge-mod/utils/types'
 import type {
     ComponentProps,
     ComponentType,
     FC,
+    ForwardRefExoticComponent,
     MemoExoticComponent,
     ReactElement,
     ReactNode,
@@ -180,9 +181,20 @@ export namespace DiscordModules {
             openLazy<T extends ComponentType<any>>(
                 sheet: Promise<{ default: T }>,
                 key: string,
-                props: ComponentProps<T>,
+                props: {
+                    impressionName?: string
+                    impressionProperties?: AnyObject
+                    backdropKind?: string
+                    disableHapticOnOpen?: boolean
+                    appEntryKey?: string
+                } & ComponentProps<T>,
+                // See ActionSheetStore reducer
+                stackingBehavior?: 'replaceTopSheet' | 'replaceAll' | 'stack',
             ): void
             hideActionSheet(key?: string): void
+            hideAllActionSheets(): void
+            setActionSheetZIndex(zIndex: number): void
+            resetActionSheetsForAppEntryKey(appEntryKey: string): void
         }
 
         // export namespace ActionSheetActionCreators {
@@ -397,10 +409,50 @@ export namespace DiscordModules {
         // export type FormCheckbox = FC
 
         export interface ActionSheetProps {
-            children: ReactNode
+            scrollable?: boolean
+            startExpanded?: boolean
+            /** Whether the bottom sheet handle is disabled. */
+            handleDisabled?: boolean
+            showGradient?: boolean
+
+            startHeight?: number
+            maxHeight?: number
+            containerHeight?: number
+            contentHeight?: number
+            backdropOpacity?: number
+
+            children?: ReactNode
+            header?: ReactNode
+            footer?: ReactNode
+            extraContent?: ReactNode
+            backdropChildren?: ReactNode
+
+            handleComponent?: ComponentType<any> | null
+            backgroundComponent?: ComponentType<any>
+
+            bodyStyles?: StyleProp<ViewStyle>
+            contentStyles?: StyleProp<ViewStyle>
+            backgroundStyles?: StyleProp<ViewStyle>
+            borderGradient?: string[] | Record<string, any>
+
+            onExpand?: () => void
+            onDismiss?: () => void
+            animatedIndex?: unknown
+
+            keyboardShouldPersistTaps?: 'always' | 'never' | 'handled' | boolean
+            dismissAccessibilityLabel?: string
         }
 
-        export type ActionSheet = FC<ActionSheetProps>
+        export type ActionSheet = ForwardRefExoticComponent<
+            ActionSheetProps &
+                // See useBottomSheetImperativeHandle
+                RefAttributes<{
+                    expandActionSheet(): void
+                    closeActionSheet(force?: boolean): void
+                    collapseActionSheet(): void
+                    snapToIndex(index: number): void
+                }>
+        >
 
         export interface ActionSheetCloseButtonProps
             extends Pick<ComponentProps<IconButton>, 'variant' | 'onPress'> {}
