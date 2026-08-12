@@ -1,6 +1,5 @@
 import { lookupModule, lookupModules } from '@revenge-mod/modules/finders'
 import { withDependencies } from '@revenge-mod/modules/finders/filters'
-import { getModuleDependencies } from '@revenge-mod/modules/metro/utils'
 import {
     ReactJSXRuntimeModuleId,
     ReactModuleId,
@@ -10,7 +9,7 @@ import { proxify } from '@revenge-mod/utils/proxy'
 import { ImportTrackerModuleId } from './common/import-tracker'
 import type { DiscordModules } from './types'
 
-const { loose } = withDependencies
+const { atLeast, last, loose, relative } = withDependencies
 
 /**
  * The lowest amount of dependencies `design/native.tsx` is expected to have.
@@ -29,13 +28,12 @@ export let Design: Design = proxify(
         // [3909, 4608, 5182, 13172, 2, ...] (141 dependencies)
         const [, id] = lookupModule(
             withDependencies<Design>(
-                loose([
+                atLeast(DesignMinimumDependencies, [
                     [ImportTrackerModuleId],
                     [ImportTrackerModuleId],
                     [ReactNativeModuleId, ImportTrackerModuleId],
                     [ImportTrackerModuleId],
                     ImportTrackerModuleId,
-                    ...Array<null>(DesignMinimumDependencies - 5).fill(null),
                 ]),
             ).keyAs('revenge.discord.design.Design'),
             {
@@ -55,9 +53,6 @@ export let Design: Design = proxify(
 
 // design/components/Forms/native/FormSwitch.native.tsx
 export let FormSwitch: DiscordModules.Components.FormSwitch = proxify(() => {
-    // TODO: Possibly come up with a better dependency fingerprinting API
-    // to not have to deal with this bullshit
-
     for (const [, id] of lookupModules(
         withDependencies(
             loose([
@@ -66,17 +61,25 @@ export let FormSwitch: DiscordModules.Components.FormSwitch = proxify(() => {
                 ReactNativeModuleId,
                 ReactJSXRuntimeModuleId,
             ]),
-        ).keyAs('revenge.discord.design.FormSwitch'),
+        )
+            .and(
+                withDependencies(
+                    last([
+                        relative(1),
+                        relative(2),
+                        null,
+                        null,
+                        ImportTrackerModuleId,
+                    ]),
+                ),
+            )
+            .keyAs('revenge.discord.design.FormSwitch'),
         {
             initialize: false,
         },
     )) {
-        const deps = getModuleDependencies(id)!
-        if (deps.at(-1) !== ImportTrackerModuleId) continue
-        if (deps.at(-4) === id + 2 && deps.at(-5) === id + 1) {
-            const FormSwitch_ = __r(id)!.FormSwitch
-            if (FormSwitch_) return (FormSwitch = FormSwitch_)
-        }
+        const FormSwitch_ = __r(id)!.FormSwitch
+        if (FormSwitch_) return (FormSwitch = FormSwitch_)
     }
 })!
 

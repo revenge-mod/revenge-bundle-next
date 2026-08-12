@@ -9,7 +9,6 @@ import {
     withDependencies,
     withName,
 } from '@revenge-mod/modules/finders/filters'
-import { getModuleDependencies } from '@revenge-mod/modules/metro/utils'
 import { asap, noop } from '@revenge-mod/utils/callback'
 import {
     cache,
@@ -75,14 +74,19 @@ export function getStore<T>(
     ]
 */
 
-const withLeadingFluxStoreDeps = withDependencies(
-    withDependencies.loose([
-        withName('_classCallCheck'),
-        withName('_createClass'),
-        withName('_possibleConstructorReturn'),
-        withName('bound getPrototypeOf'),
-        withName('_inherits'),
-    ]),
+const { last, loose } = withDependencies
+
+// The import tracker is checked first, as it is far cheaper than resolving the leading dependencies' exports
+const withFluxStoreDeps = withDependencies(last([ImportTrackerModuleId])).and(
+    withDependencies(
+        loose([
+            withName('_classCallCheck'),
+            withName('_createClass'),
+            withName('_possibleConstructorReturn'),
+            withName('bound getPrototypeOf'),
+            withName('_inherits'),
+        ]),
+    ),
 )
 
 export type WithStore = FilterGenerator<
@@ -102,9 +106,7 @@ export const withStore = createFilterGenerator(
     (_, id, exports, initialized) => {
         if (initialized) return Boolean(exports?._dispatchToken)
 
-        if (!withLeadingFluxStoreDeps(id)) return false
-        const deps = getModuleDependencies(id)!
-        return deps[deps.length - 1] === ImportTrackerModuleId
+        return withFluxStoreDeps(id, undefined, false)
     },
     () => 'revenge.discord.store',
     FilterScopes.Uninitialized | FilterScopes.Initialized,

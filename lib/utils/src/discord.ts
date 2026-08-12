@@ -7,39 +7,50 @@ import {
     withDependencies,
 } from '@revenge-mod/modules/finders/filters'
 import { isModuleExportBad } from '@revenge-mod/modules/metro/utils'
-import {
-    ReactJSXRuntimeModuleId,
-    ReactModuleId,
-    ReactNativeModuleId,
-} from '@revenge-mod/react'
 import { FilterScopes } from '../../modules/src/finders/filters/constants'
 import type {
     Filter,
     FilterGenerator,
 } from '@revenge-mod/modules/finders/filters'
+import type { Metro } from '@revenge-mod/modules/types'
 import type { FC } from 'react'
 
-// [React, ReactJsxRuntime, (Tokens), (BaseIconImage), (Asset), ImportTracker]
-// Asset = relativeDep(1)
-const IconComponentFilter = [
-    ReactModuleId,
-    ReactJSXRuntimeModuleId,
-    TokensModuleId,
-    null,
-    null,
-    ImportTrackerModuleId,
-]
+const { last } = withDependencies
 
-// Generated IconComponents that have multiple assets, there is no specific length, so the filter has to be generated on-the-fly.
-// [React, ReactNative, ReactJsxRuntime, (Tokens), (BaseIconImage), (...Assets), ImportTracker]
-// ...Assets = relativeDep(1..n)
-const MultiIconComponentFilterBase = [
-    ReactModuleId,
-    ReactNativeModuleId,
-    ReactJSXRuntimeModuleId,
-    TokensModuleId,
-    null,
-]
+const depsFilters: Record<string, Filter> = {}
+
+/**
+ * Builds a dependency filter for an icon component.
+ *
+ * `[React, (ReactNative), ReactJsxRuntime, Tokens, (BaseIconImage), (...Assets), ImportTracker]`
+ *
+ * `ReactNative` is only present on components with multiple assets, and it sits right after `React`,
+ * so everything from `ReactJsxRuntime` onwards is at a fixed distance from the end on both shapes.
+ *
+ * @param names The component name, then the asset names if the component has multiple assets.
+ * @returns The filter, or `undefined` if any of the assets aren't registered yet.
+ */
+function depsFilterFor(names: string[]) {
+    const key = names.join(',')
+    const cached = depsFilters[key]
+    if (cached) return cached
+
+    // Components with multiple assets are named separately from their assets
+    const assets = names.length > 1 ? names.slice(1) : names
+    const mids: Metro.ModuleID[] = []
+
+    for (const name of assets) {
+        const mid = getAssetByName(name)?.moduleId
+        // Module ID can never be zero, so if it's falsy, it means the asset was not found.
+        if (!mid) return
+
+        mids.push(mid)
+    }
+
+    return (depsFilters[key] = withDependencies(
+        last([TokensModuleId, null, ...mids, ImportTrackerModuleId]),
+    ))
+}
 
 export type WithGeneratedIconComponent = FilterGenerator<
     <N extends string>(
@@ -82,44 +93,11 @@ export type WithGeneratedIconComponent = FilterGenerator<
 export const withGeneratedIconComponent = createFilterGenerator<
     Parameters<WithGeneratedIconComponent>
 >(
-    (names, id, exports) => {
-        if (typeof exports === 'object' && isModuleExportBad(exports)) {
-            if (typeof exports[names[0]] === 'function')
-                return Object.keys(exports).length === 1
-        } else {
-            let filter = IconComponentFilter
+    (names, id, exports, initialized) => {
+        // Icon components always export their component, so unusable exports can never match
+        if (initialized && isModuleExportBad(exports)) return false
 
-            if (names.length > 1) {
-                const mids = []
-
-                for (let i = 1; i < names.length; i++) {
-                    const name = names[i]
-                    const mid = getAssetByName(name)?.moduleId
-                    // Module ID can never be zero, so if it's falsy, it means the asset was not found.
-                    if (!mid) return false
-
-                    mids.push(mid)
-                }
-
-                filter = [
-                    ...MultiIconComponentFilterBase,
-                    ...mids,
-                    ImportTrackerModuleId,
-                ]
-            } else {
-                const [name] = names
-
-                const mid = getAssetByName(name)?.moduleId
-                // Module ID can never be zero, so if it's falsy, it means the asset was not found.
-                if (!mid) return false
-
-                IconComponentFilter[4] = mid
-            }
-
-            return withDependencies(filter)(id, exports)
-        }
-
-        return false
+        return depsFilterFor(names)?.(id, exports, initialized) ?? false
     },
     names => `revenge.utils.discord.generatedIconComponent(${names.join(',')})`,
     FilterScopes.Uninitialized | FilterScopes.Initialized,
