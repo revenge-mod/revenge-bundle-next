@@ -23,7 +23,11 @@ import {
     runPluginLate,
     stopPlugin,
 } from '@revenge-mod/plugins/_'
-import { listRepos } from '@revenge-mod/plugins/_/repositories'
+import {
+    listRepoPlugins,
+    listRepos,
+    refreshRepo,
+} from '@revenge-mod/plugins/_/repositories'
 import { PluginStatus } from '@revenge-mod/plugins/constants'
 import { formatVersion } from '@revenge-mod/plugins/utils'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
@@ -35,7 +39,7 @@ import {
     showPluginClearDataConfirmation,
     showPluginUninstallConfirmation,
 } from '../utils/alerts'
-import { messageOf, showErrorToast } from '../utils/repos'
+import { messageOf, runInstallFlow, showErrorToast } from '../utils/repos'
 import { InstalledPluginSwitch, PluginInfo } from './PluginCard'
 import { usePluginEnabled, usePluginStatus } from './PluginStateProvider'
 import PluginTooltipsProvider, {
@@ -43,13 +47,22 @@ import PluginTooltipsProvider, {
     usePluginTooltip,
 } from './TooltipProvider'
 import type { AnyPlugin } from '@revenge-mod/plugins/_'
+import type { RepoPluginListing } from '@revenge-mod/plugins/_/repositories'
 
 export interface PluginOptionsActionSheetProps {
     plugin: AnyPlugin
     sheetKey: string
 }
 
-const { ActionSheet, IconButton, TableRowGroup, TableRow, Stack } = Design
+const {
+    ActionSheet,
+    IconButton,
+    TableRowGroup,
+    TableRow,
+    TableRadioGroup,
+    TableRadioRow,
+    Stack,
+} = Design
 
 const FileWarningIcon = getAssetIdByName('FileWarningIcon', 'png')!
 const PlayIcon = getAssetIdByName('PlayIcon', 'png')!
@@ -118,7 +131,7 @@ function PluginOptions({ plugin, sheetKey }: PluginOptionsActionSheetProps) {
                 }}
             />
             <StatusSection plugin={plugin} />
-            <AdvancedSection plugin={plugin} />
+            <AdvancedSection plugin={plugin} sheetKey={sheetKey} />
         </Stack>
     )
 }
@@ -158,7 +171,94 @@ function StatusSection({ plugin }: { plugin: AnyPlugin }) {
     )
 }
 
-function AdvancedSection({ plugin }: { plugin: AnyPlugin }) {
+function ChannelSection({
+    plugin,
+    sheetKey,
+}: {
+    plugin: AnyPlugin
+    sheetKey: string
+}) {
+    const meta = getInternalPluginMeta(plugin)
+    const source = meta.source
+    if (isPluginInternal(meta) || !source?.repo) return null
+
+    const [listing, setListing] = useState<RepoPluginListing | null>(null)
+    const [resetKey, setResetKey] = useState(0)
+
+    useEffect(() => {
+        let cancelled = false
+        ;(async () => {
+            try {
+                const listings = await listRepoPlugins(source.repo)
+                const found = listings.find(l => l.id === plugin.manifest.id)
+                if (found && !cancelled) setListing(found)
+            } catch {
+                try {
+                    await refreshRepo(source.repo)
+                    const listings = await listRepoPlugins(source.repo)
+                    const found = listings.find(l => l.id === plugin.manifest.id)
+                    if (found && !cancelled) setListing(found)
+                } catch {}
+            }
+        })()
+        return () => {
+            cancelled = true
+        }
+    }, [source.repo, plugin.manifest.id])
+
+    if (!listing || Object.keys(listing.channels).length === 0) return null
+
+    const handleChange = async (selected: string) => {
+        if (selected === source.channel) return
+
+        const targetVersion = listing.channels[selected]
+        if (!targetVersion) return
+
+        if (targetVersion === plugin.manifest.version) {
+            setResetKey(k => k + 1)
+            ToastActionCreators.open({
+                key: 'REVENGE_PLUGIN_CHANNEL_UP_TO_DATE',
+                content: 'This channel is already installed',
+                IconComponent: () => <TableRowAssetIcon name="CircleCheckIcon" />,
+            })
+            return
+        }
+
+        const repos = await listRepos()
+        const internalUrls = repos
+            .filter(r => r.internal)
+            .map(r => r.url)
+
+        ActionSheetActionCreators.hideActionSheet(sheetKey)
+        runInstallFlow(
+            plugin.manifest.id,
+            undefined,
+            selected,
+            [...internalUrls, source.repo],
+        )
+    }
+
+    return (
+        <TableRadioGroup
+            key={resetKey}
+            title="Channel"
+            defaultValue={source.channel}
+            onChange={v => handleChange(v as string)}
+        >
+            {Object.keys(listing.channels).map(c => (
+                <TableRadioRow key={c} label={c} value={c} />
+            ))}
+        </TableRadioGroup>
+    )
+}
+
+function AdvancedSection({
+    plugin,
+    sheetKey,
+}: {
+    plugin: AnyPlugin
+    sheetKey: string
+}) {
     const meta = getInternalPluginMeta(plugin)
     const dependents = getPluginDependents(plugin, true)
     const dependencies = getPluginDependencies(plugin, false)
@@ -166,70 +266,73 @@ function AdvancedSection({ plugin }: { plugin: AnyPlugin }) {
     const { id, name } = plugin.manifest
 
     return (
-        <TableRowGroup title="Advanced">
-            <IdRow id={id} />
-            <RepositoryRow
-                text={repositoryText}
-                copyable={!!meta.source?.repo}
-            />
-            <TableRow
-                icon={<TableRowAssetIcon name="FlagIcon" />}
-                label="Flags"
-                subLabel={bitFieldToString(PluginFlags, meta.flags)}
-            />
-            {meta.iflags > 0 && (
+        <>
+            <ChannelSection plugin={plugin} sheetKey={sheetKey} />
+            <TableRowGroup title="Advanced">
+                <IdRow id={id} />
+                <RepositoryRow
+                    text={repositoryText}
+                    copyable={!!meta.source?.repo}
+                />
                 <TableRow
                     icon={<TableRowAssetIcon name="FlagIcon" />}
-                    label="Internal Flags"
-                    subLabel={bitFieldToString(
-                        InternalPluginFlags,
-                        meta.iflags,
-                    )}
+                    label="Flags"
+                    subLabel={bitFieldToString(PluginFlags, meta.flags)}
                 />
-            )}
-            {dependencies.length > 0 && (
-                <TableRow
-                    icon={<TableRowAssetIcon name="ListBulletsIcon" />}
-                    label="Dependencies"
-                    subLabel={`${name} depends on ${dependencies.length} other plugins`}
-                    onPress={() => {
-                        ActionSheetActionCreators.openLazy(
-                            import('./PluginRelationsListActionSheet'),
-                            `plugin-deps-${id}`,
-                            {
-                                title: `Dependencies of ${name}`,
-                                unsatisfiedTitle: `Unsatisfied dependencies of ${name}`,
-                                unsatisfiedPlugins:
-                                    meta.unsatisfiedOptionalDependencies.map(
-                                        id => pList.get(id) ?? id,
-                                    ),
-                                plugins: dependencies,
-                                dependencyMap: plugin.manifest.dependencies!,
-                            },
-                            'stack',
-                        )
-                    }}
-                />
-            )}
-            {dependents.length > 0 && (
-                <TableRow
-                    icon={<TableRowAssetIcon name="ListBulletsIcon" />}
-                    label="Dependents"
-                    subLabel={`${dependents.length} other plugins depend on ${name}`}
-                    onPress={() => {
-                        ActionSheetActionCreators.openLazy(
-                            import('./PluginRelationsListActionSheet'),
-                            `plugin-dependents-${id}`,
-                            {
-                                title: `Dependents of ${name}`,
-                                plugins: dependents,
-                            },
-                            'stack',
-                        )
-                    }}
-                />
-            )}
-        </TableRowGroup>
+                {meta.iflags > 0 && (
+                    <TableRow
+                        icon={<TableRowAssetIcon name="FlagIcon" />}
+                        label="Internal Flags"
+                        subLabel={bitFieldToString(
+                            InternalPluginFlags,
+                            meta.iflags,
+                        )}
+                    />
+                )}
+                {dependencies.length > 0 && (
+                    <TableRow
+                        icon={<TableRowAssetIcon name="ListBulletsIcon" />}
+                        label="Dependencies"
+                        subLabel={`${name} depends on ${dependencies.length} other plugins`}
+                        onPress={() => {
+                            ActionSheetActionCreators.openLazy(
+                                import('./PluginRelationsListActionSheet'),
+                                `plugin-deps-${id}`,
+                                {
+                                    title: `Dependencies of ${name}`,
+                                    unsatisfiedTitle: `Unsatisfied dependencies of ${name}`,
+                                    unsatisfiedPlugins:
+                                        meta.unsatisfiedOptionalDependencies.map(
+                                            id => pList.get(id) ?? id,
+                                        ),
+                                    plugins: dependencies,
+                                    dependencyMap: plugin.manifest.dependencies!,
+                                },
+                                'stack',
+                            )
+                        }}
+                    />
+                )}
+                {dependents.length > 0 && (
+                    <TableRow
+                        icon={<TableRowAssetIcon name="ListBulletsIcon" />}
+                        label="Dependents"
+                        subLabel={`${dependents.length} other plugins depend on ${name}`}
+                        onPress={() => {
+                            ActionSheetActionCreators.openLazy(
+                                import('./PluginRelationsListActionSheet'),
+                                `plugin-dependents-${id}`,
+                                {
+                                    title: `Dependents of ${name}`,
+                                    plugins: dependents,
+                                },
+                                'stack',
+                            )
+                        }}
+                    />
+                )}
+            </TableRowGroup>
+        </>
     )
 }
 
