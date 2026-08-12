@@ -28,14 +28,10 @@ import {
     useState,
 } from 'react'
 import { Image, View } from 'react-native'
-import { ClickOutsideProvider } from 'react-native-click-outside'
 import RevengeIcon from '~assets/RevengeIcon'
 import { InstalledPluginMasonryFlashList } from '../components/PluginList'
 import PluginStatesProvider from '../components/PluginStateProvider'
-import {
-    EnablePluginTooltipProvider,
-    EssentialPluginTooltipProvider,
-} from '../components/TooltipProvider'
+import PluginTooltipsProvider from '../components/TooltipProvider'
 import { RouteNames, Setting } from '../constants'
 import type { NavigationProp, RouteProp } from '@react-navigation/core'
 import type { ReactNavigationParamList } from '@revenge-mod/externals/react-navigation'
@@ -51,17 +47,13 @@ const PlusLargeIcon = getAssetIdByName('PlusLargeIcon')!
 export default function RevengePluginsSettingScreen() {
     return (
         <LayerScope>
-            <ClickOutsideProvider>
-                <PluginStatesProvider>
+            <PluginStatesProvider>
+                <PluginTooltipsProvider>
                     <Page spacing={16}>
-                        <EssentialPluginTooltipProvider>
-                            <EnablePluginTooltipProvider>
-                                <Screen />
-                            </EnablePluginTooltipProvider>
-                        </EssentialPluginTooltipProvider>
+                        <Screen />
                     </Page>
-                </PluginStatesProvider>
-            </ClickOutsideProvider>
+                </PluginTooltipsProvider>
+            </PluginStatesProvider>
         </LayerScope>
     )
 }

@@ -1,21 +1,3 @@
-export const FilterFlag = {
-    /**
-     * This filter works with and without module exports.
-     * Allowing for both initialized and uninitialized modules to be matched.
-     */
-    Dynamic: 0,
-    /**
-     * This filter requires module exports to work.
-     * Only initialized modules will be matched.
-     */
-    RequiresExports: 1,
-} as const
-
-/**
- * @see {@link FilterFlag}
- */
-export type FilterFlag = number
-
 /**
  * Scopes to limit filters to certain module states.
  */
@@ -23,10 +5,16 @@ export const FilterScopes = {
     /**
      * Include all modules (both initialized and uninitialized, including blacklisted).
      * This overrides {@link FilterScopes.Uninitialized} and {@link FilterScopes.Initialized}.
+     *
+     * **Filter generators generally don't need this scope.**
+     *
+     * When combining multiple filters with composite filters, the {@link FilterScopes.All} scope doesn't set assumptions for the filter predicate.
+     * It only decides which modules to run the predicate against.
+     * **Filter generators must include {@link FilterScopes.Uninitialized} and/or {@link FilterScopes.Initialized} as well.**
      */
     All: 1,
     /**
-     * Include uninitialized modules in the search.
+     * Include uninitialized modules in the search. Implies the predicate can run without exports.
      */
     Uninitialized: 2,
     /**
@@ -48,10 +36,6 @@ export interface FilterInfo {
      */
     Result: any
     /**
-     * Whether the filter requires exports to work.
-     */
-    RequiresExports: boolean
-    /**
      * Scopes the filter matches modules in.
      */
     Scopes: FilterScope[]
@@ -59,6 +43,5 @@ export interface FilterInfo {
 
 export interface DefaultFilterInfo extends FilterInfo {
     Result: any
-    RequiresExports: boolean
     Scopes: FilterScope[]
 }

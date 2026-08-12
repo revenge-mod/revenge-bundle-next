@@ -13,13 +13,9 @@ import {
 import { debounce } from '@revenge-mod/utils/callback'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { View } from 'react-native'
-import { ClickOutsideProvider } from 'react-native-click-outside'
 import { BrowsePluginMasonryFlashList } from '../components/PluginList'
 import PluginStatesProvider from '../components/PluginStateProvider'
-import {
-    EnablePluginTooltipProvider,
-    EssentialPluginTooltipProvider,
-} from '../components/TooltipProvider'
+import PluginTooltipsProvider from '../components/TooltipProvider'
 import { runInstallFlow } from '../utils/repos'
 import type { RepoPluginListing } from '@revenge-mod/plugins/_/repositories'
 import type { BrowseSortKey } from '../components/BrowseFilterAndSortActionSheet'
@@ -34,17 +30,13 @@ const SearchDebounceTime = 100
 export default function RevengePluginsBrowseSettingScreen() {
     return (
         <LayerScope>
-            <ClickOutsideProvider>
-                <PluginStatesProvider>
-                    <Page spacing={16}>
-                        <EssentialPluginTooltipProvider>
-                            <EnablePluginTooltipProvider>
-                                <Screen />
-                            </EnablePluginTooltipProvider>
-                        </EssentialPluginTooltipProvider>
-                    </Page>
-                </PluginStatesProvider>
-            </ClickOutsideProvider>
+            <PluginStatesProvider>
+                <Page spacing={16}>
+                    <PluginTooltipsProvider>
+                        <Screen />
+                    </PluginTooltipsProvider>
+                </Page>
+            </PluginStatesProvider>
         </LayerScope>
     )
 }

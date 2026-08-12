@@ -50,7 +50,11 @@ export function isModuleExportBad(
     return (
         // Nullish?
         exp == null ||
-        // Does it have some non-existent key? (Turbo modules)
-        (typeof exp === 'object' && CATCH_ALL_TEST in exp)
+        // Does it have some non-existent key? (proxies)
+        (typeof exp === 'object' &&
+            // Implementing Reflect.get
+            (exp[CATCH_ALL_TEST] !== undefined ||
+                // Implementing Reflect.ownKeys
+                CATCH_ALL_TEST in exp))
     )
 }

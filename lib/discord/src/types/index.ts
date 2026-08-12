@@ -263,6 +263,7 @@ export namespace DiscordModules {
                 | 'tertiary'
                 | 'destructive'
                 | 'active'
+                | 'expressive'
                 | 'primary-overlay'
                 | 'secondary-overlay'
             loading?: boolean

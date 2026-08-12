@@ -1,4 +1,4 @@
-import { FilterFlag } from './constants'
+import { FilterScopes } from '.'
 import { createFilterGenerator } from './utils'
 import type { Metro } from '@revenge-mod/modules/types'
 import type {
@@ -6,33 +6,48 @@ import type {
     FilterBase,
     FilterGenerator,
     FilterInfoOf,
+    FilterScopeValue,
     MergeFilterInfo,
     UnionFilterInfo,
 } from '.'
 
+/** {@link FilterScopes.All} sets no predicate assumptions. Only {@link FilterScopes.Uninitialized} implies exportless. */
+const canFilterUninitialized = (scopes: FilterScopeValue) =>
+    Boolean(scopes & FilterScopes.Uninitialized)
+
+/**
+ * If both or neither can filter uninitialized, positional order is preserved.
+ *
+ * If only one can, the one that can will be used as a prefilter for uninitialized modules,
+ * and the other will only run on initialized modules.
+ */
 const compositeHandler = <G extends (a: FilterBase, b: FilterBase) => any>(
-    sameHandler: G,
-    dynamicHandler: G,
+    directHandler: G,
+    prefilteredHandler: G,
 ) =>
-    ((a, b) =>
-        a.flags === b.flags
-            ? sameHandler(a, b)
-            : a.flags === FilterFlag.RequiresExports
-              ? dynamicHandler(a, b)
-              : dynamicHandler(b, a)) as G
+    ((a, b) => {
+        const ea = canFilterUninitialized(a.scopes)
+        return ea === canFilterUninitialized(b.scopes)
+            ? directHandler(a, b)
+            : ea
+              ? prefilteredHandler(b, a)
+              : prefilteredHandler(a, b)
+    }) as G
 
 const compositeArrayHandler = <
     G extends (args: [a: FilterBase, b: FilterBase]) => any,
 >(
-    sameHandler: G,
-    dynamicHandler: G,
+    directHandler: G,
+    prefilteredHandler: G,
 ) =>
-    (([a, b]) =>
-        a.flags === b.flags
-            ? sameHandler([a, b])
-            : a.flags === FilterFlag.RequiresExports
-              ? dynamicHandler([a, b])
-              : dynamicHandler([b, a])) as G
+    (([a, b]) => {
+        const ea = canFilterUninitialized(a.scopes)
+        return ea === canFilterUninitialized(b.scopes)
+            ? directHandler([a, b])
+            : ea
+              ? prefilteredHandler([b, a])
+              : prefilteredHandler([a, b])
+    }) as G
 
 export type And = FilterGenerator<
     <F1 extends FilterBase, F2 extends FilterBase>(
@@ -46,49 +61,49 @@ const andKeyGenerator = ([a, b]: Parameters<And>) =>
 
 const andScopesGenerator = ([a, b]: Parameters<And>) => a.scopes | b.scopes
 
-const sameFlagsAnd = createFilterGenerator(
-    ([a, b], id, exports) => a(id, exports) && b(id, exports),
+const directAnd = createFilterGenerator(
+    ([a, b], id, exports, initialized) =>
+        a(id, exports, initialized) && b(id, exports, initialized),
     andKeyGenerator,
-    ([a]) => a.flags,
     andScopesGenerator,
 ) as And
 
-const andFallbackCache = new WeakMap<FilterBase, Set<Metro.ModuleID>>()
+const andPrefilterCache = new WeakMap<FilterBase, Set<Metro.ModuleID>>()
 
-const dynamicFlagsAnd = createFilterGenerator(
-    ([filter, fallbackFilter], id, exports) => {
-        if (exports) {
-            if (filter(id, exports)) {
-                // Avoid running the fallback filter if we already know the first one passed
-                const cache = andFallbackCache.get(fallbackFilter)
+const prefilteredAnd = createFilterGenerator(
+    ([filter, prefilter], id, exports, initialized) => {
+        if (initialized) {
+            if (filter(id, exports, true)) {
+                // Avoid running the prefilter again if we already know it passed
+                const cache = andPrefilterCache.get(prefilter)
                 return (
                     // biome-ignore lint/complexity/useOptionalChain: Hot path should be optimized
-                    (cache && cache.has(id)) || fallbackFilter(id, exports)
+                    (cache && cache.has(id)) || prefilter(id, exports, true)
                 )
             }
 
             return false
         }
 
-        const result = fallbackFilter(id)
+        const result = prefilter(id, undefined, false)
         if (result) {
-            // Cache fallback hits to avoid calling the fallback filter again
-            // Fallback filters are usually more expensive
-            let set = andFallbackCache.get(fallbackFilter)
-            if (!set) andFallbackCache.set(fallbackFilter, (set = new Set()))
+            // Cache prefilter hits to avoid calling the prefilter again
+            // Prefilters are usually more expensive
+            let set = andPrefilterCache.get(prefilter)
+            if (!set) andPrefilterCache.set(prefilter, (set = new Set()))
             set.add(id)
         }
         return result
     },
     andKeyGenerator,
-    FilterFlag.Dynamic,
     andScopesGenerator,
 ) as And
 
 /**
  * Combines two filters into one, returning true if **every** filter matches.
  *
- * If each filter has different flags,
+ * If only one of the filters can run on uninitialized modules ({@link FilterScopes.Uninitialized}),
+ * it is used as the prefilter for uninitialized modules, and the other only runs once a candidate is initialized.
  *
  * @param filters The filters to combine.
  *
@@ -111,23 +126,13 @@ const dynamicFlagsAnd = createFilterGenerator(
  * )
  * ```
  */
-export const and = Object.assign(
-    compositeHandler(sameFlagsAnd, dynamicFlagsAnd),
-    {
-        keyFor: compositeArrayHandler(
-            sameFlagsAnd.keyFor,
-            dynamicFlagsAnd.keyFor,
-        ),
-        flagsFor: compositeArrayHandler(
-            sameFlagsAnd.flagsFor,
-            dynamicFlagsAnd.flagsFor,
-        ),
-        defaultScopesFor: compositeArrayHandler(
-            sameFlagsAnd.defaultScopesFor,
-            dynamicFlagsAnd.defaultScopesFor,
-        ),
-    },
-) satisfies And
+export const and = Object.assign(compositeHandler(directAnd, prefilteredAnd), {
+    keyFor: compositeArrayHandler(directAnd.keyFor, prefilteredAnd.keyFor),
+    defaultScopesFor: compositeArrayHandler(
+        directAnd.defaultScopesFor,
+        prefilteredAnd.defaultScopesFor,
+    ),
+}) satisfies And
 
 export type Or = FilterGenerator<
     <F1 extends FilterBase, F2 extends FilterBase>(
@@ -141,21 +146,21 @@ const orKeyGenerator = ([a, b]: Parameters<Or>) =>
 
 const orScopesGenerator = ([a, b]: Parameters<Or>) => a.scopes | b.scopes
 
-const sameFlagOr = createFilterGenerator(
-    ([a, b], id, exports) => a(id, exports) || b(id, exports),
+const directOr = createFilterGenerator(
+    ([a, b], id, exports, initialized) =>
+        a(id, exports, initialized) || b(id, exports, initialized),
     orKeyGenerator,
-    ([a]) => a.flags,
     orScopesGenerator,
 ) as Or
 
-const dynamicFlagOr = createFilterGenerator(
-    ([filter, fallbackFilter], id, exports) => {
-        // TODO(PalmDevs): Potential optimization: Add fallback cache here too?
-        if (exports) return filter(id, exports) || fallbackFilter(id, exports)
-        return fallbackFilter(id)
+const prefilteredOr = createFilterGenerator(
+    ([filter, prefilter], id, exports, initialized) => {
+        // TODO(PalmDevs): Potential optimization: Add prefilter cache here too?
+        if (initialized)
+            return filter(id, exports, true) || prefilter(id, exports, true)
+        return prefilter(id, undefined, false)
     },
     orKeyGenerator,
-    FilterFlag.Dynamic,
     orScopesGenerator,
 ) as Or
 
@@ -183,17 +188,10 @@ const dynamicFlagOr = createFilterGenerator(
  * )
  * ```
  */
-export const or = Object.assign(
-    compositeHandler<Or>(sameFlagOr, dynamicFlagOr),
-    {
-        keyFor: compositeArrayHandler(sameFlagOr.keyFor, dynamicFlagOr.keyFor),
-        flagsFor: compositeArrayHandler(
-            sameFlagOr.flagsFor,
-            dynamicFlagOr.flagsFor,
-        ),
-        defaultScopesFor: compositeArrayHandler(
-            sameFlagOr.defaultScopesFor,
-            dynamicFlagOr.defaultScopesFor,
-        ),
-    },
-) satisfies Or
+export const or = Object.assign(compositeHandler<Or>(directOr, prefilteredOr), {
+    keyFor: compositeArrayHandler(directOr.keyFor, prefilteredOr.keyFor),
+    defaultScopesFor: compositeArrayHandler(
+        directOr.defaultScopesFor,
+        prefilteredOr.defaultScopesFor,
+    ),
+}) satisfies Or

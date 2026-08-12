@@ -120,3 +120,5 @@ bun run types
 <br>
 <sub>Bundlers will need to map imports to property access on `revenge` turning `kebab-case` and `snake_case` to `camelCase`.</sub>
 <sub>Example: `@revenge-mod/discord/modules/main_tabs_v2` to `revenge.discord.modules.mainTabsV2`</sub>
+<br>
+<sub>Exception for `@revenge-mod/externals` which property accesses should turn into `PascalCase` instead of `camelCase`.</sub>

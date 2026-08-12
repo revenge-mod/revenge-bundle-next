@@ -2,7 +2,7 @@ import { getCurrentStack } from '@revenge-mod/utils/error'
 import { cacheFilterResultForId } from '../caches'
 import { mInitialized } from '../metro/patches'
 import { metroRequire } from '../metro/runtime'
-import { FilterFlag } from './filters'
+import { isModuleInitialized } from '../metro/utils'
 import type { If } from '@revenge-mod/utils/types'
 import type { Metro } from '../types'
 import type { Filter } from './filters'
@@ -73,33 +73,13 @@ const noDefaultExportsCache = new Set<Metro.ModuleID>()
 // If we add more options later on, do NOT forget about
 // adding them here, and passing them in the lookup* functions
 export function runFilter(
-    filter: Filter<{ Result: any; RequiresExports: false; Scopes: any[] }>,
-    id: Metro.ModuleID,
-): FilterResultFlag | undefined
-
-export function runFilter(
-    filter: Filter,
-    id: Metro.ModuleID,
-    exports: Metro.ModuleExports,
-    options?: RunFilterOptions,
-): FilterResultFlag | undefined
-
-export function runFilter(
     filter: Filter,
     id: Metro.ModuleID,
     exports?: Metro.ModuleExports,
     options?: RunFilterOptions,
 ): FilterResultFlag | undefined {
-    if (exports === undefined) {
-        if (filter.flags & FilterFlag.RequiresExports) return
-
-        const filter_ = filter as Filter<{
-            Result: any
-            RequiresExports: false
-            Scopes: any[]
-        }>
-
-        if (filter_(id)) {
+    if (!isModuleInitialized(id)) {
+        if (filter(id, undefined, false)) {
             if (options?.initialize ?? true) {
                 const module = metroRequire(id)
                 // Check if the required module is not blacklisted
@@ -118,13 +98,7 @@ export function runFilter(
         return
     }
 
-    const filter_ = filter as Filter<{
-        Result: any
-        RequiresExports: true
-        Scopes: any[]
-    }>
-
-    if (filter_(id, exports))
+    if (filter(id, exports, true))
         return cacheFilterResultForId(
             filter.key,
             id,
@@ -133,13 +107,15 @@ export function runFilter(
 
     if (options?.skipDefault) return
     if (noDefaultExportsCache.has(id)) return
-    if (!('default' in exports)) {
+
+    const type = typeof exports
+    if (type !== 'object' || exports === null || !('default' in exports)) {
         noDefaultExportsCache.add(id)
         return
     }
 
     const { default: defaultExport } = exports
-    if (filter_(id, defaultExport))
+    if (filter(id, defaultExport, true))
         return cacheFilterResultForId(filter.key, id, FilterResultFlags.Default)
 }
 

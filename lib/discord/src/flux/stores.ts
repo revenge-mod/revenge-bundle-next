@@ -1,3 +1,4 @@
+import { DispatcherModuleId } from '@revenge-mod/discord/common/flux'
 import { ImportTrackerModuleId } from '@revenge-mod/discord/common/import-tracker'
 import {
     lookupModule,
@@ -7,9 +8,8 @@ import {
 import {
     createFilterGenerator,
     withDependencies,
-    withName,
 } from '@revenge-mod/modules/finders/filters'
-import { getModuleDependencies } from '@revenge-mod/modules/metro/utils'
+import { isModuleExportBad } from '@revenge-mod/modules/metro/utils'
 import { asap, noop } from '@revenge-mod/utils/callback'
 import {
     cache,
@@ -17,10 +17,7 @@ import {
     Uncached,
 } from '../../../modules/src/caches'
 import { FilterResultFlags } from '../../../modules/src/finders/_internal'
-import {
-    FilterFlag,
-    FilterScopes,
-} from '../../../modules/src/finders/filters/constants'
+import { FilterScopes } from '../../../modules/src/finders/filters/constants'
 import type {
     Filter,
     FilterGenerator,
@@ -66,32 +63,16 @@ export function getStore<T>(
 
 /// STORE FILTERING
 
-/* 
-    Flux Store dependencies: [
-        _classCallCheck
-        _createClass
-        _possibleConstructorReturn
-        bound getPrototypeOf
-        _inherits
-        (...), // (any amount of dependencies)
-        ImportTracker
-    ]
-*/
+const { last, includes } = withDependencies
 
-const withLeadingFluxStoreDeps = withDependencies(
-    withDependencies.loose([
-        withName('_classCallCheck'),
-        withName('_createClass'),
-        withName('_possibleConstructorReturn'),
-        withName('bound getPrototypeOf'),
-        withName('_inherits'),
-    ]),
+// The import tracker is checked first, as it is far cheaper than resolving includes
+const withFluxStoreDeps = withDependencies(last([ImportTrackerModuleId])).and(
+    withDependencies(includes([DispatcherModuleId])),
 )
 
 export type WithStore = FilterGenerator<
     <T>() => Filter<{
         Result: DiscordModules.Flux.Store<T>
-        RequiresExports: boolean
         Scopes: [
             typeof FilterScopes.Uninitialized,
             typeof FilterScopes.Initialized,
@@ -103,27 +84,22 @@ export type WithStore = FilterGenerator<
  * A dynamic filter that matches all Flux stores.
  */
 export const withStore = createFilterGenerator(
-    (_, id, exports) => {
-        if (exports) return Boolean(exports._dispatchToken)
-        else {
-            if (!withLeadingFluxStoreDeps(id)) return false
-            const deps = getModuleDependencies(id)!
-            return deps[deps.length - 1] === ImportTrackerModuleId
-        }
+    (_, id, exports, initialized) => {
+        if (initialized)
+            return (
+                !isModuleExportBad(exports) && Boolean(exports._dispatchToken)
+            )
+
+        return withFluxStoreDeps(id, undefined, false)
     },
     () => 'revenge.discord.store',
-    FilterFlag.Dynamic,
     FilterScopes.Uninitialized | FilterScopes.Initialized,
 ) as WithStore
 
 export type WithStoreName = FilterGenerator<
     <T>(name: string) => Filter<{
         Result: DiscordModules.Flux.Store<T>
-        RequiresExports: true
-        Scopes: [
-            typeof FilterScopes.Uninitialized,
-            typeof FilterScopes.Initialized,
-        ]
+        Scopes: [typeof FilterScopes.Initialized]
     }>
 >
 
@@ -131,11 +107,21 @@ export type WithStoreName = FilterGenerator<
  * A with-exports filter that matches a Flux store by its name.
  */
 export const withStoreName = createFilterGenerator(
-    ([name], _, exports) =>
-        exports?.getName?.length === 0 && exports.getName() === name,
+    ([name], _, exports) => {
+        if (isModuleExportBad(exports)) return false
+
+        const getNameMethod = exports.getName
+
+        return (
+            typeof getNameMethod === 'function' &&
+            getNameMethod.length === 0 &&
+            // Needs to be bound to exports since it's a class
+            exports.getName() === name
+        )
+    },
     ([name]) => `revenge.discord.storeName(${name})`,
-    FilterFlag.RequiresExports,
-    FilterScopes.Uninitialized | FilterScopes.Initialized,
+    // Uninitialized to make sure cached results resolve immediately
+    FilterScopes.Initialized | FilterScopes.Uninitialized,
 ) as WithStoreName
 
 /// STORE CACHING
@@ -155,5 +141,6 @@ if (cache === Uncached)
     asap(() => {
         const lookup = lookupModules(withStore())
 
-        while (lookup.next().done);
+        // Initialize all stores
+        for (const _ of lookup);
     })

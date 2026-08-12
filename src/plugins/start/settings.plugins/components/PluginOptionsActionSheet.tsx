@@ -37,10 +37,9 @@ import {
 import { messageOf, showErrorToast } from '../utils/repos'
 import { InstalledPluginSwitch, PluginInfo } from './PluginCard'
 import { usePluginEnabled, usePluginStatus } from './PluginStateProvider'
-import {
-    EnablePluginTooltipProvider,
-    useClickOutsideTooltip,
-    useEnablePluginTooltip,
+import PluginTooltipsProvider, {
+    PluginTooltip,
+    usePluginTooltip,
 } from './TooltipProvider'
 import type { AnyPlugin } from '@revenge-mod/plugins/_'
 
@@ -61,23 +60,44 @@ export default function PluginOptionsActionSheet({
     plugin,
     sheetKey,
 }: PluginOptionsActionSheetProps) {
+    return (
+        <ActionSheet>
+            <ClickOutsideProvider>
+                <PluginTooltipsProvider>
+                    <PluginOptions plugin={plugin} sheetKey={sheetKey} />
+                </PluginTooltipsProvider>
+            </ClickOutsideProvider>
+        </ActionSheet>
+    )
+}
+
+function PluginOptions({ plugin, sheetKey }: PluginOptionsActionSheetProps) {
     const enabled = usePluginEnabled(plugin)
     const meta = getInternalPluginMeta(plugin)
     const essential = isPluginEssential(meta)
     const pendingUpdate = isPluginPendingUpdate(plugin)
     const { name, author, description, icon, version } = plugin.manifest
 
+    const [switchRef, showPendingUpdateTooltip] = usePluginTooltip(
+        PluginTooltip.PendingUpdate,
+    )
+
     return (
-        <ActionSheet>
-            <Stack spacing={24} style={{ paddingTop: 8 }}>
-                <PluginInfo
-                    name={name}
-                    author={author}
-                    version={formatVersion(version)}
-                    description={description}
-                    icon={icon}
-                    actions={
-                        !essential && (
+        <Stack spacing={24} style={{ paddingTop: 8 }}>
+            <PluginInfo
+                name={name}
+                author={author}
+                version={formatVersion(version)}
+                description={description}
+                icon={icon}
+                actions={
+                    !essential && (
+                        <Pressable
+                            onPress={() => {
+                                if (pendingUpdate) showPendingUpdateTooltip()
+                            }}
+                            ref={switchRef}
+                        >
                             <InstalledPluginSwitch
                                 enabled={enabled}
                                 plugin={plugin}
@@ -86,25 +106,19 @@ export default function PluginOptionsActionSheet({
                                 )}
                                 toggleDisabled={pendingUpdate}
                             />
-                        )
-                    }
-                />
-                <ClickOutsideProvider>
-                    <EnablePluginTooltipProvider>
-                        <PluginActions
-                            plugin={plugin}
-                            closeSheet={() => {
-                                ActionSheetActionCreators.hideActionSheet(
-                                    sheetKey,
-                                )
-                            }}
-                        />
-                    </EnablePluginTooltipProvider>
-                </ClickOutsideProvider>
-                <StatusSection plugin={plugin} />
-                <AdvancedSection plugin={plugin} />
-            </Stack>
-        </ActionSheet>
+                        </Pressable>
+                    )
+                }
+            />
+            <PluginActions
+                plugin={plugin}
+                closeSheet={() => {
+                    ActionSheetActionCreators.hideActionSheet(sheetKey)
+                }}
+            />
+            <StatusSection plugin={plugin} />
+            <AdvancedSection plugin={plugin} />
+        </Stack>
     )
 }
 
@@ -292,8 +306,9 @@ function PluginActions({
     plugin: AnyPlugin
     closeSheet: () => void
 }) {
-    const enableTooltip = useEnablePluginTooltip()
-    const settingsRef = useClickOutsideTooltip(useEnablePluginTooltip, () => {})
+    const [settingsRef, showEnableTooltip] = usePluginTooltip(
+        PluginTooltip.Enable,
+    )
     const meta = getInternalPluginMeta(plugin)
     const startable = isPluginStartable(plugin)
     const enabled = usePluginEnabled(plugin)
@@ -347,12 +362,7 @@ function PluginActions({
             {plugin.SettingsComponent && (
                 <Pressable
                     onPress={() => {
-                        if (!startable)
-                            requestAnimationFrame(() => {
-                                enableTooltip.targetRef.current =
-                                    settingsRef.current
-                                enableTooltip.setVisible(true)
-                            })
+                        if (!startable) showEnableTooltip()
                     }}
                 >
                     <IconButton

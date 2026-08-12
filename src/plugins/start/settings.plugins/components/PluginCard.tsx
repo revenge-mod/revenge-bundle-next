@@ -21,11 +21,7 @@ import {
 } from '../utils/sheets'
 import { PluginIcon } from './PluginIcon'
 import { usePluginEnabled } from './PluginStateProvider'
-import {
-    useClickOutsideTooltip,
-    useEnablePluginTooltip,
-    useEssentialPluginTooltip,
-} from './TooltipProvider'
+import { PluginTooltip, usePluginTooltip } from './TooltipProvider'
 import type { AnyPlugin, InternalPluginMeta } from '@revenge-mod/plugins/_'
 import type { RepoPluginListing } from '@revenge-mod/plugins/_/repositories'
 
@@ -152,14 +148,12 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
 
     const toggleDisabled = essential || pendingUpdate
 
-    const enableTooltip = useEnablePluginTooltip()
-    const essentialTooltip = useEssentialPluginTooltip()
+    const [settingsRef, showEnableTooltip] = usePluginTooltip(
+        PluginTooltip.Enable,
+    )
 
-    const settingsRef = useClickOutsideTooltip(useEnablePluginTooltip, () => {})
-
-    const switchRef = useClickOutsideTooltip(
-        useEssentialPluginTooltip,
-        () => {},
+    const [switchRef, showToggleTooltip] = usePluginTooltip(
+        essential ? PluginTooltip.Essential : PluginTooltip.PendingUpdate,
     )
 
     return (
@@ -182,12 +176,7 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
                     {plugin.SettingsComponent && (
                         <Pressable
                             onPress={() => {
-                                if (!startable)
-                                    requestAnimationFrame(() => {
-                                        enableTooltip.targetRef.current =
-                                            settingsRef.current
-                                        enableTooltip.setVisible(true)
-                                    })
+                                if (!startable) showEnableTooltip()
                             }}
                         >
                             <IconButton
@@ -204,12 +193,7 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
                     )}
                     <Pressable
                         onPress={() => {
-                            if (toggleDisabled)
-                                requestAnimationFrame(() => {
-                                    essentialTooltip.targetRef.current =
-                                        switchRef.current
-                                    essentialTooltip.setVisible(true)
-                                })
+                            if (toggleDisabled) showToggleTooltip()
                         }}
                         ref={switchRef}
                     >
