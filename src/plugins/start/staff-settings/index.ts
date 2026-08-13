@@ -20,12 +20,19 @@ registerInternalPlugin(
         icon: 'StaffBadgeIcon',
     },
     {
-        start({ cleanup, logger }) {
+        start({ cleanup, logger, plugin }) {
             const CircleInformationIcon = lookupGeneratedIconComponent(
                 'CircleInformationIcon',
                 'CircleInformationIcon-secondary',
                 'CircleInformationIcon-primary',
             )
+
+            const showToast = () =>
+                ToastActionCreators.open({
+                    key: 'staff-settings-action',
+                    content: 'Navigate out of Settings to apply changes',
+                    IconComponent: CircleInformationIcon,
+                })
 
             function reset() {
                 getStore<{
@@ -43,12 +50,6 @@ registerInternalPlugin(
 
                     store.initialize()
                     unpatch()
-
-                    ToastActionCreators.open({
-                        key: 'staff-settings-action',
-                        content: 'Navigate out of Settings to apply changes',
-                        IconComponent: CircleInformationIcon,
-                    })
                 })
             }
 
@@ -69,9 +70,11 @@ registerInternalPlugin(
                                 ).getCurrentUser(),
                         ),
                         reset,
+                        showToast,
                     )
 
                     reset()
+                    if (plugin.startedLate) showToast()
                 }),
             )
         },
