@@ -27,7 +27,7 @@ export function onAnyFluxEventDispatched(patch: FluxEventDispatchPatch) {
  * @param patch The patch function to apply when the event is dispatched.
  * @returns A function that can be used to remove the patch.
  *
- * @example Blocking the disptach
+ * @example Blocking the dispatch
  * ```ts
  * // Returning falsy values will prevent the event from being dispatched.
  * onFluxEventDispatched('TYPING_START', () => {})

@@ -1,5 +1,5 @@
 import { lookupModule, lookupModules } from '@revenge-mod/modules/finders'
-import { withDependencies } from '@revenge-mod/modules/finders/filters'
+import { withDependencies, withProps } from '@revenge-mod/modules/finders/filters'
 import {
     ReactJSXRuntimeModuleId,
     ReactModuleId,
@@ -26,25 +26,21 @@ export let Design: Design = proxify(
     () => {
         // ID: 13171
         // [3909, 4608, 5182, 13172, 2, ...] (141 dependencies)
-        const [, id] = lookupModule(
+        const [module] = lookupModule(
+            withProps('TableRow', 'Button').and(
             withDependencies<Design>(
-                atLeast(DesignMinimumDependencies, [
-                    [ImportTrackerModuleId],
-                    [ImportTrackerModuleId],
-                    [ReactNativeModuleId, ImportTrackerModuleId],
-                    [ImportTrackerModuleId],
-                    ImportTrackerModuleId,
-                ]),
+                    atLeast(DesignMinimumDependencies, [
+                        [ImportTrackerModuleId],
+                        [ImportTrackerModuleId],
+                        [ReactNativeModuleId, ImportTrackerModuleId],
+                        [ImportTrackerModuleId],
+                        ImportTrackerModuleId,
+                    ]),
+                )
             ).keyAs('revenge.discord.design.Design'),
-            {
-                initialize: false,
-            },
         )
 
-        if (id === undefined) return
-
-        const module = __r(id)!
-        if (module.TableRow && module.Button) return (Design = module)
+        if (module) return (Design = module)
     },
     {
         hint: {},
