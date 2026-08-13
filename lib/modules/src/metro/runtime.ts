@@ -15,7 +15,7 @@ import {
 } from './subscriptions/_internal'
 import type { Metro } from '../types'
 
-export const mErrorChain: Metro.ModuleID[] = []
+export const mErrorChain: [Metro.ModuleID, unknown][] = []
 
 export const Initialized = 1 << 0
 const HasError = 1 << 1
@@ -80,7 +80,7 @@ export const metroRequire = (moduleId => {
         // if (global.ErrorUtils) global.ErrorUtils.reportFatalError(e)
         // else throw e
 
-        mErrorChain.push(moduleId)
+        mErrorChain.push([moduleId, e])
 
         return (moduleObject.exports = {})
     }
