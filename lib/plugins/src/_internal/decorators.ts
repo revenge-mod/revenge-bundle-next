@@ -55,7 +55,7 @@ export function decoratePluginApi(
 
             try {
                 for (const decorator of decorators)
-                    decorator(plugin, meta.options)
+                    plugin.api.cleanup(decorator(plugin, meta.options))
             } catch (e) {
                 handleError(e)
                 handleDependentError(e)

@@ -9,6 +9,7 @@
         "@revenge-mod/components": "workspace:*",
         "@revenge-mod/discord": "workspace:*",
         "@revenge-mod/externals": "workspace:*",
+        "@revenge-mod/hidden": "workspace:*",
         "@revenge-mod/json-storage": "workspace:*",
         "@revenge-mod/modules": "workspace:*",
         "@revenge-mod/patcher": "workspace:*",
@@ -54,6 +55,9 @@
     },
     "lib/externals": {
       "name": "@revenge-mod/externals",
+    },
+    "lib/hidden": {
+      "name": "@revenge-mod/hidden",
     },
     "lib/json-storage": {
       "name": "@revenge-mod/json-storage",
@@ -211,6 +215,8 @@
     "@revenge-mod/discord": ["@revenge-mod/discord@workspace:lib/discord"],
 
     "@revenge-mod/externals": ["@revenge-mod/externals@workspace:lib/externals"],
+
+    "@revenge-mod/hidden": ["@revenge-mod/hidden@workspace:lib/hidden"],
 
     "@revenge-mod/json-storage": ["@revenge-mod/json-storage@workspace:lib/json-storage"],
 
