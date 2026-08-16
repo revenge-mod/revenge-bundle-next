@@ -499,6 +499,7 @@ export namespace DiscordModules {
             extends TableRowGroupProps {
             children: ReactNode
             onChange: (value: T) => void
+            value?: T
             defaultValue?: T
         }
 

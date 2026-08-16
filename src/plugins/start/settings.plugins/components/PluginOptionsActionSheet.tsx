@@ -25,7 +25,6 @@ import {
 } from '@revenge-mod/plugins/_'
 import {
     listRepoPlugins,
-    listRepos,
     refreshRepo,
 } from '@revenge-mod/plugins/_/repositories'
 import { PluginStatus } from '@revenge-mod/plugins/constants'
@@ -39,7 +38,11 @@ import {
     showPluginClearDataConfirmation,
     showPluginUninstallConfirmation,
 } from '../utils/alerts'
-import { messageOf, runInstallFlow, showErrorToast } from '../utils/repos'
+import {
+    messageOf,
+    runInstallFlowWithInternalRepos,
+    showErrorToast,
+} from '../utils/repos'
 import { InstalledPluginSwitch, PluginInfo } from './PluginCard'
 import { usePluginEnabled, usePluginStatus } from './PluginStateProvider'
 import PluginTooltipsProvider, {
@@ -47,7 +50,6 @@ import PluginTooltipsProvider, {
     usePluginTooltip,
 } from './TooltipProvider'
 import type { AnyPlugin } from '@revenge-mod/plugins/_'
-import type { RepoPluginListing } from '@revenge-mod/plugins/_/repositories'
 
 export interface PluginOptionsActionSheetProps {
     plugin: AnyPlugin
@@ -131,7 +133,8 @@ function PluginOptions({ plugin, sheetKey }: PluginOptionsActionSheetProps) {
                 }}
             />
             <StatusSection plugin={plugin} />
-            <AdvancedSection plugin={plugin} sheetKey={sheetKey} />
+            <ChannelSection plugin={plugin} />
+            <AdvancedSection plugin={plugin} />
         </Stack>
     )
 }
@@ -173,92 +176,72 @@ function StatusSection({ plugin }: { plugin: AnyPlugin }) {
 
 function ChannelSection({
     plugin,
-    sheetKey,
 }: {
     plugin: AnyPlugin
-    sheetKey: string
 }) {
     const meta = getInternalPluginMeta(plugin)
     const source = meta.source
     if (isPluginInternal(meta) || !source?.repo) return null
 
-    const [listing, setListing] = useState<RepoPluginListing | null>(null)
-    const [resetKey, setResetKey] = useState(0)
+    const [channels, setChannels] = useState<Record<string, string>>({})
+    const [selected, setSelected] = useState(source.channel)
 
     useEffect(() => {
-        let cancelled = false
-        ;(async () => {
-            try {
-                const listings = await listRepoPlugins(source.repo)
-                const found = listings.find(l => l.id === plugin.manifest.id)
-                if (found && !cancelled) setListing(found)
-            } catch {
-                try {
-                    await refreshRepo(source.repo)
-                    const listings = await listRepoPlugins(source.repo)
-                    const found = listings.find(l => l.id === plugin.manifest.id)
-                    if (found && !cancelled) setListing(found)
-                } catch {}
-            }
-        })()
-        return () => {
-            cancelled = true
-        }
+        listRepoPlugins(source.repo)
+            .then(listings => {
+                const listing = listings.find(l => l.id === plugin.manifest.id)
+                if (listing) setChannels(listing.channels)
+            })
+            .catch(() =>
+                refreshRepo(source.repo)
+                    .then(() => listRepoPlugins(source.repo))
+                    .then(listings => {
+                        const listing = listings.find(
+                            l => l.id === plugin.manifest.id,
+                        )
+                        if (listing) setChannels(listing.channels)
+                    })
+                    .catch(() => {}),
+            )
     }, [source.repo, plugin.manifest.id])
 
-    if (!listing || Object.keys(listing.channels).length === 0) return null
+    if (Object.keys(channels).length === 0) return null
 
-    const handleChange = async (selected: string) => {
-        if (selected === source.channel) return
+    const handleChange = (value: string) => {
+        setSelected(value)
 
-        const targetVersion = listing.channels[selected]
-        if (!targetVersion) return
-
+        const targetVersion = channels[value]!
         if (targetVersion === plugin.manifest.version) {
-            setResetKey(k => k + 1)
             ToastActionCreators.open({
-                key: 'REVENGE_PLUGIN_CHANNEL_UP_TO_DATE',
-                content: 'This channel is already installed',
+                key: 'REVENGE_PLUGIN_VERSION_ALREADY_INSTALLED',
+                content: 'This version is already installed',
                 IconComponent: () => <TableRowAssetIcon name="CircleCheckIcon" />,
             })
             return
         }
 
-        const repos = await listRepos()
-        const internalUrls = repos
-            .filter(r => r.internal)
-            .map(r => r.url)
-
-        ActionSheetActionCreators.hideActionSheet(sheetKey)
-        runInstallFlow(
+        runInstallFlowWithInternalRepos(
             plugin.manifest.id,
             undefined,
-            selected,
-            [...internalUrls, source.repo],
+            value,
+            source.repo,
         )
     }
 
     return (
         <TableRadioGroup
-            key={resetKey}
             title="Channel"
-            defaultValue={source.channel}
+            value={selected}
             onChange={v => handleChange(v as string)}
         >
-            {Object.keys(listing.channels).map(c => (
+            {Object.keys(channels).map(c => (
                 <TableRadioRow key={c} label={c} value={c} />
             ))}
         </TableRadioGroup>
     )
 }
 
-function AdvancedSection({
-    plugin,
-    sheetKey,
-}: {
-    plugin: AnyPlugin
-    sheetKey: string
-}) {
+function AdvancedSection({ plugin }: { plugin: AnyPlugin }) {
     const meta = getInternalPluginMeta(plugin)
     const dependents = getPluginDependents(plugin, true)
     const dependencies = getPluginDependencies(plugin, false)
@@ -266,73 +249,70 @@ function AdvancedSection({
     const { id, name } = plugin.manifest
 
     return (
-        <>
-            <ChannelSection plugin={plugin} sheetKey={sheetKey} />
-            <TableRowGroup title="Advanced">
-                <IdRow id={id} />
-                <RepositoryRow
-                    text={repositoryText}
-                    copyable={!!meta.source?.repo}
-                />
+        <TableRowGroup title="Advanced">
+            <IdRow id={id} />
+            <RepositoryRow
+                text={repositoryText}
+                copyable={!!meta.source?.repo}
+            />
+            <TableRow
+                icon={<TableRowAssetIcon name="FlagIcon" />}
+                label="Flags"
+                subLabel={bitFieldToString(PluginFlags, meta.flags)}
+            />
+            {meta.iflags > 0 && (
                 <TableRow
                     icon={<TableRowAssetIcon name="FlagIcon" />}
-                    label="Flags"
-                    subLabel={bitFieldToString(PluginFlags, meta.flags)}
+                    label="Internal Flags"
+                    subLabel={bitFieldToString(
+                        InternalPluginFlags,
+                        meta.iflags,
+                    )}
                 />
-                {meta.iflags > 0 && (
-                    <TableRow
-                        icon={<TableRowAssetIcon name="FlagIcon" />}
-                        label="Internal Flags"
-                        subLabel={bitFieldToString(
-                            InternalPluginFlags,
-                            meta.iflags,
-                        )}
-                    />
-                )}
-                {dependencies.length > 0 && (
-                    <TableRow
-                        icon={<TableRowAssetIcon name="ListBulletsIcon" />}
-                        label="Dependencies"
-                        subLabel={`${name} depends on ${dependencies.length} other plugins`}
-                        onPress={() => {
-                            ActionSheetActionCreators.openLazy(
-                                import('./PluginRelationsListActionSheet'),
-                                `plugin-deps-${id}`,
-                                {
-                                    title: `Dependencies of ${name}`,
-                                    unsatisfiedTitle: `Unsatisfied dependencies of ${name}`,
-                                    unsatisfiedPlugins:
-                                        meta.unsatisfiedOptionalDependencies.map(
-                                            id => pList.get(id) ?? id,
-                                        ),
-                                    plugins: dependencies,
-                                    dependencyMap: plugin.manifest.dependencies!,
-                                },
-                                'stack',
-                            )
-                        }}
-                    />
-                )}
-                {dependents.length > 0 && (
-                    <TableRow
-                        icon={<TableRowAssetIcon name="ListBulletsIcon" />}
-                        label="Dependents"
-                        subLabel={`${dependents.length} other plugins depend on ${name}`}
-                        onPress={() => {
-                            ActionSheetActionCreators.openLazy(
-                                import('./PluginRelationsListActionSheet'),
-                                `plugin-dependents-${id}`,
-                                {
-                                    title: `Dependents of ${name}`,
-                                    plugins: dependents,
-                                },
-                                'stack',
-                            )
-                        }}
-                    />
-                )}
-            </TableRowGroup>
-        </>
+            )}
+            {dependencies.length > 0 && (
+                <TableRow
+                    icon={<TableRowAssetIcon name="ListBulletsIcon" />}
+                    label="Dependencies"
+                    subLabel={`${name} depends on ${dependencies.length} other plugins`}
+                    onPress={() => {
+                        ActionSheetActionCreators.openLazy(
+                            import('./PluginRelationsListActionSheet'),
+                            `plugin-deps-${id}`,
+                            {
+                                title: `Dependencies of ${name}`,
+                                unsatisfiedTitle: `Unsatisfied dependencies of ${name}`,
+                                unsatisfiedPlugins:
+                                    meta.unsatisfiedOptionalDependencies.map(
+                                        id => pList.get(id) ?? id,
+                                    ),
+                                plugins: dependencies,
+                                dependencyMap: plugin.manifest.dependencies!,
+                            },
+                            'stack',
+                        )
+                    }}
+                />
+            )}
+            {dependents.length > 0 && (
+                <TableRow
+                    icon={<TableRowAssetIcon name="ListBulletsIcon" />}
+                    label="Dependents"
+                    subLabel={`${dependents.length} other plugins depend on ${name}`}
+                    onPress={() => {
+                        ActionSheetActionCreators.openLazy(
+                            import('./PluginRelationsListActionSheet'),
+                            `plugin-dependents-${id}`,
+                            {
+                                title: `Dependents of ${name}`,
+                                plugins: dependents,
+                            },
+                            'stack',
+                        )
+                    }}
+                />
+            )}
+        </TableRowGroup>
     )
 }
 
