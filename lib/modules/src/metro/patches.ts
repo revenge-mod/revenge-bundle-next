@@ -1,3 +1,4 @@
+import { onAnyModuleFirstRequired } from '@revenge-mod/modules/metro/subscriptions'
 import { cache, cacheBlacklistedModule, Uncached } from '../caches'
 import {
     global,
@@ -67,6 +68,9 @@ export function loadModuleFromSegment(
 
     definer(moduleId)
     mModuleIdToSegmentId.delete(moduleId)
+
+    // Restore blacklist when new modules are loaded from a segment
+    applyBlacklist()
 
     return mList.get(moduleId)
 }
@@ -190,6 +194,13 @@ function handleFactoryCall(
 
 /// MODULE PATCHES AND BLACKLISTS
 
-// Restore blacklists
-if (cache !== Uncached)
-    for (const id of cache.blacklist) mUninitialized.delete(id)
+function applyBlacklist() {
+    if (cache !== Uncached)
+        for (const id of cache.blacklist) mUninitialized.delete(id)
+}
+
+// Restore blacklists when the first module is required
+const unsub = onAnyModuleFirstRequired(() => {
+    unsub()
+    applyBlacklist()
+})
