@@ -9,7 +9,6 @@ import { Design } from '@revenge-mod/discord/design'
 import { reloadApp } from '@revenge-mod/modules/native/app'
 import {
     getInternalPluginMeta,
-    InternalPluginFlags,
     isDefaultsOnlyBoot,
     isPluginEnabled,
     isPluginEssential,
@@ -91,13 +90,14 @@ const Filters: FilterAndSortActionSheetProps['filters'] = {
         desc: 'Required for Revenge to function properly.',
         filter: (_, meta) => isPluginEssential(meta),
     },
-    'Non-APIs': {
-        icon: getAssetIdByName('PaperIcon')!,
-        desc: 'Exclude essential plugins that provide APIs for other plugins.',
-        filter: (_, meta) => !(meta.iflags & InternalPluginFlags.API),
+    Configurable: {
+        icon: getAssetIdByName('SettingsIcon')!,
+        desc: 'Can be toggled or have settings that can be configured.',
+        filter: (plugin, meta) =>
+            !isPluginEssential(meta) || plugin.SettingsComponent !== undefined,
     },
 } satisfies FilterAndSortActionSheetProps['filters']
-const DefaultFilters: FilterAndSortActionSheetProps['filter'] = ['Non-APIs']
+const DefaultFilters: FilterAndSortActionSheetProps['filter'] = ['Configurable']
 
 const DefaultSort: keyof typeof Sorts = 'Name'
 const Sorts = {
