@@ -80,21 +80,16 @@ const Filters: FilterAndSortActionSheetProps['filters'] = {
         icon: getAssetIdByName('RefreshIcon')!,
         filter: plugin => isPluginPendingUpdate(plugin),
     },
-    Internal: {
-        icon: RevengeIcon,
-        desc: 'Included with Revenge.',
-        filter: (_, meta) => isPluginInternal(meta),
-    },
-    Essential: {
-        icon: getAssetIdByName('StarIcon')!,
-        desc: 'Required for Revenge to function properly.',
-        filter: (_, meta) => isPluginEssential(meta),
-    },
     Configurable: {
         icon: getAssetIdByName('SettingsIcon')!,
         desc: 'Can be toggled or have settings that can be configured.',
         filter: (plugin, meta) =>
             !isPluginEssential(meta) || plugin.SettingsComponent !== undefined,
+    },
+    Internal: {
+        icon: RevengeIcon,
+        desc: 'Included with Revenge.',
+        filter: (_, meta) => isPluginInternal(meta),
     },
 } satisfies FilterAndSortActionSheetProps['filters']
 const DefaultFilters: FilterAndSortActionSheetProps['filter'] = ['Configurable']
