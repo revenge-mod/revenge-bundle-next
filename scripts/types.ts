@@ -2,6 +2,7 @@ import assets from 'pkg:assets'
 import components from 'pkg:components'
 import discord from 'pkg:discord'
 import externals from 'pkg:externals'
+import hidden from 'pkg:hidden'
 import jsonStorage from 'pkg:json-storage'
 import modules from 'pkg:modules'
 import patcher from 'pkg:patcher'
@@ -46,6 +47,27 @@ const PATHS = {
     outputTemp: 'dist/types/tmp',
     tsconfig: 'tsconfig.json',
 } as const
+
+/** Libraries that are hidden in their entirety. */
+const HIDDEN_LIBRARIES = ['hidden']
+
+/** Matches `_` used as a whole path segment, which is how internal exports are named. */
+const HIDDEN_SEGMENT = /(?:^|\/)_(?:\/|$)/
+
+/**
+ * Hidden modules are internal APIs.
+ *
+ * Generated like everything else, but kept out of `index.d.ts` and `modules.json`
+ * so consumers only get them if they ask for them (`@revenge-mod/types/hidden`).
+ *
+ * @param name A module name, without the `lib/` prefix (eg. `plugins/_`).
+ */
+function isHiddenModule(name: string): boolean {
+    return (
+        HIDDEN_LIBRARIES.includes(name.split('/')[0]!) ||
+        HIDDEN_SEGMENT.test(name)
+    )
+}
 
 type TrimLeadingDot<T extends string> = T extends `.${infer R}`
     ? R extends `/${infer S}`
@@ -97,19 +119,29 @@ export default async function buildTypes(log = true): Promise<void> {
 
         await internalizeSpecifiers(input)
 
+        // Emitting hidden types separately would duplicate shared chunks and the ambient globals,
+        // and a consumer loading both roots would get duplicate declarations.
+        // So we do this once here.
+        const [publicEntries, hiddenEntries] = partitionEntries(input)
+
         await writeFile(
             `${PATHS.output}/index.d.ts`,
-            await generateIndex(input),
+            await generateIndex(publicEntries),
         )
 
-        const modules = Object.keys(input)
-            .filter(entry => entry.startsWith(`${PATHS.lib}/`))
-            .map(entry => entry.slice(`${PATHS.lib}/`.length))
-            .sort()
+        await writeFile(
+            `${PATHS.output}/hidden.d.ts`,
+            await generateIndex(hiddenEntries),
+        )
 
         await writeFile(
             `${PATHS.output}/modules.json`,
-            `${JSON.stringify(modules, null, 4)}\n`,
+            `${JSON.stringify(modulesOf(publicEntries), null, 4)}\n`,
+        )
+
+        await writeFile(
+            `${PATHS.output}/modules.hidden.json`,
+            `${JSON.stringify(modulesOf(hiddenEntries), null, 4)}\n`,
         )
 
         // Make dist/types directly publishable
@@ -120,10 +152,14 @@ export default async function buildTypes(log = true): Promise<void> {
                     name: TYPES_PACKAGE_NAME,
                     version: pkg.version,
                     types: 'index.d.ts',
-                    files: ['modules.json'],
+                    files: ['modules.json', 'modules.hidden.json'],
                     exports: {
                         '.': { types: './index.d.ts' },
+                        './hidden': { types: './hidden.d.ts' },
                         './modules.json': { default: './modules.json' },
+                        './modules.hidden.json': {
+                            default: './modules.hidden.json',
+                        },
                     },
                     imports: {
                         '#*': { types: './*.d.ts' },
@@ -255,6 +291,7 @@ function getLibraries() {
             'SearchInput',
             'TableRowAssetIcon',
             'types',
+            '_',
         ]),
         library(discord, [
             'actions',
@@ -274,6 +311,7 @@ function getLibraries() {
             'types',
             'utils/modules/finders',
             'utils/modules/metro/subscriptions',
+            '_/modules/settings',
         ]),
         library(externals, [
             'browserify',
@@ -293,9 +331,16 @@ function getLibraries() {
             'types',
         ]),
         library(patcher, ['', 'types']),
-        library(plugins, ['constants', 'types', 'utils']),
+        library(plugins, [
+            'constants',
+            'types',
+            'utils',
+            '_',
+            '_/repositories',
+        ]),
         library(react, ['', 'jsx-runtime', 'native', 'types']),
         library(jsonStorage, ['', 'types']),
+        library(hidden, ['', 'types']),
         library(utils, [
             'callback',
             'discord',
@@ -444,10 +489,40 @@ async function auditExternalSpecifiers(): Promise<void> {
     }
 }
 
-/** Generates `index.d.ts` for the published types package. */
-async function generateIndex(input: Record<string, string>): Promise<string> {
-    const entries = Object.keys(input).sort()
+/**
+ * Splits the generated entries into the public root and the hidden root.
+ *
+ * `globals` isn't a library entry, so it stays with the public root and is
+ * referenced by `index.d.ts` only.
+ */
+function partitionEntries(
+    input: Record<string, string>,
+): [publicEntries: string[], hiddenEntries: string[]] {
+    const publicEntries: string[] = []
+    const hiddenEntries: string[] = []
 
+    for (const entry of Object.keys(input).sort()) {
+        if (
+            entry.startsWith(`${PATHS.lib}/`) &&
+            isHiddenModule(entry.slice(`${PATHS.lib}/`.length))
+        )
+            hiddenEntries.push(entry)
+        else publicEntries.push(entry)
+    }
+
+    return [publicEntries, hiddenEntries]
+}
+
+/** Maps generated entries to the module names consumers import. */
+function modulesOf(entries: string[]): string[] {
+    return entries
+        .filter(entry => entry.startsWith(`${PATHS.lib}/`))
+        .map(entry => entry.slice(`${PATHS.lib}/`.length))
+        .sort()
+}
+
+/** Generates a reference root (`index.d.ts` or `hidden.d.ts`). */
+async function generateIndex(entries: string[]): Promise<string> {
     const references = entries.map(
         entry => `/// <reference path="./${entry}.d.ts" />`,
     )

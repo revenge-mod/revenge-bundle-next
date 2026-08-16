@@ -8,6 +8,7 @@ import LoaderVersionSetting from './definitions/LoaderVersionSetting'
 import ReactNativeVersionSetting from './definitions/ReactNativeVersionSetting'
 import ReactVersionSetting from './definitions/ReactVersionSetting'
 import ReloadSetting from './definitions/ReloadSetting'
+import RevengeDeveloperModeSetting from './definitions/RevengeDeveloperModeSetting'
 import RevengeDiscordSetting from './definitions/RevengeDiscordSetting'
 import RevengeLicenseSetting from './definitions/RevengeLicenseSetting'
 import RevengeSetting from './definitions/RevengeSetting'
@@ -20,6 +21,7 @@ registerSettingsItems({
     [Setting.RevengeLicense]: RevengeLicenseSetting,
     [Setting.RevengeDiscord]: RevengeDiscordSetting,
     [Setting.Reload]: ReloadSetting,
+    [Setting.RevengeDeveloperMode]: RevengeDeveloperModeSetting,
     [Setting.RevengeVersion]: RevengeVersionSetting,
     [Setting.ReactVersion]: ReactVersionSetting,
     [Setting.ReactNativeVersion]: ReactNativeVersionSetting,

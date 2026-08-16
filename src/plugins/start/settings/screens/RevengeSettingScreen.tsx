@@ -45,6 +45,10 @@ export default function RevengeSettingScreen() {
                                         Setting.RevengeEnterRecoveryMode,
                                     ],
                                 },
+                                {
+                                    label: 'Developer',
+                                    settings: [Setting.RevengeDeveloperMode],
+                                },
                             ],
                         }}
                     />

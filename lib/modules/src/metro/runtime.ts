@@ -18,10 +18,10 @@ import type { Metro } from '../types'
 export const mErrorChain: [Metro.ModuleID, unknown][] = []
 
 export const Initialized = 1 << 0
-const HasError = 1 << 1
-const HasImportedDefault = 1 << 2
-const HasImportedAll = 1 << 3
-const Initializing = 1 << 4
+export const HasError = 1 << 1
+export const HasImportedDefault = 1 << 2
+export const HasImportedAll = 1 << 3
+export const Initializing = 1 << 4
 
 const InitializedOrInitializing = Initialized | Initializing
 const NotInitializedOrInitializingMask = ~InitializedOrInitializing
