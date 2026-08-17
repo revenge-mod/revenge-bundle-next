@@ -42,25 +42,10 @@ export default function hermesCPlugin({
 
             const argList = ['-emit-binary', ...(flags ?? [])]
 
-            const cmd =
-                // TODO: Move away from Bun: https://github.com/oven-sh/bun/issues/25498
-                typeof Bun !== 'undefined'
-                    ? (() => {
-                          const cmd = Bun.spawnSync([binPath, ...argList], {
-                              // @ts-expect-error: Works but types are incorrect
-                              stdio: [new Blob([file.code]), 'pipe'],
-                          })
-
-                          return {
-                              status: cmd.exitCode,
-                              stdout: cmd.stdout,
-                              stderr: cmd.stderr,
-                          }
-                      })()
-                    : spawnSync(binPath, argList, {
-                          stdio: ['pipe', 'pipe'],
-                          input: file.code,
-                      })
+            const cmd = spawnSync(binPath, argList, {
+                stdio: ['pipe', 'pipe'],
+                input: file.code,
+            })
 
             if (cmd.status !== 0) {
                 if (cmd.stderr.length)

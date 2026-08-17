@@ -1,12 +1,12 @@
-import { beforeEach, describe, expect, mock, test } from 'bun:test'
-import { after, before, HookPriority, instead } from '.'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { after, before, HookPriority, instead } from './index'
 
 describe('Patcher', () => {
     let originalMethod: (...args: any[]) => string
     let obj: { method: typeof originalMethod }
 
     beforeEach(() => {
-        originalMethod = mock(s => s ?? 'original')
+        originalMethod = vi.fn(s => s ?? 'original')
         obj = {
             method: originalMethod,
         }
@@ -14,7 +14,7 @@ describe('Patcher', () => {
 
     describe('before', () => {
         test('should execute callback before original method', () => {
-            const beforeCallback = mock(args => args)
+            const beforeCallback = vi.fn(args => args)
             before(obj, 'method', beforeCallback)
 
             obj.method('arg1', 'arg2')
@@ -35,7 +35,7 @@ describe('Patcher', () => {
         })
 
         test('should unpatch correctly', () => {
-            const beforeCallback = mock(args => {
+            const beforeCallback = vi.fn(args => {
                 args[0] = 'modified'
                 return args
             })
@@ -55,11 +55,11 @@ describe('Patcher', () => {
         })
 
         test('should handle multiple before hooks and unpatch correctly', () => {
-            const firstHook = mock(args => {
+            const firstHook = vi.fn(args => {
                 args[0] = 'first'
                 return args
             })
-            const secondHook = mock(args => {
+            const secondHook = vi.fn(args => {
                 args[0] = `${args[0]}-second`
                 return args
             })
@@ -84,7 +84,7 @@ describe('Patcher', () => {
         })
 
         test('should not crash when unpatch is called multiple times', () => {
-            const beforeCallback = mock(args => args)
+            const beforeCallback = vi.fn(args => args)
             const unpatch = before(obj, 'method', beforeCallback)
 
             unpatch()
@@ -95,7 +95,7 @@ describe('Patcher', () => {
 
     describe('after', () => {
         test('should execute callback after original method', () => {
-            const afterCallback = mock(() => 'original')
+            const afterCallback = vi.fn(() => 'original')
             after(obj, 'method', afterCallback)
 
             const result = obj.method()
@@ -113,7 +113,7 @@ describe('Patcher', () => {
         })
 
         test('should unpatch correctly', () => {
-            const afterCallback = mock(() => 'modified')
+            const afterCallback = vi.fn(() => 'modified')
             const unpatch = after(obj, 'method', afterCallback)
 
             // Test that patch is working
@@ -131,8 +131,8 @@ describe('Patcher', () => {
         })
 
         test('should handle multiple after hooks and unpatch correctly', () => {
-            const firstHook = mock(result => `${result}-first`)
-            const secondHook = mock(result => `${result}-second`)
+            const firstHook = vi.fn(result => `${result}-first`)
+            const secondHook = vi.fn(result => `${result}-second`)
 
             const unpatch1 = after(obj, 'method', firstHook)
             const unpatch2 = after(obj, 'method', secondHook)
@@ -152,7 +152,7 @@ describe('Patcher', () => {
         })
 
         test('should not crash when unpatch is called multiple times', () => {
-            const afterCallback = mock(result => result)
+            const afterCallback = vi.fn(result => result)
             const unpatch = after(obj, 'method', afterCallback)
 
             unpatch()
@@ -163,7 +163,7 @@ describe('Patcher', () => {
 
     describe('instead', () => {
         test('should replace original method', () => {
-            const replacement = mock(() => 'replaced')
+            const replacement = vi.fn(() => 'replaced')
             instead(obj, 'method', replacement)
 
             const result = obj.method('arg1')
@@ -187,7 +187,7 @@ describe('Patcher', () => {
         })
 
         test('should unpatch correctly', () => {
-            const replacement = mock(() => 'replaced')
+            const replacement = vi.fn(() => 'replaced')
             const unpatch = instead(obj, 'method', replacement)
 
             // Test that patch is working
@@ -206,8 +206,10 @@ describe('Patcher', () => {
         })
 
         test('should handle multiple instead hooks and unpatch correctly', () => {
-            const firstHook = mock((_args, original) => `first-${original()}`)
-            const secondHook = mock((_args, original) => `second-${original()}`)
+            const firstHook = vi.fn((_args, original) => `first-${original()}`)
+            const secondHook = vi.fn(
+                (_args, original) => `second-${original()}`,
+            )
 
             const unpatch1 = instead(obj, 'method', firstHook)
             const unpatch2 = instead(obj, 'method', secondHook)
@@ -227,7 +229,7 @@ describe('Patcher', () => {
         })
 
         test('should not crash when unpatch is called multiple times', () => {
-            const replacement = mock(() => 'replaced')
+            const replacement = vi.fn(() => 'replaced')
             const unpatch = instead(obj, 'method', replacement)
 
             unpatch()
@@ -238,11 +240,11 @@ describe('Patcher', () => {
 
     describe('mixed hooks', () => {
         test('should handle before + after', () => {
-            const beforeHook = mock(args => {
+            const beforeHook = vi.fn(args => {
                 args[0] = 'modified'
                 return args
             })
-            const afterHook = mock(result => `${result}-after`)
+            const afterHook = vi.fn(result => `${result}-after`)
 
             const unpatchBefore = before(obj, 'method', beforeHook)
             const unpatchAfter = after(obj, 'method', afterHook)
@@ -263,10 +265,10 @@ describe('Patcher', () => {
             expect(result).toBe('original')
         })
         test('should handle instead + before', () => {
-            const insteadHook = mock(
+            const insteadHook = vi.fn(
                 (args, original) => `${original(...args)}-instead`,
             )
-            const beforeHook = mock(args => {
+            const beforeHook = vi.fn(args => {
                 args[0] = 'modified'
                 return args
             })
@@ -294,8 +296,8 @@ describe('Patcher', () => {
         })
 
         test('should handle instead + after', () => {
-            const insteadHook = mock(() => 'oops')
-            const afterHook = mock(result => `${result}-after`)
+            const insteadHook = vi.fn(() => 'oops')
+            const afterHook = vi.fn(result => `${result}-after`)
 
             const unpatchInstead = instead(obj, 'method', insteadHook)
             const unpatchAfter = after(obj, 'method', afterHook)
@@ -320,16 +322,16 @@ describe('Patcher', () => {
         })
 
         test('should handle instead + before + after', () => {
-            const insteadHook = mock(
+            const insteadHook = vi.fn(
                 (args, original) => `${original(...args)}-instead`,
             )
 
-            const beforeHook = mock(args => {
+            const beforeHook = vi.fn(args => {
                 args[0] = 'modified'
                 return args
             })
 
-            const afterHook = mock(result => `${result}-after`)
+            const afterHook = vi.fn(result => `${result}-after`)
 
             const unpatchInstead = instead(obj, 'method', insteadHook)
             const unpatchBefore = before(obj, 'method', beforeHook)
@@ -361,14 +363,14 @@ describe('Patcher', () => {
         })
 
         test('should handle before + after + instead', () => {
-            const beforeHook = mock(args => {
+            const beforeHook = vi.fn(args => {
                 args[0] = 'before-modified'
                 return args
             })
 
-            const afterHook = mock(result => `${result}-after`)
+            const afterHook = vi.fn(result => `${result}-after`)
 
-            const insteadHook = mock(
+            const insteadHook = vi.fn(
                 (args, original) => `${original(...args)}-instead`,
             )
 
@@ -457,7 +459,7 @@ describe('Patcher', () => {
 
             const obj = { TestClass }
 
-            const beforeHook = mock(args => {
+            const beforeHook = vi.fn(args => {
                 args[0] = 'modified'
                 return args
             })

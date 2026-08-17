@@ -2,9 +2,6 @@
   "compilerOptions": {
     "module": "ESNext",
     "target": "ESNext",
-    "moduleResolution": "Bundler",
-    "paths": {
-      "pkg:*": ["../lib/*/package.json"]
-    }
+    "moduleResolution": "Bundler"
   }
 }
