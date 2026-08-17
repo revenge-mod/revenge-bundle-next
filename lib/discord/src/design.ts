@@ -1,5 +1,8 @@
 import { lookupModule, lookupModules } from '@revenge-mod/modules/finders'
-import { withDependencies, withProps } from '@revenge-mod/modules/finders/filters'
+import {
+    withDependencies,
+    withProps,
+} from '@revenge-mod/modules/finders/filters'
 import {
     ReactJSXRuntimeModuleId,
     ReactModuleId,
@@ -27,17 +30,19 @@ export let Design: Design = proxify(
         // ID: 13171
         // [3909, 4608, 5182, 13172, 2, ...] (141 dependencies)
         const [module] = lookupModule(
-            withProps('TableRow', 'Button').and(
-            withDependencies<Design>(
-                    atLeast(DesignMinimumDependencies, [
-                        [ImportTrackerModuleId],
-                        [ImportTrackerModuleId],
-                        [ReactNativeModuleId, ImportTrackerModuleId],
-                        [ImportTrackerModuleId],
-                        ImportTrackerModuleId,
-                    ]),
+            withProps('TableRow', 'Button')
+                .and(
+                    withDependencies<Design>(
+                        atLeast(DesignMinimumDependencies, [
+                            [ImportTrackerModuleId],
+                            [ImportTrackerModuleId],
+                            [ReactNativeModuleId, ImportTrackerModuleId],
+                            [ImportTrackerModuleId],
+                            ImportTrackerModuleId,
+                        ]),
+                    ),
                 )
-            ).keyAs('revenge.discord.design.Design'),
+                .keyAs('revenge.discord.design.Design'),
         )
 
         if (module) return (Design = module)
@@ -81,6 +86,7 @@ export let FormSwitch: DiscordModules.Components.FormSwitch = proxify(() => {
 
 export interface Design {
     createStyles: DiscordModules.Components.Styles.CreateStylesFunction
+    useSegmentedControlState: DiscordModules.Components.UseSegmentedControlStateFunction
     useTooltip: DiscordModules.Components.UseTooltipFunction
 
     TextStyleSheet: DiscordModules.Components.Styles.TextStyleSheet
@@ -100,6 +106,8 @@ export interface Design {
     ImageButton: DiscordModules.Components.ImageButton
     LayerScope: DiscordModules.Components.LayerScope
     NavigatorHeader: DiscordModules.Components.NavigatorHeader
+    SegmentedControl: DiscordModules.Components.SegmentedControl
+    SegmentedControlPages: DiscordModules.Components.SegmentedControlPages
     Stack: DiscordModules.Components.Stack
     Slider: DiscordModules.Components.Slider
     TableCheckboxRow: DiscordModules.Components.TableCheckboxRow
@@ -108,6 +116,7 @@ export interface Design {
     TableRow: DiscordModules.Components.TableRow
     TableRowGroup: DiscordModules.Components.TableRowGroup
     TableSwitchRow: DiscordModules.Components.TableSwitchRow
+    Tabs: DiscordModules.Components.Tabs
     Text: DiscordModules.Components.Text
     TextArea: DiscordModules.Components.TextArea
     TextField: DiscordModules.Components.TextField

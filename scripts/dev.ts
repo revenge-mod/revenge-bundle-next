@@ -24,7 +24,6 @@ const Sources = [
     'plugins',
     'shims',
     'package.json',
-    'bun.lock',
     'tsconfig.json',
 ].map(cwdify)
 const ExitTriggers = ['scripts'].map(cwdify)

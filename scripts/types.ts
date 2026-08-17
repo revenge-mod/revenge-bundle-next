@@ -1,20 +1,19 @@
-import assets from 'pkg:assets'
-import components from 'pkg:components'
-import discord from 'pkg:discord'
-import externals from 'pkg:externals'
-import hidden from 'pkg:hidden'
-import jsonStorage from 'pkg:json-storage'
-import modules from 'pkg:modules'
-import patcher from 'pkg:patcher'
-import plugins from 'pkg:plugins'
-import react from 'pkg:react'
-import utils from 'pkg:utils'
-import { main } from 'bun'
 import chalk from 'chalk'
 import { mkdir, readdir, readFile, rm, writeFile } from 'fs/promises'
 import { rolldown } from 'rolldown'
 import { dts } from 'rolldown-plugin-dts'
-import pkg from '../package.json'
+import assets from '../lib/assets/package.json' with { type: 'json' }
+import components from '../lib/components/package.json' with { type: 'json' }
+import discord from '../lib/discord/package.json' with { type: 'json' }
+import externals from '../lib/externals/package.json' with { type: 'json' }
+import hidden from '../lib/hidden/package.json' with { type: 'json' }
+import jsonStorage from '../lib/json-storage/package.json' with { type: 'json' }
+import modules from '../lib/modules/package.json' with { type: 'json' }
+import patcher from '../lib/patcher/package.json' with { type: 'json' }
+import plugins from '../lib/plugins/package.json' with { type: 'json' }
+import react from '../lib/react/package.json' with { type: 'json' }
+import utils from '../lib/utils/package.json' with { type: 'json' }
+import pkg from '../package.json' with { type: 'json' }
 import { exists } from './_shared'
 
 const TYPES_PACKAGE_NAME = '@revenge-mod/types'
@@ -29,6 +28,8 @@ const TYPES_PACKAGE_PEER_DEPENDENCIES = [
     '@types/node',
     'react',
     'react-native',
+    'react-native-gesture-handler',
+    'react-native-reanimated',
     'react-native-safe-area-context',
 ]
 
@@ -103,7 +104,6 @@ export default async function buildTypes(log = true): Promise<void> {
             external: Object.keys({
                 ...pkg.dependencies,
                 ...pkg.devDependencies,
-                ...pkg.peerDependencies,
             }),
             plugins: [
                 dts({
@@ -423,7 +423,6 @@ function versionsOf(names: string[]): Record<string, string> {
     const versions: Record<string, string> = {
         ...pkg.dependencies,
         ...pkg.devDependencies,
-        ...pkg.peerDependencies,
     }
 
     return Object.fromEntries(
@@ -550,4 +549,4 @@ async function generateIndex(entries: string[]): Promise<string> {
     return `${references.join('\n')}\n\n${shims.join('\n\n')}\n`
 }
 
-if (main === import.meta.filename) await buildTypes()
+if (import.meta.main) await buildTypes()

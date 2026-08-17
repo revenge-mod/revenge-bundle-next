@@ -15,15 +15,21 @@ import type {
 import type {
     ImageSourcePropType,
     ImageStyle,
+    LayoutRectangle,
+    NativeScrollEvent,
     PressableProps,
     TextInputProps as RNTextInputProps,
     TextProps as RNTextProps,
+    ScrollView,
+    ScrollViewProps,
     StyleProp,
     TextStyle,
     View,
     ViewProps,
     ViewStyle,
 } from 'react-native'
+import type { NativeGesture } from 'react-native-gesture-handler'
+import type { AnimatedRef, SharedValue } from 'react-native-reanimated'
 
 export * from './api'
 export * from './native'
@@ -664,6 +670,162 @@ export namespace DiscordModules {
         }
 
         export type LayerScope = FC<LayerScopeProps>
+
+        export interface SegmentedControlItem {
+            id: string
+            label: string
+            /**
+             * The page to render.
+             *
+             * Only rendered by {@link SegmentedControlPages}.
+             */
+            page?: ReactNode
+            /**
+             * The count to render after the label, formatted by {@link TabsProps.formatCount}.
+             *
+             * Only rendered by {@link Tabs}.
+             */
+            count?: number
+            /**
+             * The icon to render above the label.
+             *
+             * Only rendered by {@link SegmentedControl} when its variant is `experimental_Large`.
+             */
+            icon?: ReactNode
+        }
+
+        export interface UseSegmentedControlStateFunctionProps {
+            items: SegmentedControlItem[]
+            /** The width of a single page. {@link SegmentedControlPages} renders nothing when this is `0`. */
+            pageWidth: number
+            /** @default 0 */
+            defaultIndex?: number
+            /**
+             * The gap between items.
+             *
+             * @default tokens.space.PX_24
+             */
+            itemSpacing?: number
+            /** Called once a page has fully scrolled into view. */
+            onPageChange?: (index: number) => void
+            /**
+             * Called before {@link SegmentedControlState.setActiveIndex} changes the index.
+             * The change only happens once `commit` is called.
+             */
+            onPageChangeStart?: (index: number, commit: () => void) => void
+            /** Called when {@link SegmentedControlState.setActiveIndex} changes the index. */
+            onSetActiveIndex?: (index: number) => void
+        }
+
+        export interface SegmentedControlState {
+            /** The active index. Fractional while the pager is being dragged. */
+            activeIndex: SharedValue<number>
+            /** The range of page indices that are currently mounted and unfrozen. */
+            visiblePageRange: SharedValue<[start: number, end: number]>
+            /** Ref to {@link SegmentedControlPages}' scroll view. */
+            pagerRef: AnimatedRef<ScrollView>
+            /** The scroll offset the pager is animating to, or `-1` when it is not animating. */
+            scrollTarget: SharedValue<number>
+            /** How far the pager is overscrolled past its bounds. Used to squish the indicator. */
+            scrollOverflow: SharedValue<number>
+            /** The horizontal scroll offset of the {@link Tabs} bar. */
+            scrollOffset: SharedValue<number>
+            items: SegmentedControlItem[]
+            /** The measured layout of every item, keyed by index. */
+            itemDimensions: SharedValue<LayoutRectangle[]>
+            itemSpacing: number
+            pageWidth: number
+            /** The index of the item currently being pressed, or `-1`. */
+            pressedIndex: SharedValue<number>
+            onPageChangeRef: RefObject<((index: number) => void) | undefined>
+            /**
+             * Scrolls to, and activates, the given index.
+             *
+             * @param index The index to activate.
+             * @param hapticFeedback Whether to trigger haptic feedback. Defaults to `true`.
+             * @param immediate Whether to skip the scroll animation. Defaults to `false`.
+             */
+            setActiveIndex(
+                index: number,
+                hapticFeedback?: boolean,
+                immediate?: boolean,
+            ): void
+            setItemDimensions(index: number, dimensions: LayoutRectangle): void
+            useReducedMotion: boolean
+        }
+
+        export type UseSegmentedControlStateFunction = (
+            props: UseSegmentedControlStateFunctionProps,
+        ) => SegmentedControlState
+
+        export interface TabsProps {
+            state: SegmentedControlState
+            /**
+             * Whether items should grow to fill the available width.
+             *
+             * @default true
+             */
+            grow?: boolean
+            /**
+             * Formats {@link SegmentedControlItem.count}.
+             *
+             * @default count => count.toLocaleString(locale)
+             */
+            formatCount?: (count: number) => string
+            /**
+             * A gesture the tab bar may be scrolled simultaneously with.
+             *
+             * Usually {@link SegmentedControlPagesProps.nativeGesture}, so dragging the
+             * pager does not cancel the tab bar's own scroll gesture.
+             */
+            simultaneousHandlers?: NativeGesture
+            /** Worklet called with the horizontal scroll offset of the tab bar. */
+            onScrollWorklet?: (offsetX: number) => void
+            /** Worklet called once the user stops dragging the tab bar. */
+            onEndDrag?: () => void
+            /** Use `gradient-background` to color the indicator and labels for non-flat backgrounds. */
+            variant?: 'gradient-background'
+        }
+
+        export type Tabs = FC<TabsProps>
+
+        export interface SegmentedControlPagesProps {
+            state: SegmentedControlState
+            style?: StyleProp<ViewStyle>
+            bounces?: boolean
+            /**
+             * A gesture the pager may be scrolled simultaneously with.
+             *
+             * The pager is wrapped in a `GestureDetector` for this gesture.
+             */
+            nativeGesture?: NativeGesture
+            /** Worklet called whenever the pager scrolls. */
+            onScrollWorklet?: (event: NativeScrollEvent) => void
+            /** Worklet called once the user starts dragging the pager. */
+            onBeginDragWorklet?: (event: NativeScrollEvent) => void
+            /** Worklet called once the user stops dragging the pager. */
+            onEndDragWorklet?: (event: NativeScrollEvent) => void
+        }
+
+        export type SegmentedControlPages = FC<SegmentedControlPagesProps>
+
+        export interface SegmentedControlProps {
+            state: SegmentedControlState
+            /**
+             * `experimental_Large` additionally renders {@link SegmentedControlItem.icon}s,
+             * doubles the spacing around the indicator, scales labels up, and lets the
+             * indicator be dragged between segments.
+             *
+             * `experimental_Small` only shrinks the vertical padding of the segments.
+             *
+             * @default 'default'
+             */
+            variant?: 'default' | 'experimental_Small' | 'experimental_Large'
+            /** Forwarded to the underlying horizontal `ScrollView`. */
+            keyboardShouldPersistTaps?: ScrollViewProps['keyboardShouldPersistTaps']
+        }
+
+        export type SegmentedControl = FC<SegmentedControlProps>
     }
 
     export namespace Modules {

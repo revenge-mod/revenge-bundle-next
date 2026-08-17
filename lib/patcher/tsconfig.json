@@ -5,7 +5,6 @@
     "target": "ESNext",
     "module": "ESNext",
     "moduleDetection": "force",
-    "types": ["bun"],
 
     // Bundler mode
     "moduleResolution": "bundler",

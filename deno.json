@@ -1,0 +1,23 @@
+{
+  "allowScripts": ["npm:@parcel/watcher@2.6.0", "npm:@swc/core@1.16.0"],
+  "unstable": ["sloppy-imports"],
+  "permissions": {
+    "build": {
+      "read": true,
+      "write": ["./dist"],
+      "net": true,
+      "env": true,
+      "sys": true,
+      "run": true,
+      "ffi": true
+    },
+    "types": {
+      "read": true,
+      "write": ["./dist/types", "/tmp"],
+      "env": true,
+      "sys": true,
+      "run": true,
+      "ffi": true
+    }
+  }
+}

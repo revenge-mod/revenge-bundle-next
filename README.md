@@ -84,29 +84,29 @@ Revenge Next is updated regularly with new features and bug fixes. To update to 
 
 ## 👷 Developing with Revenge Next
 
-You'll need to have [Bun](https://bun.com/) installed. Once you have Bun, follow these steps:
+You'll need to have [Deno](https://deno.land/) installed. Once you have Deno, follow these steps:
 
 ```sh
 # Install dependencies
-bun install
+deno install
 ```
 
 ---
 
 ```sh
 # Build Revenge Next
-bun run build
+deno run build
 
 # Build Revenge Next with debugging enabled (slow, don't use in production)
-bun run build --dev
+deno run build --dev
 ```
 
 ```sh
 # Start the development server
-bun run dev
+deno run dev
 
 # Build as production
-bun run dev --prod
+deno run dev --prod
 ```
 
 <sub>Builds are generated at `dist/revenge.bundle`.</sub>
@@ -115,7 +115,7 @@ bun run dev --prod
 
 ```sh
 # Build types for external consumers
-bun run types
+deno run types
 ```
 
 Types are generated at `dist/types`. To consume, simply add `@revenge-mod/types` as a dependency and include the following in your TypeScript config:

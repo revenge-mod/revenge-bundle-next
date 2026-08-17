@@ -17,25 +17,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Restore Bun cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
               
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
         with:
-          bun-version: latest
+          cache: true
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile --production
+        run: deno install --frozen
 
       - name: Build development bundle
-        run: bun run build --dev
+        run: deno run build --dev
+        env:
+          REVENGE_DISCORD_SERVER_URL: ${{ vars.REVENGE_DISCORD_SERVER_URL }}
+          REVENGE_SOURCE_REPOSITORY_URL: ${{ vars.REVENGE_SOURCE_REPOSITORY_URL }}
+          REVENGE_LICENSE_URL: ${{ vars.REVENGE_LICENSE_URL }}
 
       - name: Upload development bundle
         uses: actions/upload-artifact@v4
@@ -48,7 +44,11 @@ jobs:
         run: rm -rf dist
 
       - name: Build production bundle
-        run: bun run build
+        run: deno run build
+        env:
+          REVENGE_DISCORD_SERVER_URL: ${{ vars.REVENGE_DISCORD_SERVER_URL }}
+          REVENGE_SOURCE_REPOSITORY_URL: ${{ vars.REVENGE_SOURCE_REPOSITORY_URL }}
+          REVENGE_LICENSE_URL: ${{ vars.REVENGE_LICENSE_URL }}
 
       - name: Upload production bundle
         uses: actions/upload-artifact@v4
