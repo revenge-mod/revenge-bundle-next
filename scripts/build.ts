@@ -1,3 +1,7 @@
+import dotenv from 'dotenv'
+
+dotenv.config({ quiet: true })
+
 import chalk from 'chalk'
 import { execSync } from 'child_process'
 import { mkdir, readdir, rm, writeFile } from 'fs/promises'
@@ -42,7 +46,6 @@ export default async function build(dev = Dev, log = true) {
         .toString()
         .trim()
         .substring(0, 7)
-    const REPO = 'revenge-mod/revenge-bundle-next'
 
     const bundle = await rolldown({
         input: 'src/index.ts',
@@ -61,15 +64,13 @@ export default async function build(dev = Dev, log = true) {
         preserveEntrySignatures: false,
         transform: {
             define: {
-                __BUILD_DISCORD_SERVER_URL__: JSON.stringify(
-                    'https://discord.com/invite/ddcQf3s2Uq',
+                __BUILD_DISCORD_SERVER_URL__: stringEnv(
+                    'REVENGE_DISCORD_SERVER_URL',
                 ),
-                __BUILD_SOURCE_REPOSITORY_URL__: JSON.stringify(
-                    `https://github.com/${REPO}`,
+                __BUILD_SOURCE_REPOSITORY_URL__: stringEnv(
+                    'REVENGE_SOURCE_REPOSITORY_URL',
                 ),
-                __BUILD_LICENSE_URL__: JSON.stringify(
-                    `https://raw.githubusercontent.com/${REPO}/${COMMIT}/LICENSE`,
-                ),
+                __BUILD_LICENSE_URL__: stringEnv('REVENGE_LICENSE_URL'),
                 __BUILD_VERSION__: JSON.stringify(pkg.version),
                 __BUILD_COMMIT__: JSON.stringify(COMMIT),
                 __BUILD_BRANCH__: JSON.stringify(
@@ -78,14 +79,30 @@ export default async function build(dev = Dev, log = true) {
                         .trim(),
                 ),
                 __DEV__: String(dev),
-                __BUILD_DEFAULT_PLUGIN_REPOSITORY_URL__: 'undefined',
-                __BUILD_DONATE_URL__: 'undefined',
+                __BUILD_DEFAULT_PLUGIN_REPOSITORY_URL__: JSON.stringify(
+                    stringEnv(
+                        'REVENGE_DEFAULT_PLUGIN_REPOSITORY_URL',
+                        undefined,
+                        false,
+                    ),
+                ),
+                __BUILD_DONATE_URL__: JSON.stringify(
+                    stringEnv('REVENGE_DONATE_URL', undefined, false),
+                ),
 
                 // See types/build.d.ts for what these flags do
-                __BUILD_FLAG_DEBUG_MODULE_LOOKUPS__: String(dev),
-                __BUILD_FLAG_DEBUG_MODULE_WAITS__: String(dev),
-                __BUILD_FLAG_DEBUG_LAZY_VALUES__: 'false',
-                __BUILD_FLAG_LOG_PROMISE_REJECTIONS__: String(dev),
+                __BUILD_FLAG_DEBUG_MODULE_LOOKUPS__: String(
+                    boolEnv('REVENGE_DEBUG_MODULE_LOOKUPS', dev),
+                ),
+                __BUILD_FLAG_DEBUG_MODULE_WAITS__: String(
+                    boolEnv('REVENGE_DEBUG_MODULE_WAITS', dev),
+                ),
+                __BUILD_FLAG_DEBUG_LAZY_VALUES__: String(
+                    boolEnv('REVENGE_DEBUG_LAZY_VALUES', false),
+                ),
+                __BUILD_FLAG_LOG_PROMISE_REJECTIONS__: String(
+                    boolEnv('REVENGE_LOG_PROMISE_REJECTIONS', dev),
+                ),
             },
         },
         tsconfig: 'tsconfig.json',
@@ -203,4 +220,31 @@ async function generateAssets() {
     }
 
     await Promise.all(promises)
+}
+
+function isEmpty(value: string | undefined): boolean {
+    return value === undefined || value === ''
+}
+
+function boolEnv(key: string, defaultValue: boolean): boolean {
+    const val = process.env[key]
+    if (isEmpty(val)) return defaultValue
+    return val === 'true' || val === '1'
+}
+
+function stringEnv(
+    key: string,
+    defaultValue?: string,
+    required: boolean = true,
+): string {
+    const val = process.env[key]
+    if (isEmpty(val)) {
+        if (defaultValue === undefined) {
+            if (required)
+                throw new Error(`Environment variable ${key} is required`)
+            return 'undefined'
+        }
+        return JSON.stringify(defaultValue)
+    }
+    return JSON.stringify(val)
 }
