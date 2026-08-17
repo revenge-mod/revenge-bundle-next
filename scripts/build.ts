@@ -49,7 +49,7 @@ export default async function build(dev = Dev, log = true) {
 
     const bundle = await rolldown({
         input: 'src/index.ts',
-        platform: 'neutral',
+        platform: 'browser',
         external: [/^node:/],
         optimization: {
             inlineConst: {
