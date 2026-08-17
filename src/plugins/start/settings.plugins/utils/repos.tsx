@@ -170,3 +170,21 @@ export async function runInstallFlow(
         return false
     }
 }
+
+/**
+ * Same as {@link runInstallFlow}, but automatically includes every internal repository plus
+ * the target repository in `filteredRepos`, so repo-installed plugins can be updated in place.
+ */
+export async function runInstallFlowWithInternalRepos(
+    id: string,
+    version?: string,
+    channel?: string,
+    repo?: string,
+): Promise<boolean> {
+    const repos = await listRepos()
+    const filteredRepos = repos
+        .filter(r => r.internal)
+        .map(r => r.url)
+    if (repo) filteredRepos.push(repo)
+    return runInstallFlow(id, version, channel, filteredRepos)
+}

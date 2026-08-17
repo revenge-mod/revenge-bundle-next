@@ -13,6 +13,8 @@ import PluginHasDependentsAlert from '../components/PluginHasDependentsAlert'
 import PluginMissingDependenciesAlert from '../components/PluginMissingDependenciesAlert'
 import PluginStatesProvider from '../components/PluginStateProvider'
 import PluginUninstallConfirmationAlert from '../components/PluginUninstallConfirmationAlert'
+import RepoRemoveConfirmationAlert from '../components/RepoRemoveConfirmationAlert'
+import type { Repo } from '@revenge-mod/plugins/_/repositories'
 import type { AnyPlugin } from '@revenge-mod/plugins/_'
 
 export function showPluginClearDataConfirmation(
@@ -97,6 +99,22 @@ export function showPluginMissingDependenciesAlert(
             dependencies={dependencies}
             action={action}
         />,
+    )
+}
+
+export function showRemoveRepoConfirmation(
+    repo: Repo,
+    callback: () => Promise<void> | void,
+) {
+    const KEY = 'repo-remove-confirmation'
+
+    async function action() {
+        await callback()
+    }
+
+    AlertActionCreators.openAlert(
+        KEY,
+        <RepoRemoveConfirmationAlert repo={repo} action={action} />,
     )
 }
 

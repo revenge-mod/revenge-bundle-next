@@ -41,9 +41,9 @@ export default function RevengePluginsBrowseSettingScreen() {
     )
 }
 
-// TODO: Let the user pick a release channel
-/** The channel a listing displays: `latest`, else its first channel. */
-function displayChannelOf(listing: RepoPluginListing): string | undefined {
+/** The channel a listing displays: preferred, `latest`, else its first channel. */
+function displayChannelOf(listing: RepoPluginListing, preferredChannel: string): string | undefined {
+    if (preferredChannel && listing.channels[preferredChannel]) return preferredChannel
     if (listing.channels.latest) return 'latest'
     return Object.keys(listing.channels)[0]
 }
@@ -100,7 +100,7 @@ function Screen() {
 
                             for (const listing of listings) {
                                 const plugin = pList.get(listing.id)
-                                const displayChannel = displayChannelOf(listing)
+                                const displayChannel = displayChannelOf(listing, '')
                                 const displayVersion = displayChannel
                                     ? (listing.channels[displayChannel] ?? '')
                                     : ''
@@ -111,7 +111,6 @@ function Screen() {
                                     repoName: repo.name ?? null,
                                     repositoryText,
                                     version: displayVersion,
-                                    // TODO: Let the user pick a release channel
                                     channel: displayChannel,
                                     size:
                                         listing.versions[displayVersion]
@@ -154,12 +153,24 @@ function Screen() {
     }, [load])
 
     const install = useCallback(
-        async (entry: BrowseEntry) => {
+        async (
+            entry: BrowseEntry,
+            channel?: string,
+            version?: string,
+        ) => {
+            const targetChannel = channel || entry.channel
+            const targetVersion =
+                version ||
+                (targetChannel
+                    ? (entry.listing.channels[targetChannel] ?? '')
+                    : '') ||
+                entry.version
+
             // Pin the displayed version, channel, and repository, so the plan matches the card
             await runInstallFlow(
                 entry.listing.id,
-                entry.version || undefined,
-                entry.channel,
+                targetVersion || undefined,
+                targetChannel,
                 // Internal repos so external plugins can link against internal plugins as well
                 [...internalRepos, entry.repoUrl],
             )

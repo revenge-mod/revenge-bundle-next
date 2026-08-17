@@ -3,6 +3,7 @@ import { FormSwitch } from '@revenge-mod/components'
 import { styles } from '@revenge-mod/components/_'
 import Page from '@revenge-mod/components/Page'
 import TableRowAssetIcon from '@revenge-mod/components/TableRowAssetIcon'
+import { ToastActionCreators } from '@revenge-mod/discord/actions'
 import { Design } from '@revenge-mod/discord/design'
 import { Clipboard } from '@revenge-mod/externals/react-native-clipboard'
 import { callNativeMethod } from '@revenge-mod/modules/native'
@@ -17,10 +18,11 @@ import {
     updateAllPlugins,
 } from '@revenge-mod/plugins/_/repositories'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useReducer, useState } from 'react'
 import { ScrollView, View } from 'react-native'
 import { api } from '..'
-import { toConfig } from '../repos'
+import { addDefaultRepoIfNeeded, toConfig } from '../repos'
+import { showRemoveRepoConfirmation } from '../utils/alerts'
 import { formatBytes, messageOf, showErrorToast } from '../utils/repos'
 import type {
     DownloadProgressEvent,
@@ -101,7 +103,8 @@ function UserRepoRow({
                 label: 'Delete',
                 IconComponent: TrashIconComponent,
                 variant: 'destructive' as const,
-                action: () => onRemove(repo),
+                action: () =>
+                    showRemoveRepoConfirmation(repo, () => onRemove(repo)),
             },
         ],
     ]
@@ -145,6 +148,7 @@ export default function RevengePluginsAdvancedSettingScreen() {
         Record<string, RepoStateEvent['state']>
     >({})
     const [progress, setProgress] = useState<DownloadProgressEvent | null>(null)
+    const [n, forceUpdate] = useReducer(x => ~x, 0)
 
     useEffect(() => {
         const onRepoState = (event: RepoStateEvent) => {
@@ -168,7 +172,8 @@ export default function RevengePluginsAdvancedSettingScreen() {
         listRepos().then(setReposState, e => showErrorToast(messageOf(e)))
     }, [])
 
-    useEffect(refresh, [refresh])
+    // biome-ignore lint/correctness/useExhaustiveDependencies: forceUpdate so we can refresh the screen
+    useEffect(refresh, [refresh, n])
 
     const commit = useCallback(
         async (config: RepoConfigEntry[]) => {
@@ -212,8 +217,6 @@ export default function RevengePluginsAdvancedSettingScreen() {
 
     const removeRepo = useCallback(
         async (repo: Repo) => {
-            // TODO: Add warning for default repo removal, user can clear "Plugin Settings" data to restore the default repo
-
             await commit(toConfig(userRepos.filter(r => r.url !== repo.url)))
 
             // Plugins installed from the removed repository turn Sideloaded
@@ -369,6 +372,28 @@ export default function RevengePluginsAdvancedSettingScreen() {
                                     [],
                                 )
                             }
+                        />
+                        <TableRow
+                            icon={<TableRowAssetIcon name="GlobeEarthIcon" />}
+                            label="Restore default repository"
+                            onPress={async () => {
+                                try {
+                                    const restored =
+                                        await addDefaultRepoIfNeeded(true)
+                                    if (!restored) {
+                                        ToastActionCreators.open({
+                                            key: 'revenge-default-repo-nothing',
+                                            content: 'Nothing to restore',
+                                        })
+
+                                        return
+                                    }
+
+                                    forceUpdate()
+                                } catch (e) {
+                                    showErrorToast(messageOf(e))
+                                }
+                            }}
                         />
                     </TableRowGroup>
                 </Stack>
