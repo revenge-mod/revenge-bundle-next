@@ -28,6 +28,10 @@ jobs:
 
       - name: Build development bundle
         run: deno run build --dev
+        env:
+          REVENGE_DISCORD_SERVER_URL: ${{ vars.REVENGE_DISCORD_SERVER_URL }}
+          REVENGE_SOURCE_REPOSITORY_URL: ${{ vars.REVENGE_SOURCE_REPOSITORY_URL }}
+          REVENGE_LICENSE_URL: ${{ vars.REVENGE_LICENSE_URL }}
 
       - name: Upload development bundle
         uses: actions/upload-artifact@v4
@@ -41,6 +45,10 @@ jobs:
 
       - name: Build production bundle
         run: deno run build
+        env:
+          REVENGE_DISCORD_SERVER_URL: ${{ vars.REVENGE_DISCORD_SERVER_URL }}
+          REVENGE_SOURCE_REPOSITORY_URL: ${{ vars.REVENGE_SOURCE_REPOSITORY_URL }}
+          REVENGE_LICENSE_URL: ${{ vars.REVENGE_LICENSE_URL }}
 
       - name: Upload production bundle
         uses: actions/upload-artifact@v4
