@@ -28,6 +28,8 @@ const TYPES_PACKAGE_PEER_DEPENDENCIES = [
     '@types/node',
     'react',
     'react-native',
+    'react-native-gesture-handler',
+    'react-native-reanimated',
     'react-native-safe-area-context',
 ]
 
