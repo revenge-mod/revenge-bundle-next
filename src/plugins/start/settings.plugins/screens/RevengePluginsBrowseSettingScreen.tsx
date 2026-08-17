@@ -31,11 +31,11 @@ export default function RevengePluginsBrowseSettingScreen() {
     return (
         <LayerScope>
             <PluginStatesProvider>
-                <Page spacing={16}>
-                    <PluginTooltipsProvider>
+                <PluginTooltipsProvider>
+                    <Page spacing={16}>
                         <Screen />
-                    </PluginTooltipsProvider>
-                </Page>
+                    </Page>
+                </PluginTooltipsProvider>
             </PluginStatesProvider>
         </LayerScope>
     )
@@ -89,7 +89,9 @@ function Screen() {
         const all: BrowseEntry[] = []
 
         setInternalRepos(
-            repos.filter(repo => repo.internal).map(repo => repo.url),
+            repos
+                .filter(repo => repo.internal && repo.enabled)
+                .map(repo => repo.url),
         )
 
         await Promise.all(
