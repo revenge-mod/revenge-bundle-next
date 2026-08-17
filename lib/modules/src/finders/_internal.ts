@@ -65,7 +65,9 @@ export const FilterResultFlagToHumanReadable: Record<FilterResultFlag, string> =
         [FilterResultFlags.Found]: '\u001b[96mexportsless\u001b[0m',
     }
 
-const noDefaultExportsCache = new Set<Metro.ModuleID>()
+/** Modules we already know have no `default` export. */
+// Export has no outside references, but exposed to hidden API
+export const noDefaultExportsCache = new Set<Metro.ModuleID>()
 
 // The reason this returns a flag is because flags are never falsy, while exports may be falsy when using ID-only filters (eg. `withDependencies`).
 

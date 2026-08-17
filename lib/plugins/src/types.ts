@@ -77,6 +77,11 @@ export type PluginCleanupApi = (...fns: PluginCleanup[]) => void
  *     plugin.api.customMethod = () => {
  *       console.log('Custom method called!')
  *     }
+ *
+ *     // Optionally return a cleanup function to remove the decoration when the plugin is stopped.
+ *     return () => {
+ *       delete plugin.api.customMethod
+ *     }
  *   })
  * }
  *
@@ -90,7 +95,7 @@ export type PluginDecorateApi<
     O extends PluginApiExtensionsOptions = PluginApiExtensionsOptions,
     S extends
         keyof PluginApiInLifecycleMap<O> = keyof PluginApiInLifecycleMap<O>,
-> = (decorator: PluginApiDecorator<O, S>) => void
+> = (decorator: PluginApiDecorator<O, S>) => void | (() => unknown)
 
 /**
  * The decorator function that modifies the plugin API.

@@ -1,14 +1,9 @@
 import MagicString from 'magic-string'
+import { parseAst } from 'rolldown/parseAst'
 import type { RolldownPlugin } from 'rolldown'
 
-// `import defer * as ns from './bar.js'`
-const DEFER_NAMESPACE_IMPORT_REGEX =
-    /import\s+defer\s+(\*\s+as\s+\w+)\s+from\s+(['"])([^'"]+)\2\s*;?/g
-
 /**
- * Really wacky support for `import defer` statements by transforming them to `require()`.
- *
- * Only supports JavaScript files. TypeScript files with conflicting type names may cause issues.
+ * Support for `import defer` statements by transforming them to `require()`.
  *
  * `import defer` statements are transformed to provide on-demand/lazy loading.
  *
@@ -19,90 +14,70 @@ const DEFER_NAMESPACE_IMPORT_REGEX =
 export default function importDefer() {
     return {
         name: 'import-defer',
-        async transform(code) {
-            const s = new MagicString(code)
-            let hasReplacements = false
+        transform(code, id) {
+            // Cheap guard, so the whole module graph isn't parsed twice.
+            if (!code.includes('import defer')) return null
 
-            const allBindingMatches = [
-                ...code.matchAll(DEFER_NAMESPACE_IMPORT_REGEX),
-            ]
-
-            for (const match of allBindingMatches) {
-                const [fullMatch, bindingsStr, , modulePath] = match
-                const bindings = parseBindings(bindingsStr)
-
-                if (bindings.length > 0) {
-                    const localName = bindings[0].local
-
-                    // Replace the original import defer statement with the IIFE that creates the lazy function.
-                    s.overwrite(
-                        match.index,
-                        match.index + fullMatch.length,
-                        generateDeferReplacement(bindings, modulePath),
-                    )
-                    hasReplacements = true
-
-                    // Find all usages of the imported identifier
-                    const usageRegex = new RegExp(`\\b${localName}\\b`, 'g')
-
-                    for (const usageMatch of code.matchAll(usageRegex)) {
-                        // Original import declaration
-                        if (
-                            usageMatch.index >= match.index &&
-                            usageMatch.index < match.index + fullMatch.length
-                        ) {
-                            continue
-                        }
-
-                        const startIndex = usageMatch.index
-                        const endIndex = startIndex + usageMatch[0].length
-
-                        // Skip if inside a string literal
-                        if (isInsideStringLiteral(code, startIndex)) continue
-
-                        // Check for context to decide on the replacement by inspecting surrounding characters.
-                        // Look for the next non-whitespace character.
-                        let nextChar = ''
-                        let i = endIndex
-                        while (i < code.length) {
-                            if (!/\s/.test(code[i])) {
-                                nextChar = code[i]
-                                break
-                            }
-                            i++
-                        }
-
-                        // Skip object property key: `Identifier: ...`
-                        if (nextChar === ':') continue
-
-                        let prevChar = ''
-                        i = startIndex - 1
-                        while (i >= 0) {
-                            if (!/\s/.test(code[i])) {
-                                prevChar = code[i]
-                                break
-                            }
-                            i--
-                        }
-
-                        // Shorthand object property: { ..., Identifier, ... }
-                        const isShorthand =
-                            (prevChar === '{' || prevChar === ',') &&
-                            (nextChar === '}' || nextChar === ',')
-
-                        if (isShorthand)
-                            s.overwrite(
-                                startIndex,
-                                endIndex,
-                                `${localName}: ${localName}()`,
-                            )
-                        // All other usages (value, property access). `doThing(Identifier)`, `Identifier.foo`
-                        else s.overwrite(startIndex, endIndex, `${localName}()`)
-                    }
-                }
+            let program: Node
+            try {
+                program = parseAst(code, {
+                    lang: langOf(id),
+                }) as unknown as Node
+            } catch {
+                // Let rolldown report the syntax error itself.
+                return null
             }
 
-            if (!hasReplacements) return null
+            const deferred = new Map<string, DeferredImport>()
+
+            for (const node of program.body as Node[]) {
+                if (node.type !== 'ImportDeclaration' || node.phase !== 'defer')
+                    continue
+
+                const [specifier] = node.specifiers as Node[]
+                if (specifier?.type === 'ImportNamespaceSpecifier')
+                    deferred.set((specifier.local as Node).name as string, {
+                        node,
+                        source: (node.source as Node).value as string,
+                    })
+            }
+
+            if (!deferred.size) return null
+
+            const s = new MagicString(code)
+
+            for (const [name, { node, source }] of deferred)
+                s.overwrite(
+                    node.start,
+                    node.end,
+                    generateDeferReplacement(name, source),
+                )
+
+            walk(program, null, null, (node, parent, key) => {
+                if (node.type === 'JSXIdentifier') {
+                    // `<ns.Foo />` can't become `<ns().Foo />`, JSX element
+                    // names don't allow calls. This plugin has to run after
+                    // JSX has been compiled to `jsx(ns.Foo, ...)` calls.
+                    if (deferred.has(node.name as string))
+                        throw new Error(
+                            `[import-defer] ${node.name} is a deferred import used directly in JSX (${id}). ` +
+                                'Run this plugin after the JSX transform.',
+                        )
+
+                    return
+                }
+
+                if (node.type !== 'Identifier') return
+
+                const name = node.name as string
+                if (!deferred.has(name)) return
+                if (!isReference(parent, key)) return
+
+                // Shorthand property: `{ ns }` has to keep its key.
+                if (parent?.type === 'Property' && parent.shorthand)
+                    s.appendLeft(node.end, `: ${name}()`)
+                else s.appendLeft(node.end, '()')
+            })
 
             return {
                 code: s.toString(),
@@ -112,51 +87,139 @@ export default function importDefer() {
     } satisfies RolldownPlugin
 }
 
-type Bindings = { local: string; imported: string }[]
-
-function parseBindings(bindingsStr: string): Bindings {
-    const remainingStr = bindingsStr.trim()
-    const namespaceMatch = remainingStr.match(/^\*\s+as\s+(\w+)/)
-    if (namespaceMatch) return [{ local: namespaceMatch[1], imported: '*' }]
-
-    return []
+interface Node {
+    type: string
+    start: number
+    end: number
+    /** Loosely typed, this only ever reads a handful of well-known keys. */
+    [key: string]: any
 }
 
-function isInsideStringLiteral(code: string, position: number): boolean {
-    let inSingleQuote = false
-    let inDoubleQuote = false
-    let inTemplate = false
-    let escapeNext = false
+interface DeferredImport {
+    node: Node
+    source: string
+}
 
-    for (let i = 0; i < position; i++) {
-        const char = code[i]
+/** TypeScript nodes that wrap a real expression, rather than being a type. */
+const TsExpressionWrappers = new Set([
+    'TSAsExpression',
+    'TSInstantiationExpression',
+    'TSNonNullExpression',
+    'TSSatisfiesExpression',
+    'TSTypeAssertion',
+])
 
-        if (escapeNext) {
-            escapeNext = false
-            continue
-        }
+/** Properties that only ever hold types. */
+const TypeKeys = new Set([
+    'implements',
+    'returnType',
+    'superTypeArguments',
+    'typeAnnotation',
+    'typeArguments',
+    'typeParameters',
+])
 
-        if (char === '\\') {
-            escapeNext = true
-            continue
-        }
+type Visitor = (node: Node, parent: Node | null, key: string | null) => void
 
-        if (char === "'" && !inDoubleQuote && !inTemplate) {
-            inSingleQuote = !inSingleQuote
-        } else if (char === '"' && !inSingleQuote && !inTemplate) {
-            inDoubleQuote = !inDoubleQuote
-        } else if (char === '`' && !inSingleQuote && !inDoubleQuote) {
-            inTemplate = !inTemplate
-        }
+function walk(
+    node: Node,
+    parent: Node | null,
+    key: string | null,
+    visit: Visitor,
+) {
+    visit(node, parent, key)
+
+    // A type, not code. `TSAsExpression` and similar still wrap an expression.
+    if (node.type.startsWith('TS')) {
+        if (!TsExpressionWrappers.has(node.type)) return
+
+        walk(node.expression, node, 'expression', visit)
+        return
     }
 
-    return inSingleQuote || inDoubleQuote || inTemplate
+    // Already replaced wholesale.
+    if (node.type === 'ImportDeclaration') return
+
+    for (const childKey in node) {
+        if (childKey === 'type' || TypeKeys.has(childKey)) continue
+
+        const value = node[childKey]
+        if (!value || typeof value !== 'object') continue
+
+        if (Array.isArray(value)) {
+            for (const item of value)
+                if (isNode(item)) walk(item, node, childKey, visit)
+        } else if (isNode(value)) walk(value, node, childKey, visit)
+    }
 }
 
-function generateDeferReplacement(bindings: Bindings, modulePath: string) {
-    if (!bindings.length) return ''
+function isNode(value: unknown): value is Node {
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        typeof (value as Node).type === 'string' &&
+        typeof (value as Node).start === 'number'
+    )
+}
 
-    const [{ local: localName }] = bindings
+/**
+ * Whether this identifier actually reads the binding, as opposed to naming a
+ * property, declaring something, or shadowing it.
+ */
+function isReference(parent: Node | null, key: string | null) {
+    if (!parent) return true
+
+    switch (parent.type) {
+        // `foo.ns` is a property, `foo[ns]` is a read.
+        case 'MemberExpression':
+        case 'JSXMemberExpression':
+            return key !== 'property' || Boolean(parent.computed)
+
+        case 'Property':
+            // `{ ns }` visits the same node as both key and value.
+            if (parent.shorthand) return key === 'value'
+            return key !== 'key' || Boolean(parent.computed)
+
+        case 'MethodDefinition':
+        case 'PropertyDefinition':
+            return key !== 'key' || Boolean(parent.computed)
+
+        // Declarations shadow the import rather than reading it.
+        case 'VariableDeclarator':
+            return key !== 'id'
+
+        case 'ArrowFunctionExpression':
+        case 'ClassDeclaration':
+        case 'ClassExpression':
+        case 'FunctionDeclaration':
+        case 'FunctionExpression':
+            return key !== 'id' && key !== 'params'
+
+        case 'ExportSpecifier':
+        case 'ImportDefaultSpecifier':
+        case 'ImportNamespaceSpecifier':
+        case 'ImportSpecifier':
+        case 'BreakStatement':
+        case 'ContinueStatement':
+        case 'LabeledStatement':
+            return false
+
+        default:
+            return true
+    }
+}
+
+function langOf(id: string) {
+    const path = id.split('?')[0]
+
+    if (path.endsWith('.tsx')) return 'tsx' as const
+    if (path.endsWith('.jsx')) return 'jsx' as const
+    if (/\.[cm]?ts$/.test(path)) return 'ts' as const
+
+    return 'js' as const
+}
+
+function generateDeferReplacement(localName: string, modulePath: string) {
     const cacheVar = `_cache_${modulePath.replace(/[^a-zA-Z0-9]/g, '_')}`
 
     return `var ${cacheVar};const ${localName}=()=>${cacheVar}??=require('${modulePath}');`

@@ -18,13 +18,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const ShimsDir = `${__dirname}/../shims`
 const AssetsDir = `${__dirname}/../src/assets`
 const GeneratedAssetsDir = `${__dirname}/../dist/assets/generated`
-
-await rm(GeneratedAssetsDir, { recursive: true, force: true })
-    .then(() =>
-        console.debug(chalk.gray('\u{1F5BB} Deleted old generated assets')),
-    )
-    .catch()
-
 const Dev =
     process.argv.includes('--dev') || process.env.NODE_ENV === 'development'
 
@@ -32,6 +25,12 @@ const Dev =
 if (import.meta.main) build()
 
 export default async function build(dev = Dev, log = true) {
+    await rm(GeneratedAssetsDir, { recursive: true, force: true })
+        .then(() =>
+            console.debug(chalk.gray('\u{1F5BB} Deleted old generated assets')),
+        )
+        .catch()
+
     const start = performance.now()
 
     if (log) console.info(chalk.gray('\u{1F5BB} Generating assets...'))

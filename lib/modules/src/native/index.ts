@@ -1,4 +1,5 @@
 import { getCurrentStack, getErrorStack } from '@revenge-mod/utils/error'
+import { ExposedJSMethods } from './_internal'
 import type { AnyFunction } from '@revenge-mod/utils/types'
 
 const turboModuleProxy = globalThis.__turboModuleProxy
@@ -108,9 +109,6 @@ export function getBridgeInfo(): BridgeInfo | null {
 
 const CallableReturnNativeMethodName = 'revenge.__callableReturn' as const
 const CallableModuleName = 'RevengeBridge'
-const ExposedJSMethods: {
-    [methodName: string]: AnyFunction
-} = {}
 
 /**
  * Registers a JS method that can be called from native code.

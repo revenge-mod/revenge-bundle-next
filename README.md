@@ -111,14 +111,41 @@ bun run dev --prod
 
 <sub>Builds are generated at `dist/revenge.bundle`.</sub>
 
+### 📝 Generating types
+
 ```sh
 # Build types for external consumers
 bun run types
 ```
 
-<sub>Types are generated at `dist/types`. To consume, include `<dir>/globals.d.ts`, and map `@revenge-mod/*` to `<dir>/lib/*`.</sub>
-<br>
-<sub>Bundlers will need to map imports to property access on `revenge` turning `kebab-case` and `snake_case` to `camelCase`.</sub>
-<sub>Example: `@revenge-mod/discord/modules/main_tabs_v2` to `revenge.discord.modules.mainTabsV2`</sub>
-<br>
-<sub>Exception for `@revenge-mod/externals` which property accesses should turn into `PascalCase` instead of `camelCase`.</sub>
+Types are generated at `dist/types`. To consume, simply add `@revenge-mod/types` as a dependency and include the following in your TypeScript config:
+
+```json
+{
+  "compilerOptions": {
+    "types": ["@revenge-mod/types"]
+  }
+}
+```
+
+Bundlers will need to map imports to property access on `revenge` turning `kebab-case` and `snake_case` to `camelCase`.  
+Example: `@revenge-mod/discord/modules/main_tabs_v2` to `revenge.discord.modules.mainTabsV2`
+
+There's an exception for `@revenge-mod/externals`, which property accesses should turn into `PascalCase` instead of `camelCase`.
+
+#### 🛠️ Developer Mode & Hidden API
+
+The [hidden API](./lib/hidden) exposes internal fields and methods that are **not** part of the public API. They can break or change at any time, and are only meant for debugging.
+Some experimental APIs may also be exposed through the hidden API before they are added to the public API.
+
+You must enable **Developer Mode** in Revenge's settings in order to expose the [hidden API](./lib/hidden) to plugins that depend on [`revenge.api.hidden`](./src/plugins/preinit/api.hidden).
+
+To consume the hidden API, add the following to your TypeScript config:
+
+```json
+{
+  "compilerOptions": {
+    "types": ["@revenge-mod/types", "@revenge-mod/types/hidden"]
+  }
+}
+```

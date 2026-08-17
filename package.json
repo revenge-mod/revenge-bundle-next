@@ -43,6 +43,7 @@
     "@revenge-mod/components": "workspace:*",
     "@revenge-mod/discord": "workspace:*",
     "@revenge-mod/externals": "workspace:*",
+    "@revenge-mod/hidden": "workspace:*",
     "@revenge-mod/json-storage": "workspace:*",
     "@revenge-mod/modules": "workspace:*",
     "@revenge-mod/patcher": "workspace:*",
