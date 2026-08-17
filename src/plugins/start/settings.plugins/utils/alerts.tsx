@@ -14,8 +14,8 @@ import PluginMissingDependenciesAlert from '../components/PluginMissingDependenc
 import PluginStatesProvider from '../components/PluginStateProvider'
 import PluginUninstallConfirmationAlert from '../components/PluginUninstallConfirmationAlert'
 import RepoRemoveConfirmationAlert from '../components/RepoRemoveConfirmationAlert'
-import type { Repo } from '@revenge-mod/plugins/_/repositories'
 import type { AnyPlugin } from '@revenge-mod/plugins/_'
+import type { Repo } from '@revenge-mod/plugins/_/repositories'
 
 export function showPluginClearDataConfirmation(
     plugin: AnyPlugin,

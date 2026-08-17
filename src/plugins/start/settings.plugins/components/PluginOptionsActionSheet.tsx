@@ -25,6 +25,7 @@ import {
 } from '@revenge-mod/plugins/_'
 import {
     listRepoPlugins,
+    listRepos,
     refreshRepo,
 } from '@revenge-mod/plugins/_/repositories'
 import { PluginStatus } from '@revenge-mod/plugins/constants'
@@ -38,18 +39,14 @@ import {
     showPluginClearDataConfirmation,
     showPluginUninstallConfirmation,
 } from '../utils/alerts'
-import {
-    messageOf,
-    runInstallFlowWithInternalRepos,
-    showErrorToast,
-} from '../utils/repos'
+import { messageOf, runInstallFlow, showErrorToast } from '../utils/repos'
 import { InstalledPluginSwitch, PluginInfo } from './PluginCard'
 import { usePluginEnabled, usePluginStatus } from './PluginStateProvider'
 import PluginTooltipsProvider, {
     PluginTooltip,
     usePluginTooltip,
 } from './TooltipProvider'
-import type { AnyPlugin } from '@revenge-mod/plugins/_'
+import type { AnyPlugin, PluginSource } from '@revenge-mod/plugins/_'
 
 export interface PluginOptionsActionSheetProps {
     plugin: AnyPlugin
@@ -133,7 +130,10 @@ function PluginOptions({ plugin, sheetKey }: PluginOptionsActionSheetProps) {
                 }}
             />
             <StatusSection plugin={plugin} />
-            <ChannelSection plugin={plugin} />
+            {meta.source && (
+                <ChannelSection plugin={plugin} source={meta.source} />
+            )}
+            <UpdatesSection plugin={plugin} />
             <AdvancedSection plugin={plugin} />
         </Stack>
     )
@@ -176,25 +176,26 @@ function StatusSection({ plugin }: { plugin: AnyPlugin }) {
 
 function ChannelSection({
     plugin,
+    source,
 }: {
     plugin: AnyPlugin
+    source: PluginSource
 }) {
-    const meta = getInternalPluginMeta(plugin)
-    const source = meta.source
-    if (isPluginInternal(meta) || !source?.repo) return null
-
     const [channels, setChannels] = useState<Record<string, string>>({})
     const [selected, setSelected] = useState(source.channel)
 
     useEffect(() => {
-        listRepoPlugins(source.repo)
+        const { repo } = source
+        if (!repo) return
+
+        listRepoPlugins(repo)
             .then(listings => {
                 const listing = listings.find(l => l.id === plugin.manifest.id)
                 if (listing) setChannels(listing.channels)
             })
             .catch(() =>
-                refreshRepo(source.repo)
-                    .then(() => listRepoPlugins(source.repo))
+                refreshRepo(repo)
+                    .then(() => listRepoPlugins(repo))
                     .then(listings => {
                         const listing = listings.find(
                             l => l.id === plugin.manifest.id,
@@ -203,32 +204,41 @@ function ChannelSection({
                     })
                     .catch(() => {}),
             )
-    }, [source.repo, plugin.manifest.id])
+    }, [source, plugin.manifest.id])
 
     if (Object.keys(channels).length === 0) return null
 
     const handleChange = (value: string) => {
+        const { repo } = source
+        if (!repo) return
+
         setSelected(value)
 
         const targetVersion = channels[value]!
-        if (targetVersion === plugin.manifest.version) {
+        if (targetVersion === formatVersion(plugin.manifest.version)) {
             ToastActionCreators.open({
                 key: 'REVENGE_PLUGIN_VERSION_ALREADY_INSTALLED',
                 content: 'This version is already installed',
-                IconComponent: () => <TableRowAssetIcon name="CircleCheckIcon" />,
+                IconComponent: () => (
+                    <TableRowAssetIcon name="CircleCheckIcon" />
+                ),
             })
             return
         }
 
-        runInstallFlowWithInternalRepos(
-            plugin.manifest.id,
-            undefined,
-            value,
-            source.repo,
-        )
+        listRepos()
+            .then(it =>
+                it.filter(r => r.internal && r.enabled).map(it => it.url),
+            )
+            .then(repos => {
+                runInstallFlow(plugin.manifest.id, undefined, value, [
+                    repo,
+                    ...repos,
+                ])
+            })
     }
 
-    return (
+    return source.repo ? (
         <TableRadioGroup
             title="Channel"
             value={selected}
@@ -238,7 +248,7 @@ function ChannelSection({
                 <TableRadioRow key={c} label={c} value={c} />
             ))}
         </TableRadioGroup>
-    )
+    ) : null
 }
 
 function AdvancedSection({ plugin }: { plugin: AnyPlugin }) {

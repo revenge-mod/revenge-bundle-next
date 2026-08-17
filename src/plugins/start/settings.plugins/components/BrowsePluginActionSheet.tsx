@@ -85,11 +85,7 @@ export default function BrowsePluginActionSheet({
                         onChange={v => setSelectedChannel(v as string)}
                     >
                         {channelNames.map(c => (
-                            <TableRadioRow
-                                key={c}
-                                label={c}
-                                value={c}
-                            />
+                            <TableRadioRow key={c} label={c} value={c} />
                         ))}
                     </TableRadioGroup>
                 )}

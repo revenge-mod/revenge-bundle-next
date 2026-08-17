@@ -42,8 +42,12 @@ export default function RevengePluginsBrowseSettingScreen() {
 }
 
 /** The channel a listing displays: preferred, `latest`, else its first channel. */
-function displayChannelOf(listing: RepoPluginListing, preferredChannel: string): string | undefined {
-    if (preferredChannel && listing.channels[preferredChannel]) return preferredChannel
+function displayChannelOf(
+    listing: RepoPluginListing,
+    preferredChannel: string,
+): string | undefined {
+    if (preferredChannel && listing.channels[preferredChannel])
+        return preferredChannel
     if (listing.channels.latest) return 'latest'
     return Object.keys(listing.channels)[0]
 }
@@ -100,7 +104,10 @@ function Screen() {
 
                             for (const listing of listings) {
                                 const plugin = pList.get(listing.id)
-                                const displayChannel = displayChannelOf(listing, '')
+                                const displayChannel = displayChannelOf(
+                                    listing,
+                                    '',
+                                )
                                 const displayVersion = displayChannel
                                     ? (listing.channels[displayChannel] ?? '')
                                     : ''
@@ -153,11 +160,7 @@ function Screen() {
     }, [load])
 
     const install = useCallback(
-        async (
-            entry: BrowseEntry,
-            channel?: string,
-            version?: string,
-        ) => {
+        async (entry: BrowseEntry, channel?: string, version?: string) => {
             const targetChannel = channel || entry.channel
             const targetVersion =
                 version ||
