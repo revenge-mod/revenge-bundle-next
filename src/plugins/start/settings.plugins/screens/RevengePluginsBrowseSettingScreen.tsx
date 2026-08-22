@@ -14,7 +14,6 @@ import { debounce } from '@revenge-mod/utils/callback'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { View } from 'react-native'
 import { BrowsePluginMasonryFlashList } from '../components/PluginList'
-import PluginStatesProvider from '../components/PluginStateProvider'
 import PluginTooltipsProvider from '../components/TooltipProvider'
 import { runInstallFlow } from '../utils/repos'
 import type { RepoPluginListing } from '@revenge-mod/plugins/_/repositories'
@@ -30,13 +29,11 @@ const SearchDebounceTime = 100
 export default function RevengePluginsBrowseSettingScreen() {
     return (
         <LayerScope>
-            <PluginStatesProvider>
-                <PluginTooltipsProvider>
-                    <Page spacing={16}>
-                        <Screen />
-                    </Page>
-                </PluginTooltipsProvider>
-            </PluginStatesProvider>
+            <PluginTooltipsProvider>
+                <Page spacing={16}>
+                    <Screen />
+                </Page>
+            </PluginTooltipsProvider>
         </LayerScope>
     )
 }

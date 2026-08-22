@@ -125,7 +125,7 @@ export function BrowsePluginMasonryFlashList({
         entry: BrowseEntry,
         channel?: string,
         version?: string,
-    ) => void
+    ) => Promise<unknown>
 }) {
     const numColumns = useNumColumns()
     const hideTooltips = useHidePluginTooltips()

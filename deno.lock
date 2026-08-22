@@ -25,7 +25,8 @@
     "npm:rolldown-plugin-dts@~0.27.14": "0.27.14_rolldown@1.2.1_typescript@7.0.2",
     "npm:rolldown@1.2.1": "1.2.1",
     "npm:typescript@^7.0.2": "7.0.2",
-    "npm:vitest@^4.1.10": "4.1.10_@types+node@25.9.5_vite@8.2.1__@types+node@25.9.5"
+    "npm:vitest@^4.1.10": "4.1.10_@types+node@25.9.5_vite@8.2.1__@types+node@25.9.5",
+    "npm:zustand@^5.0.15": "5.0.15_@types+react@19.2.18_react@19.2.3"
   },
   "npm": {
     "@babel/code-frame@7.29.7": {
@@ -2914,6 +2915,17 @@
         "@yuku-parser/binding-win32-arm64",
         "@yuku-parser/binding-win32-x64"
       ]
+    },
+    "zustand@5.0.15_@types+react@19.2.18_react@19.2.3": {
+      "integrity": "sha512-MpSEjRiBkA9crSYeOUH32rJC7SVqAbm0Fqcqge/bUi2PPoLcBWKOsG+C8mevmpr8TwXHBVkChbbJiyvkE+i/3A==",
+      "dependencies": [
+        "@types/react",
+        "react"
+      ],
+      "optionalPeers": [
+        "@types/react",
+        "react"
+      ]
     }
   },
   "workspace": {
@@ -2943,7 +2955,8 @@
         "npm:rolldown-plugin-dts@~0.27.14",
         "npm:rolldown@1.2.1",
         "npm:typescript@^7.0.2",
-        "npm:vitest@^4.1.10"
+        "npm:vitest@^4.1.10",
+        "npm:zustand@^5.0.15"
       ],
       "overrides": {
         "@react-native/community-cli-plugin": "npm:dry-uninstall",

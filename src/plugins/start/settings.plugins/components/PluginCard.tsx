@@ -4,13 +4,16 @@ import FormSwitch from '@revenge-mod/components/FormSwitch'
 import { Design } from '@revenge-mod/discord/design'
 import {
     isDefaultsOnlyBoot,
-    isPluginEnabledInSavedStates,
     isPluginEssential,
     isPluginPendingUpdate,
     isPluginStartable,
 } from '@revenge-mod/plugins/_'
+import {
+    usePluginEnabled,
+    usePluginEnabledInSavedStates,
+} from '@revenge-mod/plugins/_/react'
 import { formatVersion } from '@revenge-mod/plugins/utils'
-import { memo } from 'react'
+import { memo, useCallback, useState } from 'react'
 import { Pressable } from 'react-native'
 import { handleDisablePlugin, handleEnablePlugin } from '../utils/actions'
 import { openPluginSettings } from '../utils/alerts'
@@ -20,7 +23,6 @@ import {
     showPluginOptionsActionSheet,
 } from '../utils/sheets'
 import { PluginIcon } from './PluginIcon'
-import { usePluginEnabled } from './PluginStateProvider'
 import { PluginTooltip, usePluginTooltip } from './TooltipProvider'
 import type { AnyPlugin, InternalPluginMeta } from '@revenge-mod/plugins/_'
 import type { RepoPluginListing } from '@revenge-mod/plugins/_/repositories'
@@ -136,7 +138,7 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
     meta: InternalPluginMeta
 }) {
     const enabled = usePluginEnabled(plugin)
-    const savedEnabled = isPluginEnabledInSavedStates(plugin)
+    const savedEnabled = usePluginEnabledInSavedStates(plugin)
 
     const {
         manifest: { name, description, version, author, icon },
@@ -261,8 +263,16 @@ export const BrowsePluginCard = memo(function BrowsePluginCard({
     listing: RepoPluginListing
     channel: string
     repositoryText: string
-    onInstall: (channel?: string, version?: string) => void
+    onInstall: (channel?: string, version?: string) => Promise<unknown>
 }) {
+    const [installing, setInstalling] = useState(false)
+
+    const install = useCallback(() => {
+        const result = onInstall()
+        setInstalling(true)
+        result.finally(() => setInstalling(false))
+    }, [onInstall])
+
     return (
         <PluginCard
             name={name}
@@ -287,7 +297,7 @@ export const BrowsePluginCard = memo(function BrowsePluginCard({
                                 listing,
                                 channel,
                                 repositoryText,
-                                onInstall,
+                                onInstall: install,
                             })
                         }}
                     />
@@ -295,7 +305,9 @@ export const BrowsePluginCard = memo(function BrowsePluginCard({
                         size="sm"
                         text="Install"
                         icon={DownloadIcon}
-                        onPress={onInstall}
+                        loading={installing}
+                        disabled={installing}
+                        onPress={install}
                     />
                 </>
             }

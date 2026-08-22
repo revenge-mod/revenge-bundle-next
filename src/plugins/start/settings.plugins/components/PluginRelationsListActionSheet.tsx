@@ -5,7 +5,7 @@ import { PluginIcon } from './PluginIcon'
 import type { DiscordModules } from '@revenge-mod/discord/types'
 import type { AnyPlugin } from '@revenge-mod/plugins/_'
 import type {
-    PluginDependency,
+    PluginDependencyConstraint,
     PluginManifest,
 } from '@revenge-mod/plugins/types'
 
@@ -22,11 +22,11 @@ export interface PluginRelationsListActionSheetProps {
 interface PluginRowProps {
     plugin: AnyPlugin
     variant?: DiscordModules.Components.TableRowProps['variant']
-    dependency?: PluginDependency
+    dependency?: PluginDependencyConstraint
     showInstalledVersion?: boolean
 }
 
-const formatDependencyRequirement = (dependency: PluginDependency) =>
+const formatDependencyRequirement = (dependency: PluginDependencyConstraint) =>
     `(${dependency.version ?? '*'} ${dependency.optional ? 'optional' : 'required'})`
 
 function PluginRow({

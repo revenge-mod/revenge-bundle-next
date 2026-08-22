@@ -7,28 +7,33 @@ import {
 import { Design } from '@revenge-mod/discord/design'
 import { Clipboard } from '@revenge-mod/externals/react-native-clipboard'
 import {
-    formatPluginError,
+    formatPluginSystemErrorPayload,
     getInternalPluginMeta,
     getPluginDependencies,
     getPluginDependents,
     InternalPluginFlags,
     isDefaultsOnlyBoot,
-    isPluginEnabledInSavedStates,
     isPluginEssential,
     isPluginInternal,
     isPluginPendingUpdate,
     isPluginStartable,
     PluginFlags,
+    PluginStatus,
     pList,
     runPluginLate,
+    setUpdatesPaused,
     stopPlugin,
 } from '@revenge-mod/plugins/_'
+import {
+    usePluginEnabled,
+    usePluginEnabledInSavedStates,
+    usePluginStatus,
+} from '@revenge-mod/plugins/_/react'
 import {
     listRepoPlugins,
     listRepos,
     refreshRepo,
 } from '@revenge-mod/plugins/_/repositories'
-import { PluginStatus } from '@revenge-mod/plugins/constants'
 import { formatVersion } from '@revenge-mod/plugins/utils'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import { useEffect, useState } from 'react'
@@ -41,7 +46,6 @@ import {
 } from '../utils/alerts'
 import { messageOf, runInstallFlow, showErrorToast } from '../utils/repos'
 import { InstalledPluginSwitch, PluginInfo } from './PluginCard'
-import { usePluginEnabled, usePluginStatus } from './PluginStateProvider'
 import PluginTooltipsProvider, {
     PluginTooltip,
     usePluginTooltip,
@@ -60,6 +64,7 @@ const {
     TableRow,
     TableRadioGroup,
     TableRadioRow,
+    TableSwitchRow,
     Stack,
 } = Design
 
@@ -86,6 +91,7 @@ export default function PluginOptionsActionSheet({
 
 function PluginOptions({ plugin, sheetKey }: PluginOptionsActionSheetProps) {
     const enabled = usePluginEnabled(plugin)
+    const savedEnabled = usePluginEnabledInSavedStates(plugin)
     const meta = getInternalPluginMeta(plugin)
     const essential = isPluginEssential(meta)
     const pendingUpdate = isPluginPendingUpdate(plugin)
@@ -114,9 +120,7 @@ function PluginOptions({ plugin, sheetKey }: PluginOptionsActionSheetProps) {
                             <InstalledPluginSwitch
                                 enabled={enabled}
                                 plugin={plugin}
-                                savedEnabled={isPluginEnabledInSavedStates(
-                                    plugin,
-                                )}
+                                savedEnabled={savedEnabled}
                                 toggleDisabled={pendingUpdate}
                             />
                         </Pressable>
@@ -164,7 +168,9 @@ function StatusSection({ plugin }: { plugin: AnyPlugin }) {
                     subLabel={`${errors.length} errors. Tap to copy.`}
                     onPress={() => {
                         Clipboard.setString(
-                            errors.map(formatPluginError).join('\n\n'),
+                            errors
+                                .map(formatPluginSystemErrorPayload)
+                                .join('\n\n'),
                         )
                         showCopiedToClipboardToast()
                     }}
@@ -323,6 +329,36 @@ function AdvancedSection({ plugin }: { plugin: AnyPlugin }) {
                 />
             )}
         </TableRowGroup>
+    )
+}
+
+function UpdatesSection({ plugin }: { plugin: AnyPlugin }) {
+    return (
+        <TableRowGroup title="Updates">
+            <PauseUpdatesRow plugin={plugin} />
+            {/* TODO: Check for updates for specific plugin */}
+        </TableRowGroup>
+    )
+}
+
+function PauseUpdatesRow({ plugin }: { plugin: AnyPlugin }) {
+    const meta = getInternalPluginMeta(plugin)
+    const [held, setHeld] = useState(meta.source?.held ?? false)
+
+    return (
+        <TableSwitchRow
+            icon={<TableRowAssetIcon name="HandRequestDenyIcon" />}
+            label="Pause updates"
+            subLabel={`Stay on this version. Other plugins won't be able to update if they need a higher version of ${plugin.manifest.name}.`}
+            value={held}
+            onValueChange={value => {
+                setHeld(value)
+                setUpdatesPaused(plugin, value).catch(e => {
+                    setHeld(!value)
+                    showErrorToast(messageOf(e))
+                })
+            }}
+        />
     )
 }
 

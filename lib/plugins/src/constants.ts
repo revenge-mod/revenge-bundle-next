@@ -1,25 +1,10 @@
-import { callNativeMethodSync } from '@revenge-mod/modules/native'
+import { callPluginSystemMethodSync } from './_internal/native'
 
-/**
- * The plugin status.
- */
-export const PluginStatus = {
-    PreIniting: 1 << 0,
-    PreInited: 1 << 1,
-    Initing: 1 << 2,
-    Inited: 1 << 3,
-    Starting: 1 << 4,
-    Started: 1 << 5,
-    Stopping: 1 << 6,
-}
-
-const { storageRootPath } = callNativeMethodSync(
+const { storageRootPath } = callPluginSystemMethodSync(
     'revenge.plugins.getConstants',
     [],
 )
 
-/**
- * Absolute path to per-plugin storage directory.
- */
+/** Absolute path to per-plugin storage directory. */
 // TODO: is it best to dupe this logic with the native side???
 export const pluginStorageDirFor = (id: string) => `${storageRootPath}/${id}`

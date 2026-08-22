@@ -24,6 +24,9 @@
     "./_": {
       "default": "./src/_internal/index.ts"
     },
+    "./_/react": {
+      "default": "./src/_internal/react.ts"
+    },
     "./_/repositories": {
       "default": "./src/_internal/repositories.ts"
     }

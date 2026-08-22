@@ -2,15 +2,11 @@ import { getPluginDependencies, isPluginStartable } from '../_internal'
 import { pApis } from './decorators'
 import type { AnyPlugin } from '../_internal'
 
-/// PLUGIN DEPENDENCY GRAPHING
+// Plugin dependency resolution graph nodes. We need to ensure dependencies are started before the plugin.
+// Start order: single nodes, leaf nodes (dependencies satisfied), root nodes.
 
-// We don't store the graph as a tree, but rather as a set of nodes.
-
-// Root nodes are plugins that have dependencies, but no dependents. These plugins are the starting points of the dependency graph.
-// Leaf nodes are plugins that have no dependencies, but may have dependents. These plugins are the end points of the dependency graph.
-
-// Start order: Single nodes (no dependencies & dependents) -> Leaf nodes (no dependencies, maybe dependents) -> Root nodes (with dependencies, no dependents)
-// This way we can ensure that all dependencies are started before the plugin itself.
+// Root nodes are plugins with dependencies but no dependents. Starting points of the dependency graph.
+// Leaf nodes are plugins with no dependencies, but may have dependents. End points of the dependency graph.
 
 export const pRootNodes = new Set<AnyPlugin>()
 export const pLeafOrSingleNodes = new Set<AnyPlugin>()
@@ -18,12 +14,12 @@ export const pLeafOrSingleNodes = new Set<AnyPlugin>()
 // Visited non-leaf nodes
 const visited = new Set<AnyPlugin>()
 
-// Ordered list of plugins to be started
+// Sorted plugins to be started
 export const pListOrdered: AnyPlugin[] = []
-// Pending plugins to be computed
+// Pending plugins for computation
 export const pPending = new Set<AnyPlugin>()
 
-// Reserved dependencies verified by native
+// Reserved dependency IDs verified by native
 export const ApiDependencyId = 'revenge.api'
 export const DiscordDependencyId = 'discord'
 
@@ -31,9 +27,7 @@ export function isReservedDependency(id: string) {
     return id === ApiDependencyId || id === DiscordDependencyId
 }
 
-/**
- * Whether the plugin has start-order dependencies. Reserved dependencies don't count.
- */
+/** Checks whether plugin declares graphable dependencies outside reserved set. */
 function hasGraphableDependencies(plugin: AnyPlugin): boolean {
     const deps = plugin.manifest.dependencies
     if (!deps) return false
@@ -80,7 +74,7 @@ export function computePendingNodes() {
 
 export function resolvePluginGraph(plugin: AnyPlugin) {
     if (hasGraphableDependencies(plugin)) {
-        // Optimisitically add to root nodes (if there are dependents, it will be removed later)
+        // Optimisitically mark as root node (if there are dependents, it will be removed)
         pRootNodes.add(plugin)
 
         // Not a root node if it has dependencies

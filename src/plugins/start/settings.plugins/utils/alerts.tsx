@@ -11,7 +11,6 @@ import PluginClearDataConfirmationAlert from '../components/PluginClearDataConfi
 import PluginHasDependenciesAlert from '../components/PluginHasDependenciesAlert'
 import PluginHasDependentsAlert from '../components/PluginHasDependentsAlert'
 import PluginMissingDependenciesAlert from '../components/PluginMissingDependenciesAlert'
-import PluginStatesProvider from '../components/PluginStateProvider'
 import PluginUninstallConfirmationAlert from '../components/PluginUninstallConfirmationAlert'
 import RepoRemoveConfirmationAlert from '../components/RepoRemoveConfirmationAlert'
 import type { AnyPlugin } from '@revenge-mod/plugins/_'
@@ -77,13 +76,11 @@ export function showPluginHasDependenciesAlert(
 ) {
     AlertActionCreators.openAlert(
         'plugin-has-dependencies',
-        <PluginStatesProvider>
-            <PluginHasDependenciesAlert
-                plugin={plugin}
-                dependencies={dependencies}
-                action={action}
-            />
-        </PluginStatesProvider>,
+        <PluginHasDependenciesAlert
+            plugin={plugin}
+            dependencies={dependencies}
+            action={action}
+        />,
     )
 }
 
@@ -125,12 +122,10 @@ export function showPluginHasDependentsAlert(
 ) {
     AlertActionCreators.openAlert(
         'plugin-has-dependents',
-        <PluginStatesProvider>
-            <PluginHasDependentsAlert
-                plugin={plugin}
-                dependents={dependents}
-                action={action}
-            />
-        </PluginStatesProvider>,
+        <PluginHasDependentsAlert
+            plugin={plugin}
+            dependents={dependents}
+            action={action}
+        />,
     )
 }

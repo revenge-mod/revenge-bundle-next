@@ -6,8 +6,10 @@ import TableRowAssetIcon from '@revenge-mod/components/TableRowAssetIcon'
 import { ToastActionCreators } from '@revenge-mod/discord/actions'
 import { Design } from '@revenge-mod/discord/design'
 import { Clipboard } from '@revenge-mod/externals/react-native-clipboard'
-import { callNativeMethod } from '@revenge-mod/modules/native'
-import { resyncPluginSources } from '@revenge-mod/plugins/_'
+import {
+    callPluginSystemMethod,
+    resyncPluginSources,
+} from '@revenge-mod/plugins/_'
 import {
     listAllUpdates,
     listRepos,
@@ -265,6 +267,7 @@ export default function RevengePluginsAdvancedSettingScreen() {
             setUpdates(null)
         } finally {
             setBusy(false)
+            setProgress(null)
             refresh()
         }
     }, [refresh])
@@ -367,10 +370,10 @@ export default function RevengePluginsAdvancedSettingScreen() {
                             icon={<TableRowAssetIcon name="DownloadIcon" />}
                             label="Install from file"
                             onPress={() =>
-                                callNativeMethod(
+                                callPluginSystemMethod(
                                     'revenge.plugins.installFile',
                                     [],
-                                )
+                                ).catch(e => showErrorToast(messageOf(e)))
                             }
                         />
                         <TableRow
