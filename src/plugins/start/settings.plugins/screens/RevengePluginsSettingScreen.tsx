@@ -221,7 +221,8 @@ function Screen() {
 
     const hasFilter = useMemo(
         () =>
-            filter.some(f => !DefaultFilters.includes(f)) ||
+            filter.length !== DefaultFilters.length ||
+            filter.every(f => !DefaultFilters.includes(f)) ||
             matchAll !== true ||
             reverse !== false ||
             sort !== DefaultSort,
