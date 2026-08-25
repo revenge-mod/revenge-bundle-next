@@ -58,9 +58,19 @@ export let AlertActionCreators: DiscordModules.Actions.AlertActionCreators =
                         null,
                         [ReactNativeModuleId, ImportTrackerModuleId],
                         relative(1),
-                        relative(2),
+                        relative(3),
                         ImportTrackerModuleId,
-                    ]),
+                    ]).or(
+                        // TODO: Remove when stable >344201
+                        withDependencies([
+                            null,
+                            null,
+                            [ReactNativeModuleId, ImportTrackerModuleId],
+                            relative(1),
+                            relative(2),
+                            ImportTrackerModuleId,
+                        ]),
+                    ),
                 ),
             )
 

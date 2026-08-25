@@ -26,22 +26,16 @@ const withSafeAreaContextModule = (
 export let ReactNativeSafeAreaContext: typeof import('react-native-safe-area-context') =
     proxify(
         () => {
-            // TODO: Slice 1 and use once stable >341202, first dependency is dropped in modern
-            const oldDeps = [
-                null,
-                null,
-                ReactModuleId,
-                ReactNativeModuleId,
-                ReactJSXRuntimeModuleId,
-                relative.withDependencies([relative(1)], 1),
-            ]
-
             const [module] = lookupModule(
                 withProps<typeof ReactNativeSafeAreaContext>('SafeAreaProvider')
                     .and(
-                        withSafeAreaContextModule(oldDeps.slice(1)).or(
-                            withSafeAreaContextModule(oldDeps),
-                        ),
+                        withSafeAreaContextModule([
+                            null,
+                            ReactModuleId,
+                            ReactNativeModuleId,
+                            ReactJSXRuntimeModuleId,
+                            relative.withDependencies([relative(1)], 1),
+                        ]),
                     )
                     .keyAs(
                         'revenge.externals.ReactNativeSafeAreaContext.ReactNativeSafeAreaContext',
