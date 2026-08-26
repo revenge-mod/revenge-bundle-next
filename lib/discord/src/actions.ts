@@ -14,7 +14,7 @@ import { DispatcherModuleId } from './common/flux'
 import { ImportTrackerModuleId } from './common/import-tracker'
 import type { DiscordModules } from './types'
 
-const { relative, loose } = withDependencies
+const { relative, loose, last } = withDependencies
 
 // modules/action_sheet/native/ActionSheetActionCreators.tsx
 export let ActionSheetActionCreators: DiscordModules.Actions.ActionSheetActionCreators =
@@ -26,15 +26,15 @@ export let ActionSheetActionCreators: DiscordModules.Actions.ActionSheetActionCr
                     'openLazy',
                 ).and(
                     withDependencies(
-                        loose([
-                            null,
-                            ReactModuleId,
+                        last([
                             ReactJSXRuntimeModuleId,
                             DispatcherModuleId,
                             relative(1),
                             relative(2),
+                            null,
+                            ImportTrackerModuleId,
                         ]),
-                    ),
+                    ).and(withDependencies(loose([null, ReactModuleId]))),
                 ),
             )
 

@@ -41,7 +41,8 @@ interface ProfileBadgeRowsProps {
     showToastOnPress?: boolean
 }
 
-const DummyBadgeId = {} as unknown as string
+// Discord toUpperCases this during resolution, so this can't be a symbol anymore
+const DummyBadgeId = 'revenge_dummy_badge'
 const DummyBadges = [
     { id: DummyBadgeId },
 ] as unknown as ProfileBadgeRowsProps['badges']
