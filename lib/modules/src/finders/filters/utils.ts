@@ -197,6 +197,11 @@ export function createFilterGenerator<A extends any[]>(
         filter_.scopes = isDefaultScopesStatic
             ? defaultScopes
             : defaultScopes(args)
+
+        Object.defineProperty(filter_, 'name', {
+            value: `Filter(${filter_.key})`,
+        })
+
         return Object.setPrototypeOf(filter_, Helpers)
     }
 
