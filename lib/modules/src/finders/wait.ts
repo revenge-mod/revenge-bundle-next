@@ -5,6 +5,7 @@ import {
     onAnyModuleInitialized,
     onModuleInitialized,
 } from '../metro/subscriptions'
+import { DEBUG_waitStatuses } from './_hidden'
 import {
     exportsFromFilterResultFlag,
     FilterResultFlagToHumanReadable,
@@ -130,13 +131,22 @@ export function waitForModules(
             1,
         )
 
+    let debugInfo: (typeof DEBUG_waitStatuses)[number] | undefined
+
+    if (__BUILD_FLAG_DEBUG_MODULE_WAITS__) {
+        debugInfo = { ids: [], filter, options: options ?? {} }
+        DEBUG_waitStatuses.push(debugInfo)
+    }
+
     return onAnyModuleInitialized(
         filter.scopes & FilterScopes.All
             ? (id, exports) => {
                   const flag = runFilter(filter, id, exports, options)
                   if (flag) {
-                      if (__BUILD_FLAG_DEBUG_MODULE_WAITS__)
+                      if (__BUILD_FLAG_DEBUG_MODULE_WAITS__) {
+                          debugInfo!.ids.push(id)
                           DEBUG_logWaitMatched(filter.key, id, flag)
+                      }
 
                       callback(
                           exportsFromFilterResultFlag(flag, exports, options),
@@ -148,8 +158,10 @@ export function waitForModules(
                   if (mInitialized.has(id)) {
                       const flag = runFilter(filter, id, exports, options)
                       if (flag) {
-                          if (__BUILD_FLAG_DEBUG_MODULE_WAITS__)
+                          if (__BUILD_FLAG_DEBUG_MODULE_WAITS__) {
+                              debugInfo!.ids.push(id)
                               DEBUG_logWaitMatched(filter.key, id, flag)
+                          }
 
                           callback(
                               exportsFromFilterResultFlag(
