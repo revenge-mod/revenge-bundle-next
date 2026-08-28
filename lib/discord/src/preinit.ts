@@ -17,15 +17,7 @@ const [, _createClassModuleId] = lookupModule(withName('_createClass'))
 // ../discord_common/js/packages/app-start-performance/AppStartPerformance.tsx
 export const [AppStartPerformance] = lookupModule(
     withProps<DiscordModules.AppStartPerformance>('markAndLog').and(
-        withDependencies([_asyncToGeneratorModuleId, ImportTrackerModuleId]).or(
-            // TODO: Remove once stable >341202
-            withDependencies([
-                _asyncToGeneratorModuleId,
-                _classCallCheckModuleId,
-                _createClassModuleId,
-                ImportTrackerModuleId,
-            ]),
-        ),
+        withDependencies([_asyncToGeneratorModuleId, ImportTrackerModuleId]),
     ),
 ) as [DiscordModules.AppStartPerformance, Metro.ModuleID]
 

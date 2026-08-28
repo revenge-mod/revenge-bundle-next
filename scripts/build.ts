@@ -79,15 +79,16 @@ export default async function build(dev = Dev, log = true) {
                         .trim(),
                 ),
                 __DEV__: String(dev),
-                __BUILD_DEFAULT_PLUGIN_REPOSITORY_URL__: JSON.stringify(
-                    stringEnv(
-                        'REVENGE_DEFAULT_PLUGIN_REPOSITORY_URL',
-                        undefined,
-                        false,
-                    ),
+                __BUILD_DEFAULT_PLUGIN_REPOSITORY_URL__: stringEnv(
+                    'REVENGE_DEFAULT_PLUGIN_REPOSITORY_URL',
+                    undefined,
+                    false,
                 ),
-                __BUILD_DONATE_URL__: JSON.stringify(
-                    stringEnv('REVENGE_DONATE_URL', undefined, false),
+
+                __BUILD_DONATE_URL__: stringEnv(
+                    'REVENGE_DONATE_URL',
+                    undefined,
+                    false,
                 ),
 
                 // See types/build.d.ts for what these flags do

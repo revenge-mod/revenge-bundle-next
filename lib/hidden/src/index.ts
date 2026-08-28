@@ -6,7 +6,7 @@ import defer * as DiscordSettingsInternal from '../../discord/src/modules/settin
 import defer * as DiscordFluxPatches from '../../discord/src/patches/flux'
 import defer * as DiscordImportTracker from '../../discord/src/patches/import-tracker'
 import defer * as ModulesCaches from '../../modules/src/caches'
-import defer * as ModulesFindersInternal from '../../modules/src/finders/_internal'
+import defer * as ModulesFindersInternal from '../../modules/src/finders/_hidden'
 import defer * as MetroPatches from '../../modules/src/metro/patches'
 import defer * as MetroRuntime from '../../modules/src/metro/runtime'
 import defer * as MetroSubscriptionsInternal from '../../modules/src/metro/subscriptions/_internal'

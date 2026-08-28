@@ -9,6 +9,7 @@ import { createFilterGenerator } from './utils'
 import type { Metro } from '../../types'
 import type { Filter, FilterGenerator } from './utils'
 
+/** @internal This structure is not stable, and should only be referenced internally. */
 export interface ComparableDependencyMap
     extends Array<
         | Metro.ModuleID

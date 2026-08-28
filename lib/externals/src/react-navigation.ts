@@ -39,13 +39,32 @@ export let ReactNavigationStack: typeof import('@react-navigation/stack') =
     proxify(
         () => {
             const firstDep = relative.withDependencies(
+                loose([
+                    ReactModuleId,
+                    ReactJSXRuntimeModuleId,
+                    null,
+                    relative(2, true),
+                ]),
+                1,
+            )
+
+            // TODO: Remove once stable >344201
+            const firstDepLegacy = relative.withDependencies(
                 loose([[[]], ReactModuleId, ReactJSXRuntimeModuleId]),
                 1,
             )
 
             const [module] = lookupModule(
                 withProps<typeof ReactNavigationStack>('StackView')
-                    .and(withDependencies(loose([firstDep, null, relative(2)])))
+                    .and(
+                        withDependencies(
+                            loose([firstDep, null, relative(2)]),
+                        ).or(
+                            withDependencies(
+                                loose([firstDepLegacy, null, relative(2)]),
+                            ),
+                        ),
+                    )
                     .keyAs(
                         'revenge.externals.ReactNavigation.ReactNavigationStack',
                     ),
