@@ -49,33 +49,36 @@ const compositeArrayHandler = <
               : prefilteredHandler([a, b])
     }) as G
 
-export type And = FilterGenerator<
+export type AllOf = FilterGenerator<
     <F1 extends FilterBase, F2 extends FilterBase>(
         f1: F1,
         f2: F2,
     ) => Filter<MergeFilterInfo<FilterInfoOf<F1>, FilterInfoOf<F2>>>
 >
 
-const andKeyGenerator = ([a, b]: Parameters<And>) =>
-    `revenge.and(${a.key},${b.key})`
+/** @deprecated Use {@link AllOf} instead */
+export type And = AllOf
 
-const andScopesGenerator = ([a, b]: Parameters<And>) => a.scopes | b.scopes
+const allOfKeyGenerator = ([a, b]: Parameters<AllOf>) =>
+    `revenge.allOf(${a.key},${b.key})`
 
-const directAnd = createFilterGenerator(
+const allOfScopesGenerator = ([a, b]: Parameters<AllOf>) => a.scopes | b.scopes
+
+const directAllOf = createFilterGenerator(
     ([a, b], id, exports, initialized) =>
         a(id, exports, initialized) && b(id, exports, initialized),
-    andKeyGenerator,
-    andScopesGenerator,
-) as And
+    allOfKeyGenerator,
+    allOfScopesGenerator,
+) as AllOf
 
-const andPrefilterCache = new WeakMap<FilterBase, Set<Metro.ModuleID>>()
+const allOfPrefilterCache = new WeakMap<FilterBase, Set<Metro.ModuleID>>()
 
-const prefilteredAnd = createFilterGenerator(
+const prefilteredAllOf = createFilterGenerator(
     ([filter, prefilter], id, exports, initialized) => {
         if (initialized) {
             if (filter(id, exports, true)) {
                 // Avoid running the prefilter again if we already know it passed
-                const cache = andPrefilterCache.get(prefilter)
+                const cache = allOfPrefilterCache.get(prefilter)
                 return (
                     // biome-ignore lint/complexity/useOptionalChain: Hot path should be optimized
                     (cache && cache.has(id)) || prefilter(id, exports, true)
@@ -89,15 +92,15 @@ const prefilteredAnd = createFilterGenerator(
         if (result) {
             // Cache prefilter hits to avoid calling the prefilter again
             // Prefilters are usually more expensive
-            let set = andPrefilterCache.get(prefilter)
-            if (!set) andPrefilterCache.set(prefilter, (set = new Set()))
+            let set = allOfPrefilterCache.get(prefilter)
+            if (!set) allOfPrefilterCache.set(prefilter, (set = new Set()))
             set.add(id)
         }
         return result
     },
-    andKeyGenerator,
-    andScopesGenerator,
-) as And
+    allOfKeyGenerator,
+    allOfScopesGenerator,
+) as AllOf
 
 /**
  * Combines two filters into one, returning true if **every** filter matches.
@@ -107,7 +110,7 @@ const prefilteredAnd = createFilterGenerator(
  *
  * @param filters The filters to combine.
  *
- * @example With filter helpers (preferred)
+ * @example With filter helpers
  * ```ts
  * const [SomeModule] = lookupModule(
  *   withProps('x', 'name')
@@ -119,57 +122,69 @@ const prefilteredAnd = createFilterGenerator(
  * @example
  * ```ts
  * const [SomeModule] = lookupModule(
- *   and(
- *     and(withProps('x', 'name'), withName('SomeName')),
+ *   allOf(
+ *     allOf(withProps('x', 'name'), withName('SomeName')),
  *     withDependencies([1, 485, null, 2]),
  *   ),
  * )
  * ```
  */
-export const and = Object.assign(compositeHandler(directAnd, prefilteredAnd), {
-    keyFor: compositeArrayHandler(directAnd.keyFor, prefilteredAnd.keyFor),
-    defaultScopesFor: compositeArrayHandler(
-        directAnd.defaultScopesFor,
-        prefilteredAnd.defaultScopesFor,
-    ),
-}) satisfies And
+export const allOf = Object.assign(
+    compositeHandler(directAllOf, prefilteredAllOf),
+    {
+        keyFor: compositeArrayHandler(
+            directAllOf.keyFor,
+            prefilteredAllOf.keyFor,
+        ),
+        defaultScopesFor: compositeArrayHandler(
+            directAllOf.defaultScopesFor,
+            prefilteredAllOf.defaultScopesFor,
+        ),
+    },
+) satisfies AllOf
 
-export type Or = FilterGenerator<
+/** @deprecated Use {@link allOf} instead. */
+export const and = allOf
+
+export type AnyOf = FilterGenerator<
     <F1 extends FilterBase, F2 extends FilterBase>(
         f1: F1,
         f2: F2,
     ) => Filter<UnionFilterInfo<FilterInfoOf<F1>, FilterInfoOf<F2>>>
 >
 
-const orKeyGenerator = ([a, b]: Parameters<Or>) =>
-    `revenge.or(${a.key},${b.key})`
+/** @deprecated Use {@link AnyOf} instead. */
+export type Or = AnyOf
 
-const orScopesGenerator = ([a, b]: Parameters<Or>) => a.scopes | b.scopes
+const anyOfKeyGenerator = ([a, b]: Parameters<AnyOf>) =>
+    `revenge.anyOf(${a.key},${b.key})`
 
-const directOr = createFilterGenerator(
+const anyOfScopesGenerator = ([a, b]: Parameters<AnyOf>) => a.scopes | b.scopes
+
+const directAnyOf = createFilterGenerator(
     ([a, b], id, exports, initialized) =>
         a(id, exports, initialized) || b(id, exports, initialized),
-    orKeyGenerator,
-    orScopesGenerator,
-) as Or
+    anyOfKeyGenerator,
+    anyOfScopesGenerator,
+) as AnyOf
 
-const prefilteredOr = createFilterGenerator(
+const prefilteredAnyOf = createFilterGenerator(
     ([filter, prefilter], id, exports, initialized) => {
         // TODO(PalmDevs): Potential optimization: Add prefilter cache here too?
         if (initialized)
             return filter(id, exports, true) || prefilter(id, exports, true)
         return prefilter(id, undefined, false)
     },
-    orKeyGenerator,
-    orScopesGenerator,
-) as Or
+    anyOfKeyGenerator,
+    anyOfScopesGenerator,
+) as AnyOf
 
 /**
  * Combines two filters into one, returning true if **some** filters match.
  *
  * @param filters The filters to combine.
  *
- * @example With filter helpers (preferred)
+ * @example With filter helpers
  * ```ts
  * const [SomeModule] = lookupModule(
  *   withProps('x', 'name')
@@ -181,17 +196,26 @@ const prefilteredOr = createFilterGenerator(
  * @example
  * ```ts
  * const [SomeModule] = lookupModule(
- *   or(
- *     or(withProps('x', 'name'), withName('SomeName')),
+ *   anyOf(
+ *     anyOf(withProps('x', 'name'), withName('SomeName')),
  *     withDependencies([1, 485, null, 2]),
  *   ),
  * )
  * ```
  */
-export const or = Object.assign(compositeHandler<Or>(directOr, prefilteredOr), {
-    keyFor: compositeArrayHandler(directOr.keyFor, prefilteredOr.keyFor),
-    defaultScopesFor: compositeArrayHandler(
-        directOr.defaultScopesFor,
-        prefilteredOr.defaultScopesFor,
-    ),
-}) satisfies Or
+export const anyOf = Object.assign(
+    compositeHandler<AnyOf>(directAnyOf, prefilteredAnyOf),
+    {
+        keyFor: compositeArrayHandler(
+            directAnyOf.keyFor,
+            prefilteredAnyOf.keyFor,
+        ),
+        defaultScopesFor: compositeArrayHandler(
+            directAnyOf.defaultScopesFor,
+            prefilteredAnyOf.defaultScopesFor,
+        ),
+    },
+) satisfies AnyOf
+
+/** @deprecated Use {@link anyOf} instead. */
+export const or = anyOf
