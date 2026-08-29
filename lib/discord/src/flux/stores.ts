@@ -6,6 +6,7 @@ import {
     waitForModules,
 } from '@revenge-mod/modules/finders'
 import {
+    anyOf,
     createFilterGenerator,
     withDependencies,
 } from '@revenge-mod/modules/finders/filters'
@@ -63,11 +64,20 @@ export function getStore<T>(
 
 /// STORE FILTERING
 
-const { last, ordered } = withDependencies
+const { last, unordered, ordered } = withDependencies
 
-// The import tracker is checked first, as it is far cheaper than resolving includes
+// The import tracker is checked first, as it is far cheaper than resolving an unordered set
 const withFluxStoreDeps = withDependencies(last([ImportTrackerModuleId])).and(
-    withDependencies(ordered([DispatcherModuleId])),
+    anyOf(
+        // For general stores:
+        // With DispatcherModuleId anywhere
+        withDependencies(unordered([DispatcherModuleId])),
+        // For LibdiscoreStore and MobileCacheSnapshotStore based:
+        // With DispatcherModuleId anywhere followed by ImportTrackerModuleId second level deep
+        withDependencies(
+            unordered([ordered([DispatcherModuleId, ImportTrackerModuleId])]),
+        ),
+    ),
 )
 
 export type WithStore = FilterGenerator<
