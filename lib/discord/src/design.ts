@@ -12,7 +12,7 @@ import { proxify } from '@revenge-mod/utils/proxy'
 import { ImportTrackerModuleId } from './common/import-tracker'
 import type { DiscordModules } from './types'
 
-const { atLeast, last, loose, relative } = withDependencies
+const { atLeast, last, partial, relative } = withDependencies
 
 /**
  * The lowest amount of dependencies `design/native.tsx` is expected to have.
@@ -56,7 +56,7 @@ export let Design: Design = proxify(
 export let FormSwitch: DiscordModules.Components.FormSwitch = proxify(() => {
     for (const [, id] of lookupModules(
         withDependencies(
-            loose([
+            partial([
                 null,
                 ReactModuleId,
                 ReactNativeModuleId,

@@ -14,7 +14,7 @@ import { DispatcherModuleId } from './common/flux'
 import { ImportTrackerModuleId } from './common/import-tracker'
 import type { DiscordModules } from './types'
 
-const { relative, loose, last } = withDependencies
+const { relative, ordered } = withDependencies
 
 // modules/action_sheet/native/ActionSheetActionCreators.tsx
 export let ActionSheetActionCreators: DiscordModules.Actions.ActionSheetActionCreators =
@@ -26,15 +26,15 @@ export let ActionSheetActionCreators: DiscordModules.Actions.ActionSheetActionCr
                     'openLazy',
                 ).and(
                     withDependencies(
-                        last([
+                        ordered([
+                            ReactModuleId,
                             ReactJSXRuntimeModuleId,
                             DispatcherModuleId,
                             relative(1),
                             relative(2),
-                            null,
                             ImportTrackerModuleId,
                         ]),
-                    ).and(withDependencies(loose([null, ReactModuleId]))),
+                    ),
                 ),
             )
 
@@ -58,19 +58,10 @@ export let AlertActionCreators: DiscordModules.Actions.AlertActionCreators =
                         null,
                         [ReactNativeModuleId, ImportTrackerModuleId],
                         relative(1),
-                        relative(3),
+                        // TODO: Shifted from +2 to +3 on 344201+
+                        relative.within(2, 3),
                         ImportTrackerModuleId,
-                    ]).or(
-                        // TODO: Remove when stable >344201
-                        withDependencies([
-                            null,
-                            null,
-                            [ReactNativeModuleId, ImportTrackerModuleId],
-                            relative(1),
-                            relative(2),
-                            ImportTrackerModuleId,
-                        ]),
-                    ),
+                    ]),
                 ),
             )
 

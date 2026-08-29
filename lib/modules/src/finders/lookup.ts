@@ -12,7 +12,7 @@ import {
     FilterResultFlagToHumanReadable,
     runFilter,
 } from './_internal'
-import { FilterScopes } from './filters'
+import { FilterScopes } from './filters/constants'
 import type { If, Not } from '@revenge-mod/utils/types'
 import type { MaybeDefaultExportMatched, Metro } from '../types'
 import type {

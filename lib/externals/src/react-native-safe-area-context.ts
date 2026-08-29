@@ -9,18 +9,25 @@ import {
     ReactNativeModuleId,
 } from '@revenge-mod/react'
 import { proxify } from '@revenge-mod/utils/proxy'
-import type { ComparableDependencyMap } from '@revenge-mod/modules/finders/filters'
 
-const { relative, loose } = withDependencies
+const { relative, partial } = withDependencies
 
-const withSafeAreaContextModule = (
-    /* first dependency's dependencies */
-    firstDependencyDependencies: ComparableDependencyMap,
-) =>
+const withSafeAreaContextModule = () =>
     withDependencies(
         // first dependency is next to this module, but we also need to check its dependencies
         // hence relative.withDependencies(firstDependencyDependencies, 1),
-        loose([relative.withDependencies(firstDependencyDependencies, 1)]),
+        partial([
+            relative.withDependencies(
+                [
+                    null,
+                    ReactModuleId,
+                    ReactNativeModuleId,
+                    ReactJSXRuntimeModuleId,
+                    relative.withDependencies([relative(1)], 1),
+                ],
+                1,
+            ),
+        ]),
     )
 
 export let ReactNativeSafeAreaContext: typeof import('react-native-safe-area-context') =
@@ -28,15 +35,7 @@ export let ReactNativeSafeAreaContext: typeof import('react-native-safe-area-con
         () => {
             const [module] = lookupModule(
                 withProps<typeof ReactNativeSafeAreaContext>('SafeAreaProvider')
-                    .and(
-                        withSafeAreaContextModule([
-                            null,
-                            ReactModuleId,
-                            ReactNativeModuleId,
-                            ReactJSXRuntimeModuleId,
-                            relative.withDependencies([relative(1)], 1),
-                        ]),
-                    )
+                    .and(withSafeAreaContextModule())
                     .keyAs(
                         'revenge.externals.ReactNativeSafeAreaContext.ReactNativeSafeAreaContext',
                     ),

@@ -13,7 +13,7 @@ import { proxify } from '@revenge-mod/utils/proxy'
 import { ImportTrackerModuleId } from '../../patches/import-tracker'
 import type { DiscordModules } from '../../types'
 
-const { loose, relative, last } = withDependencies
+const { partial, relative, last } = withDependencies
 
 export type SettingListRenderer =
     DiscordModules.Modules.Settings.SettingListRenderer
@@ -26,7 +26,7 @@ export let SettingListRenderer: SettingListRenderer = proxify(
                 .and(
                     anyOf(
                         withDependencies(
-                            loose([
+                            partial([
                                 ReactModuleId,
                                 ReactNativeModuleId,
                                 relative(1),
@@ -34,7 +34,7 @@ export let SettingListRenderer: SettingListRenderer = proxify(
                         ).and(withDependencies(last([ImportTrackerModuleId]))),
                         // TODO: Remove this once stable > 344205
                         withDependencies(
-                            loose([
+                            partial([
                                 ReactModuleId,
                                 ReactNativeModuleId,
                                 relative(1),

@@ -63,11 +63,11 @@ export function getStore<T>(
 
 /// STORE FILTERING
 
-const { last, includes } = withDependencies
+const { last, ordered } = withDependencies
 
 // The import tracker is checked first, as it is far cheaper than resolving includes
 const withFluxStoreDeps = withDependencies(last([ImportTrackerModuleId])).and(
-    withDependencies(includes([DispatcherModuleId])),
+    withDependencies(ordered([DispatcherModuleId])),
 )
 
 export type WithStore = FilterGenerator<
