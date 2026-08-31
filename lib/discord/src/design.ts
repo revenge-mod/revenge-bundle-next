@@ -22,7 +22,7 @@ const { atLeast, last, partial, relative } = withDependencies
  *
  * This is only used as a filter, and is checked before anything else for performance reasons.
  */
-const DesignMinimumDependencies = 64
+const DesignMinimumDependencies = 128
 
 // design/native.tsx
 export let Design: Design = proxify(
@@ -36,7 +36,7 @@ export let Design: Design = proxify(
                         atLeast(DesignMinimumDependencies, [
                             [ImportTrackerModuleId],
                             [ImportTrackerModuleId],
-                            [ReactNativeModuleId, ImportTrackerModuleId],
+                            last([ImportTrackerModuleId]),
                             [ImportTrackerModuleId],
                             ImportTrackerModuleId,
                         ]),
