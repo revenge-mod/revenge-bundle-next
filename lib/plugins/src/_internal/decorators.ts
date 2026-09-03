@@ -1,3 +1,4 @@
+import { noop } from '@revenge-mod/utils/callback'
 import { getInternalPluginMeta, getPluginDependencies } from '.'
 import type { PluginApiDecorator } from '../types'
 import type { AnyPlugin, InternalPluginMeta } from '.'
@@ -55,7 +56,7 @@ export function decoratePluginApi(
 
             try {
                 for (const decorator of decorators)
-                    plugin.api.cleanup(decorator(plugin, meta.options))
+                    plugin.api.cleanup(decorator(plugin, meta.options) ?? noop)
             } catch (e) {
                 handleError(e)
                 handleDependentError(e)
