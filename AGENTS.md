@@ -8,9 +8,9 @@ Load both at the start of every session with the skill tool. Do not wait to be a
 
 - **`rtk`** for shell work. It proxies CLI commands and cuts up to 90% of their output.
   Run `rtk <command>` instead of the raw command, or let the hook rewrite it. Use `rtk proxy <cmd>` when you need unfiltered output for debugging. <https://github.com/rtk-ai/rtk>
-- **`caveman`** for your own output. It cuts response tokens by about 65% and keeps technical accuracy. Default intensity is `full`. Keep it on for the whole session. <https://github.com/JuliusBrussee/caveman>
+- **`ponytail`** for code generation. It helps generate good code and architecture. <https://github.com/DietrichGebert/ponytail>
 
-Compression never removes substance. Keep exact identifiers, commands, file paths, and `filepath:line` citations intact. Drop filler words, not facts.
+Compression never removes substance. Keep exact identifiers, commands, file paths, and `filepath:line` citations intact. Cut wordy explanations, comments, and filler. Keep the meaning and intent. Use plain words and short sentences. Avoid marketing adjectives, stacked auxiliaries, and passive voice.
 
 ## Project
 
@@ -170,8 +170,9 @@ Each one cost real debugging time. Read them before you write code in that area.
 - **Module path does not map to global path.** `@revenge-mod/externals/browserify` is `revenge.externals.Browserify`. `@revenge-mod/modules/metro/utils` and
   `.../metro/subscriptions` both land on `revenge.modules.metro` (`lib/plugins/src/apis/modules.ts:21-24`).
   `@revenge-mod/components/Page` maps to the module's default export, not its namespace (`lib/components/src/types.ts:2-5`). Never derive one side from the other with string rules.
-- **Hidden modules stay out of `modules.json`.** That file is the bundler contract for names resolvable on `revenge`.
-  Hidden types listed there would typecheck and then fail at plugin bundle time. `partitionEntries` in `scripts/types.ts:497` keeps them in `modules.hidden.json`.
+  Read `modules.importmap.json` from the generated types package instead. `scripts/typegen/libs.ts` declares every pair, and typegen fails when one drifts.
+- **Hidden modules stay out of `modules.importmap.json`.** That file is the bundler contract mapping a specifier to its property path on `revenge`.
+  Hidden types listed there would typecheck and then fail at plugin bundle time. `partitionModules` in `scripts/typegen/helpers.ts:11` keeps them in `modules.hidden.importmap.json`.
 
 ### DevTools MCP
 
@@ -205,6 +206,11 @@ Use it to check a claim against the running client. Every item below cost a wast
   A checker sits behind `typescript/unstable/sync`, which is explicitly unstable. If possible, avoid codegen that requires the typechecker. If you must, install a separately named TypeScript 5.x.
 - **Line endings are CRLF.** `.editorconfig` sets it and biome honors it through `useEditorconfig`. Write LF if it uses the least amount of tokens.
   Then format with `biome check --write`. A new file written with LF fails `biome check` with every line marked changed. That reads like a formatting disaster and is only line endings.
+- **CRLF also breaks your checks, not just your writes.** A `sed` or `grep` pattern anchored with `$`, or a Python `replace` holding `\n`, matches nothing here.
+  The command still exits 0, so a probe that verified nothing reads as a pass. Allow a trailing `\r` before the anchor, and read and write with `newline=''`.
+  Before you trust a negative result, confirm the pattern matched at all.
+- **`scripts/` is not typechecked.** `tsconfig.json` includes `lib`, `src` and `types` only, so a type-level guard in a build script never runs.
+  Adding `scripts` to the include surfaces unrelated errors in `lib`. Enforce build script invariants by throwing at runtime, and keep the command in the gate.
 - **Check a biome failure against `HEAD` before you fix it.** Some files already fail there. Fixing them mixes unrelated churn into your diff.
 
 ## The AI notice file
