@@ -1,5 +1,6 @@
 import { lookupModule, lookupModules } from '@revenge-mod/modules/finders'
 import {
+    anyOf,
     withDependencies,
     withProps,
 } from '@revenge-mod/modules/finders/filters'
@@ -10,9 +11,10 @@ import {
 } from '@revenge-mod/react'
 import { proxify } from '@revenge-mod/utils/proxy'
 import { ImportTrackerModuleId } from './common/import-tracker'
+import { TokensModuleId } from './common/tokens'
 import type { DiscordModules } from './types'
 
-const { atLeast, last, partial, relative } = withDependencies
+const { atLeast, last, partial, relative, ordered } = withDependencies
 
 /**
  * The lowest amount of dependencies `design/native.tsx` is expected to have.
@@ -64,14 +66,25 @@ export let FormSwitch: DiscordModules.Components.FormSwitch = proxify(() => {
             ]),
         )
             .and(
-                withDependencies(
-                    last([
-                        relative(1),
-                        relative(2),
-                        null,
-                        null,
-                        ImportTrackerModuleId,
-                    ]),
+                anyOf(
+                    withDependencies(
+                        ordered([
+                            TokensModuleId,
+                            ordered([relative(1), ImportTrackerModuleId]),
+                            [ImportTrackerModuleId],
+                            ImportTrackerModuleId,
+                        ]),
+                    ),
+                    // TODO: Remove once stable > 345205
+                    withDependencies(
+                        last([
+                            relative(1),
+                            relative(2),
+                            null,
+                            null,
+                            ImportTrackerModuleId,
+                        ]),
+                    ),
                 ),
             )
             .keyAs('revenge.discord.design.FormSwitch'),
