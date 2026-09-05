@@ -128,10 +128,19 @@ Types are generated at `dist/types`. To consume, simply add `@revenge-mod/types`
 }
 ```
 
-Bundlers will need to map imports to property access on `revenge` turning `kebab-case` and `snake_case` to `camelCase`.  
-Example: `@revenge-mod/discord/modules/main_tabs_v2` to `revenge.discord.modules.mainTabsV2`
+Your bundler will need to map imports to property access on `revenge` by reading `@revenge-mod/types/modules.importmap.json`, which maps every importable module to its access path.
 
-There's an exception for `@revenge-mod/externals`, which property accesses should turn into `PascalCase` instead of `camelCase`.
+```json
+{
+  "@revenge-mod/discord/modules/main_tabs_v2": "revenge.discord.modules.mainTabsV2",
+  "@revenge-mod/components/Page": {
+    "global": "revenge.components.Page",
+    "interop": "default"
+  }
+}
+```
+
+An `interop` of `default` means the property contains the module's default export, not its namespace. A namespace/wildcard import of such a module must be rewritten specially.
 
 #### 🛠️ Developer Mode & Hidden API
 
@@ -149,3 +158,5 @@ To consume the hidden API, add the following to your TypeScript config:
   }
 }
 ```
+
+Hidden modules are kept out of `modules.importmap.json` and the public API. They live in `modules.hidden.importmap.json` instead, with paths under `revenge.hidden`.
