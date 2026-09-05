@@ -42,8 +42,10 @@ export const Paths = {
 export const Exports = {
     types: 'index.d.ts',
     globals: 'globals.d.ts',
+    modules: 'modules.json',
     importMap: 'modules.importmap.json',
     hiddenTypes: 'hidden.d.ts',
+    hiddenModules: 'modules.hidden.json',
     hiddenImportMap: 'modules.hidden.importmap.json',
     manifest: 'package.json',
 } as const

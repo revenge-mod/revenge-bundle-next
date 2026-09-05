@@ -171,8 +171,10 @@ Each one cost real debugging time. Read them before you write code in that area.
   `.../metro/subscriptions` both land on `revenge.modules.metro` (`lib/plugins/src/apis/modules.ts:21-24`).
   `@revenge-mod/components/Page` maps to the module's default export, not its namespace (`lib/components/src/types.ts:2-5`). Never derive one side from the other with string rules.
   Read `modules.importmap.json` from the generated types package instead. `scripts/typegen/libs.ts` declares every pair, and typegen fails when one drifts.
-- **Hidden modules stay out of `modules.importmap.json`.** That file is the bundler contract mapping a specifier to its property path on `revenge`.
-  Hidden types listed there would typecheck and then fail at plugin bundle time. `partitionModules` in `scripts/typegen/helpers.ts:11` keeps them in `modules.hidden.importmap.json`.
+- **Hidden modules stay out of `modules.json` and `modules.importmap.json`.** Those files are the public contract, the first listing every declared module and the second mapping a specifier to its property path on `revenge`.
+  Hidden types listed there would typecheck and then fail at plugin bundle time. `partitionModules` in `scripts/typegen/helpers.ts:11` keeps them in the `.hidden` counterparts.
+- **`modules.json` and `modules.importmap.json` hold different sets.** The list covers every declared module. The map only covers modules with a property on `revenge`,
+  so the nine `*/types` entries are absent by design. Never treat one as the index of the other.
 
 ### DevTools MCP
 

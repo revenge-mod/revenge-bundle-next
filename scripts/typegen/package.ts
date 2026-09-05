@@ -8,18 +8,22 @@ import {
     TypesPackagePeerDependencies,
 } from './shared'
 
-/** Builds package.json manifest for generated types package. */
-export function typesPackageManifest(importMaps: string[]) {
+/**
+ * Builds package.json manifest for generated types package.
+ *
+ * @param assets JSON files shipped alongside the declarations.
+ */
+export function typesPackageManifest(assets: string[]) {
     return {
         name: TypesPackageName,
         version: pkg.version,
         types: Exports.types,
-        files: importMaps,
+        files: assets,
         exports: {
             '.': { types: `./${Exports.types}` },
             './hidden': { types: `./${Exports.hiddenTypes}` },
             ...Object.fromEntries(
-                importMaps.map(file => [`./${file}`, { default: `./${file}` }]),
+                assets.map(file => [`./${file}`, { default: `./${file}` }]),
             ),
         },
         imports: {

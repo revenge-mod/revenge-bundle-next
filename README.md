@@ -128,7 +128,7 @@ Types are generated at `dist/types`. To consume, simply add `@revenge-mod/types`
 }
 ```
 
-Your bundler will need to map imports to property access on `revenge` by reading `@revenge-mod/types/modules.importmap.json`, which maps every importable module to its access path.
+Your bundler will need to map imports to property access on `revenge` by reading `@revenge-mod/types/modules.importmap.json`, which maps every rewritable module to its access path.
 
 ```json
 {
@@ -141,6 +141,8 @@ Your bundler will need to map imports to property access on `revenge` by reading
 ```
 
 An `interop` of `default` means the property contains the module's default export, not its namespace. A namespace/wildcard import of such a module must be rewritten specially.
+
+`@revenge-mod/types/modules.json` lists every module name the package declares, including type-only modules, which have no property on `revenge` and so never appear in the import map.
 
 #### 🛠️ Developer Mode & Hidden API
 
@@ -159,4 +161,4 @@ To consume the hidden API, add the following to your TypeScript config:
 }
 ```
 
-Hidden modules are kept out of `modules.importmap.json` and the public API. They live in `modules.hidden.importmap.json` instead, with paths under `revenge.hidden`.
+Hidden modules are kept out of `modules.json` and `modules.importmap.json`, and out of the public API. They live in `modules.hidden.json` and `modules.hidden.importmap.json` instead, with paths under `revenge.hidden`.

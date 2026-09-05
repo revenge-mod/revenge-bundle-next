@@ -5,6 +5,7 @@ import { exists } from './_shared'
 import { emitDeclarations, generateIndex } from './typegen/generator'
 import {
     importMapOf,
+    moduleNamesOf,
     partitionModules,
     serializeImportMap,
     writeJson,
@@ -51,6 +52,18 @@ export default async function buildTypes(log = true): Promise<void> {
             importMapOf(Exports.hiddenImportMap, HiddenApi, hiddenModules),
         ]
 
+        const jsonAssets = [
+            ...importMaps.map(map => ({
+                file: map.file,
+                value: serializeImportMap(map),
+            })),
+            { file: Exports.modules, value: moduleNamesOf(publicModules) },
+            {
+                file: Exports.hiddenModules,
+                value: moduleNamesOf(hiddenModules),
+            },
+        ]
+
         await writeFile(
             join(Paths.output, Exports.types),
             generateIndex(publicModules, [ConsumerGlobals], defaultExports),
@@ -61,16 +74,13 @@ export default async function buildTypes(log = true): Promise<void> {
             generateIndex(hiddenModules, [], defaultExports),
         )
 
-        for (const map of importMaps)
-            await writeJson(
-                join(Paths.output, map.file),
-                serializeImportMap(map),
-            )
+        for (const { file, value } of jsonAssets)
+            await writeJson(join(Paths.output, file), value)
 
         // Make dist/types directly publishable
         await writeJson(
             join(Paths.output, Exports.manifest),
-            typesPackageManifest(importMaps.map(({ file }) => file)),
+            typesPackageManifest(jsonAssets.map(({ file }) => file)),
         )
 
         await verifyImportMaps(importMaps)

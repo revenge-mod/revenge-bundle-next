@@ -19,6 +19,11 @@ export function partitionModules(
     ]
 }
 
+/** Lists module names of a tier, including type-only modules. */
+export function moduleNamesOf(modules: LibraryModule[]): string[] {
+    return modules.map(({ name }) => name)
+}
+
 /** Collects module tier into import map and guards against duplicate global bindings. */
 export function importMapOf(
     file: string,
