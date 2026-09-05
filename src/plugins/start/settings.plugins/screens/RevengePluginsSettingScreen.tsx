@@ -10,7 +10,7 @@ import { reloadApp } from '@revenge-mod/modules/native/app'
 import {
     getInternalPluginMeta,
     isDefaultsOnlyBoot,
-    isPluginEnabled,
+    isPluginEnabledInSavedStates,
     isPluginEssential,
     isPluginInternal,
     isPluginPendingReload,
@@ -29,7 +29,6 @@ import {
 import { Image, View } from 'react-native'
 import RevengeIcon from '~assets/RevengeIcon'
 import { InstalledPluginMasonryFlashList } from '../components/PluginList'
-import PluginStatesProvider from '../components/PluginStateProvider'
 import PluginTooltipsProvider from '../components/TooltipProvider'
 import { RouteNames, Setting } from '../constants'
 import type { NavigationProp, RouteProp } from '@react-navigation/core'
@@ -46,13 +45,11 @@ const PlusLargeIcon = getAssetIdByName('PlusLargeIcon')!
 export default function RevengePluginsSettingScreen() {
     return (
         <LayerScope>
-            <PluginStatesProvider>
-                <PluginTooltipsProvider>
-                    <Page spacing={16}>
-                        <Screen />
-                    </Page>
-                </PluginTooltipsProvider>
-            </PluginStatesProvider>
+            <PluginTooltipsProvider>
+                <Page spacing={16}>
+                    <Screen />
+                </Page>
+            </PluginTooltipsProvider>
         </LayerScope>
     )
 }
@@ -62,11 +59,11 @@ const SearchDebounceTime = 100
 const Filters: FilterAndSortActionSheetProps['filters'] = {
     Enabled: {
         icon: getAssetIdByName('CircleCheckIcon')!,
-        filter: plugin => isPluginEnabled(plugin),
+        filter: plugin => isPluginEnabledInSavedStates(plugin),
     },
     Disabled: {
         icon: getAssetIdByName('CircleXIcon')!,
-        filter: plugin => !isPluginEnabled(plugin),
+        filter: plugin => !isPluginEnabledInSavedStates(plugin),
     },
     'Has Errors': {
         icon: getAssetIdByName('CircleErrorIcon')!,
@@ -103,9 +100,9 @@ const Sorts = {
     'Enabled first': [
         getAssetIdByName('CircleCheckIcon')!,
         (a, b) =>
-            isPluginEnabled(a) === isPluginEnabled(b)
+            isPluginEnabledInSavedStates(a) === isPluginEnabledInSavedStates(b)
                 ? a.manifest.name.localeCompare(b.manifest.name)
-                : isPluginEnabled(a)
+                : isPluginEnabledInSavedStates(a)
                   ? -1
                   : 1,
     ],
@@ -224,7 +221,8 @@ function Screen() {
 
     const hasFilter = useMemo(
         () =>
-            filter.some(f => !DefaultFilters.includes(f)) ||
+            filter.length !== DefaultFilters.length ||
+            filter.every(f => !DefaultFilters.includes(f)) ||
             matchAll !== true ||
             reverse !== false ||
             sort !== DefaultSort,

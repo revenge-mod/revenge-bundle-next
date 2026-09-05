@@ -1,18 +1,20 @@
 import { TypedEventEmitter } from '@revenge-mod/discord/common/utils'
-import { callNativeMethod, registerJSMethod } from '@revenge-mod/modules/native'
+import { registerJSMethod } from '@revenge-mod/modules/native'
+import { callPluginSystemMethod } from './native'
+import type { PluginSource } from '.'
 
 export interface DownloadProgressEvent {
     id: string
     version: string
-    /** The repository the artifact downloads from. */
+    /** Provenance repository URL. */
     repo: string
-    /** Bytes received so far. */
+    /** Downloaded bytes. */
     received: number
-    /** Total bytes, from the plan's size field. */
+    /** Total byte size from install plan. */
     total: number
-    /** 1-based position of this artifact in the plan. */
+    /** 1-based index in download sequence. */
     index: number
-    /** Number of artifacts in the plan. */
+    /** Total artifact count in plan. */
     count: number
 }
 
@@ -43,21 +45,15 @@ export function registerRepositoryEvents() {
     )
 }
 
-/**
- * A plugin repository as reported by native.
- *
- * The repository's URL is its identity.
- * The hidden internal repository (serving internal plugins) is always first and cannot be modified or removed.
- */
 export interface Repo {
-    /** Absolute URL of the repository root; also its identity. */
+    /** Absolute root URL and unique identity of the repository. */
     url: string
     enabled: boolean
     internal: boolean
-    /** Display metadata from the cached index, if any. */
+    // Display metadata from the index
     name: string | null
     description: string | null
-    /** A Discord-packaged asset name or a `data:` URL. Never a remote URL. */
+    /** Packaged asset name or `data:` URL. */
     icon: string | null
 }
 
@@ -67,21 +63,18 @@ export interface RepoConfigEntry {
 }
 
 export function listRepos(): Promise<Repo[]> {
-    return callNativeMethod('revenge.plugins.repos.list', [])
+    return callPluginSystemMethod('revenge.plugins.repos.list', [])
 }
 
 export function setRepos(config: RepoConfigEntry[]): Promise<null> {
-    return callNativeMethod('revenge.plugins.repos.set', [config])
+    return callPluginSystemMethod('revenge.plugins.repos.set', [config])
 }
 
 export function refreshRepo(url: string): Promise<Repo> {
-    return callNativeMethod('revenge.plugins.repos.refresh', [url])
+    return callPluginSystemMethod('revenge.plugins.repos.refresh', [url])
 }
 
-/**
- * Refreshes every enabled user repository in parallel.
- * Per-repo failures are collected instead.
- */
+/** Refreshes enabled user repositories in parallel, collecting per-repository errors. */
 export async function refreshAllRepos(): Promise<{
     refreshed: Repo[]
     errors: { url: string; error: unknown }[]
@@ -113,14 +106,14 @@ export interface RepoPluginListing {
     name: string
     description: string
     author: string
-    /** A Discord-packaged asset name or a `data:` URL. Never a remote URL. */
+    /** Packaged asset name or `data:` URL. */
     icon: string | null
-    /** Channel pointers (eg. `latest`), each naming a key of {@link versions}. */
+    /** Channel target pointers (e.g. `latest`) referencing keys of {@link versions}. */
     channels: Record<string, string>
     versions: Record<
         string,
         {
-            /** Absolute artifact URL. `null` for the internal repository (nothing downloadable). */
+            /** Absolute artifact download URL, or `null` for internal repositories. */
             url: string | null
             sha256: string | null
             size: number
@@ -141,17 +134,17 @@ export interface InstallPlanAction {
     url: string
     sha256: string
     size: number
-    /** The repository this action installs from (recorded as provenance). */
+    /** Source repository recorded as installation provenance. */
     repo: string
-    /** The channel followed for future update checks. */
+    /** Tracking update channel. */
     channel: string
-    /** The installed version being replaced, or `null` for a fresh install. */
+    /** The installed version being replaced, or `null` for fresh installs. */
     replaces: string | null
 }
 
 export interface InstallPlan {
     actions: InstallPlanAction[]
-    /** Non-blocking problems (skipped optionals, dependent-range conflicts). */
+    /** Non-blocking problems (dependency resolution). */
     warnings: string[]
 }
 
@@ -162,23 +155,19 @@ export interface RepoUpdate {
     channel: string
 }
 
-/**
- * Lists one repository's plugins from its cached index.
- */
+/** Lists plugins for repository from cached index. */
 export function listRepoPlugins(url: string): Promise<RepoPluginListing[]> {
-    return callNativeMethod('revenge.plugins.repos.listPlugins', [url])
+    return callPluginSystemMethod('revenge.plugins.repos.listPlugins', [url])
 }
 
-/**
- * Resolves an install of one plugin (+ unsatisfied dependencies) against cached indexes.
- */
+/** Computes dependency installation plan against cached repository indexes. */
 export function planInstall(
     id: string,
     version?: string,
     channel?: string,
     filteredRepos?: string[],
 ): Promise<InstallPlan> {
-    return callNativeMethod('revenge.plugins.planInstall', [
+    return callPluginSystemMethod('revenge.plugins.planInstall', [
         id,
         version ?? null,
         channel ?? null,
@@ -186,33 +175,29 @@ export function planInstall(
     ])
 }
 
-/**
- * Executes one confirmed install plan: download all, verify all, then apply on disk.
- *
- * - Fresh plugins (new IDs with live dependencies) load immediately (`installed`).
- * - Updates, and fresh IDs depending on them, only land on disk and load at next reload (`pending`).
- * - `skipped` lists actions an overlapping plan already satisfied.
- */
+/** Updates plugin hold status, pinning version or resuming channel updates. */
+export function setPluginHeld(
+    id: string,
+    held: boolean,
+): Promise<PluginSource> {
+    return callPluginSystemMethod('revenge.plugins.setHeld', [id, held])
+}
+
+/** Executes an install plan, downloading and applying artifacts to disk. */
 export function installFromRepo(plan: InstallPlan): Promise<{
     installed: string[]
     pending: string[]
     skipped: string[]
 }> {
-    return callNativeMethod('revenge.plugins.install', [plan])
+    return callPluginSystemMethod('revenge.plugins.install', [plan])
 }
 
-/**
- * Lists available updates for plugins pinned to one repository, from its **cached index**.
- * Call {@link refreshRepo} first to ensure the index is up-to-date.
- */
+/** Lists updates for plugins pinned to repository from cached index. */
 export function listUpdates(url: string): Promise<RepoUpdate[]> {
-    return callNativeMethod('revenge.plugins.repos.listUpdates', [url])
+    return callPluginSystemMethod('revenge.plugins.repos.listUpdates', [url])
 }
 
-/**
- * Lists updates across every enabled user repository in parallel.
- * Per-repo failures (eg. no cached index yet) are returned.
- */
+/** Lists updates across enabled user repositories in parallel. */
 export async function listAllUpdates(): Promise<{
     updates: RepoUpdate[]
     errors: { url: string; error: unknown }[]
@@ -240,8 +225,7 @@ export async function listAllUpdates(): Promise<{
 }
 
 /**
- * Resolves and installs updates for every entry of {@link listAllUpdates}.
- * Failures are collected per plugin. Updates land on disk only (`pending`), a reload applies them.
+ * Resolves and installs pending updates across all repositories.
  */
 export async function updateAllPlugins(): Promise<{
     installed: string[]
@@ -296,5 +280,6 @@ declare module '@revenge-mod/modules/native' {
             [plan: InstallPlan],
             { installed: string[]; pending: string[]; skipped: string[] },
         ]
+        'revenge.plugins.setHeld': [[id: string, held: boolean], PluginSource]
     }
 }

@@ -25,7 +25,8 @@
     "npm:rolldown-plugin-dts@~0.27.14": "0.27.14_rolldown@1.2.1_typescript@7.0.2",
     "npm:rolldown@1.2.1": "1.2.1",
     "npm:typescript@^7.0.2": "7.0.2",
-    "npm:vitest@^4.1.11": "4.1.11_@types+node@25.9.5_vite@8.2.2__@types+node@25.9.5"
+    "npm:vitest@^4.1.11": "4.1.11_@types+node@25.9.5_vite@8.2.2__@types+node@25.9.5",
+    "npm:zustand@^5.0.15": "5.0.15_@types+react@19.2.18_react@19.2.3"
   },
   "npm": {
     "@babel/code-frame@7.29.7": {
@@ -1575,8 +1576,8 @@
     "base64-js@1.5.1": {
       "integrity": "sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA=="
     },
-    "baseline-browser-mapping@2.11.17": {
-      "integrity": "sha512-KAUDn1OSS0fmPlGO+NOUMRcOQ/b/shUBH3OgkG73mPgdf+JD/BQ6fHboGxNOxnUmlwcq+lLq3dTkayRPuSfXwg==",
+    "baseline-browser-mapping@2.11.18": {
+      "integrity": "sha512-1iEmLEYSiE1SeBoAfPo/Mnx3PzfzHUkDK61ASkCpuk3YXugYLH5DYK1SzqV55F8FMI6s0F+/tCP7Polz1QRjxw==",
       "bin": true
     },
     "braces@3.0.3": {
@@ -3023,6 +3024,17 @@
         "@yuku-parser/binding-win32-arm64",
         "@yuku-parser/binding-win32-x64"
       ]
+    },
+    "zustand@5.0.15_@types+react@19.2.18_react@19.2.3": {
+      "integrity": "sha512-MpSEjRiBkA9crSYeOUH32rJC7SVqAbm0Fqcqge/bUi2PPoLcBWKOsG+C8mevmpr8TwXHBVkChbbJiyvkE+i/3A==",
+      "dependencies": [
+        "@types/react",
+        "react"
+      ],
+      "optionalPeers": [
+        "@types/react",
+        "react"
+      ]
     }
   },
   "workspace": {
@@ -3052,7 +3064,8 @@
         "npm:rolldown-plugin-dts@~0.27.14",
         "npm:rolldown@1.2.1",
         "npm:typescript@^7.0.2",
-        "npm:vitest@^4.1.11"
+        "npm:vitest@^4.1.11",
+        "npm:zustand@^5.0.15"
       ],
       "overrides": {
         "@react-native/community-cli-plugin": "npm:dry-uninstall",

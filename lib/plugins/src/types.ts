@@ -7,15 +7,11 @@ import type { PluginApiExternals } from './apis/externals'
 import type { PluginApiModules } from './apis/modules'
 import type { PluginApiPlugins } from './apis/plugins'
 import type { PluginApiReact } from './apis/react'
-import type { PluginStatus } from './constants'
 
 // biome-ignore lint/suspicious/noEmptyInterface: To be extended by actual extensions
 export interface PluginApiExtensionsOptions {}
 
-/**
- * The unscoped plugin API (very limited). This API is available as a global for plugins.
- * Available in the `preInit` phase.
- */
+/** Unscoped plugin API available in the `preInit` lifecycle stage. */
 export interface UnscopedPreInitPluginApi<
     // biome-ignore lint/correctness/noUnusedVariables: This is for plugin API extensions
     O extends PluginApiExtensionsOptions = PluginApiExtensionsOptions,
@@ -26,15 +22,12 @@ export interface UnscopedPreInitPluginApi<
     react: PluginApiReact
     assets: typeof import('@revenge-mod/assets')
     externals: PluginApiExternals
-    /** This API is available in and after the `init` phase. */
+    /** Available in and after the `init` lifecycle stage. */
     components: unknown
     discord: PreInitPluginApiDiscord
 }
 
-/**
- * The unscoped plugin API (limited). This API is available as a global for plugins.
- * Available in the `init` phase.
- */
+/** Unscoped plugin API available in the `init` lifecycle stage. */
 export interface UnscopedInitPluginApi<
     O extends PluginApiExtensionsOptions = PluginApiExtensionsOptions,
 > extends UnscopedPreInitPluginApi<O> {
@@ -42,20 +35,16 @@ export interface UnscopedInitPluginApi<
     discord: InitPluginApiDiscord
 }
 
-/**
- * The unscoped plugin API. This API is available as a global for plugins.
- * Available in the `start` and `stop` phase.
- */
+/** Unscoped plugin API available in the `start` and `stop` lifecycle stages. */
 export interface UnscopedPluginApi<
     O extends PluginApiExtensionsOptions = PluginApiExtensionsOptions,
 > extends UnscopedInitPluginApi<O> {}
 
-/**
- * A cleanup function that can be registered to be called when the plugin is stopped.
- */
+/** Plugin cleanup callback to be called when the plugin is stopped. */
 export type PluginCleanup = () => any
+
 /**
- * Registers cleanup functions to be called when the plugin is stopped.
+ * Registers cleanup callbacks to be called when the plugin is stopped.
  *
  * @example
  * ```ts
@@ -66,8 +55,9 @@ export type PluginCleanup = () => any
 export type PluginCleanupApi = (...fns: PluginCleanup[]) => void
 
 /**
- * Decorates the plugin API for the dependents of the plugin with a decorator function.
- * @param decorator The decorator function to apply.
+ * Registers an API decorator extending the plugin API for dependent plugins.
+ *
+ * @param decorator Decorator function modifying dependent plugin API.
  *
  * @example
  * ```ts
@@ -98,10 +88,10 @@ export type PluginDecorateApi<
 > = (decorator: PluginApiDecorator<O, S>) => void | (() => unknown)
 
 /**
- * The decorator function that modifies the plugin API.
+ * Decorator callback that modifies the plugin API for dependents.
  *
- * @param plugin The plugin being decorated.
- * @param options The options the plugin passed.
+ * @param plugin Target plugin instance.
+ * @param options Plugin options.
  *
  * @see {@link PluginDecorateApi}
  */
@@ -111,10 +101,7 @@ export type PluginApiDecorator<
         keyof PluginApiInLifecycleMap<O> = keyof PluginApiInLifecycleMap<O>,
 > = (plugin: Plugin<O, S>, options: O) => void
 
-/**
- * The plugin API (very limited).
- * Available in the `preInit` phase.
- */
+/** Plugin API available in the `preInit` lifecycle stage. */
 export interface PreInitPluginApi<
     O extends PluginApiExtensionsOptions = PluginApiExtensionsOptions,
 > {
@@ -124,10 +111,7 @@ export interface PreInitPluginApi<
     plugin: Plugin<O, 'PreInit'>
 }
 
-/**
- * The plugin API (limited).
- * Available in the `init` phase.
- */
+/** Plugin API available in the `init` lifecycle stage. */
 export interface InitPluginApi<
     O extends PluginApiExtensionsOptions = PluginApiExtensionsOptions,
 > extends PreInitPluginApi<O> {
@@ -136,10 +120,7 @@ export interface InitPluginApi<
     plugin: Plugin<O, 'Init'>
 }
 
-/**
- * The plugin API.
- * Available in the `start` and `stop` phase.
- */
+/** Plugin API available in the `start` and `stop` lifecycle stages. */
 export interface PluginApi<
     O extends PluginApiExtensionsOptions = PluginApiExtensionsOptions,
 > extends InitPluginApi<O> {
@@ -148,41 +129,22 @@ export interface PluginApi<
     plugin: Plugin<O, 'Start'>
 }
 
-/**
- * The plugin manifest.
- */
 export interface PluginManifest {
-    /**
-     * The manifest format version.
-     */
+    /** Manifest schema format version. */
     format: number
-    /**
-     * The unique identifier for the plugin.
-     */
+    /** Unique plugin identifier. */
     id: string
-    /**
-     * The name of the plugin.
-     */
+    /** Display name. */
     name: string
-    /**
-     * The author of the plugin.
-     */
+    /** Author information. */
     author: string
-    /**
-     * The description of the plugin.
-     */
+    /** Plugin description. */
     description: string
-    /**
-     * The icon of the plugin. An asset name, or a `data:` URL.
-     */
+    /** Plugin icon: asset name or `data:` URL. */
     icon?: string
-    /**
-     * The dependencies of the plugin, keyed by plugin ID.
-     */
-    dependencies?: Record<string, PluginDependency>
-    /**
-     * The plugin's version.
-     */
+    /** Dependencies keyed by plugin ID. */
+    dependencies?: Record<string, PluginDependencyConstraint>
+    /** Plugin version. */
     version: PluginVersion
 }
 
@@ -191,17 +153,10 @@ export interface PluginVersion {
     label?: string
 }
 
-/**
- * A dependency specification. The dependency's plugin ID is the key in {@link PluginManifest.dependencies}.
- */
-export interface PluginDependency {
-    /**
-     * Version range the dependency must satisfy.
-     */
+export interface PluginDependencyConstraint {
+    /** Required version range. */
     version?: string
-    /**
-     * Whether this dependency can be optionally linked.
-     */
+    /** Whether dependency is optional. */
     optional?: boolean
 }
 
@@ -211,48 +166,25 @@ export interface PluginOptions<
     SettingsComponent?: PluginSettingsComponent<O>
 }
 
-/**
- * A factory that lazily creates the plugin options.
- *
- * Only passed when the options (and lifecycles) must only be created right before the plugin runs,
- * for example to avoid evaluating external plugin code until it is actually used.
- */
+/** Factory creating plugin options lazily to avoid evaluating code before execution is needed. */
 export type PluginOptionsFactory<
     O extends PluginApiExtensionsOptions = PluginApiExtensionsOptions,
 > = () => PluginOptions<O>
 
-/**
- * The plugin lifecycles.
- */
 export interface PluginLifecycles<
     O extends PluginApiExtensionsOptions = PluginApiExtensionsOptions,
 > {
     /**
-     * Runs as soon as possible with very limited APIs.
-     * Before the index module (module 0)'s factory is run.
-     *
-     * @param api Plugin API (very limited).
+     * Runs as soon as possible, before the index module (module 0)'s factory is run, with very limited APIs.
      */
     preInit?: (this: Plugin<O, 'PreInit'>, api: PreInitPluginApi<O>) => any
     /**
-     * Runs as soon as all important modules are initialized.
-     * After the index module (module 0)'s factory is run.
-     *
-     * @param api Plugin API (limited).
+     * Runs after the index module (module 0)'s factory is run, with limited APIs.
      */
     init?: (this: Plugin<O, 'Init'>, api: InitPluginApi<O>) => any
-    /**
-     * Runs during the `AppRegistry.runApplication` call,
-     * when the plugin can be started with all APIs available.
-     *
-     * @param api Plugin API.
-     */
+    /** Runs during `AppRegistry.runApplication` with all APIs available. */
     start?: (this: Plugin<O, 'Start'>, api: PluginApi<O>) => any
-    /**
-     * Runs when the plugin is stopped.
-     *
-     * @param api Plugin API.
-     */
+    /** Runs when plugin is stopped. */
     stop?: (this: Plugin<O, 'Start'>, api: PluginApi<O>) => any
 }
 
@@ -265,50 +197,34 @@ export interface Plugin<
     lifecycles: PluginLifecycles<O>
 
     /**
-     * @see {@link PluginStatus}
-     */
-    status: number
-    /**
-     * Whether this plugin was started late (after the `start` phase).
-     * This can happen when the plugin is just installed, or the user just started it in the UI.
+     * Indicates whether plugin was started after initial startup sequence.
+     * This can happen if the user just started the plugin in the UI.
      */
     startedLate: boolean
-    /**
-     * Errors encountered during the plugin lifecycles.
-     */
+    /** Errors encountered during plugin execution. */
     errors: readonly unknown[]
     /**
-     * Reports an error encountered during the plugin's execution.
+     * Reports an error during plugin execution.
+     *
+     * Reporting errors won't disable the plugin.
+     * You can call {@link Plugin.stop} or {@link Plugin.disable} if needed.
      */
     reportError(e: unknown): void
 
     SettingsComponent?: PluginSettingsComponent<O>
 
-    /**
-     * Disable the plugin.
-     * This will also stop the plugin if it is running.
-     */
+    /** Stops and disables the plugin. */
     disable(this: Plugin<O, S>): Promise<void>
-    /**
-     * Stop the plugin.
-     */
+    /** Stops the plugin. */
     stop(this: Plugin<O, S>): Promise<void>
-    /**
-     * Marks this plugin as requiring a reload to apply changes.
-     */
+    /** Marks plugin as requiring reload to apply changes. */
     requireReload(this: Plugin<O, S>): void
 
-    /**
-     * The plugin API.
-     *
-     * Not recommended to use this directly.
-     */
+    /** Scoped plugin API instance. */
     api: PluginApiInLifecycleMap<O>[S]
 }
 
-/**
- * The plugin API in a specific stage.
- */
+/** Maps lifecycle stage names to scoped API types. */
 export type PluginApiInLifecycleMap<
     O extends PluginApiExtensionsOptions = PluginApiExtensionsOptions,
 > = {
@@ -318,9 +234,7 @@ export type PluginApiInLifecycleMap<
     Start: PluginApi<O>
 }
 
-/**
- * The component that renders the plugin settings page.
- */
+/** React component rendering plugin settings UI. */
 export interface PluginSettingsComponent<
     O extends PluginApiExtensionsOptions = PluginApiExtensionsOptions,
 > extends FunctionComponent<{ api: PluginApi<O> }> {}

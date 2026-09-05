@@ -11,9 +11,10 @@ import PluginClearDataConfirmationAlert from '../components/PluginClearDataConfi
 import PluginHasDependenciesAlert from '../components/PluginHasDependenciesAlert'
 import PluginHasDependentsAlert from '../components/PluginHasDependentsAlert'
 import PluginMissingDependenciesAlert from '../components/PluginMissingDependenciesAlert'
-import PluginStatesProvider from '../components/PluginStateProvider'
 import PluginUninstallConfirmationAlert from '../components/PluginUninstallConfirmationAlert'
+import RepoRemoveConfirmationAlert from '../components/RepoRemoveConfirmationAlert'
 import type { AnyPlugin } from '@revenge-mod/plugins/_'
+import type { Repo } from '@revenge-mod/plugins/_/repositories'
 
 export function showPluginClearDataConfirmation(
     plugin: AnyPlugin,
@@ -75,13 +76,11 @@ export function showPluginHasDependenciesAlert(
 ) {
     AlertActionCreators.openAlert(
         'plugin-has-dependencies',
-        <PluginStatesProvider>
-            <PluginHasDependenciesAlert
-                plugin={plugin}
-                dependencies={dependencies}
-                action={action}
-            />
-        </PluginStatesProvider>,
+        <PluginHasDependenciesAlert
+            plugin={plugin}
+            dependencies={dependencies}
+            action={action}
+        />,
     )
 }
 
@@ -100,6 +99,22 @@ export function showPluginMissingDependenciesAlert(
     )
 }
 
+export function showRemoveRepoConfirmation(
+    repo: Repo,
+    callback: () => Promise<void> | void,
+) {
+    const KEY = 'repo-remove-confirmation'
+
+    async function action() {
+        await callback()
+    }
+
+    AlertActionCreators.openAlert(
+        KEY,
+        <RepoRemoveConfirmationAlert repo={repo} action={action} />,
+    )
+}
+
 export function showPluginHasDependentsAlert(
     plugin: AnyPlugin,
     dependents: AnyPlugin[],
@@ -107,12 +122,10 @@ export function showPluginHasDependentsAlert(
 ) {
     AlertActionCreators.openAlert(
         'plugin-has-dependents',
-        <PluginStatesProvider>
-            <PluginHasDependentsAlert
-                plugin={plugin}
-                dependents={dependents}
-                action={action}
-            />
-        </PluginStatesProvider>,
+        <PluginHasDependentsAlert
+            plugin={plugin}
+            dependents={dependents}
+            action={action}
+        />,
     )
 }
