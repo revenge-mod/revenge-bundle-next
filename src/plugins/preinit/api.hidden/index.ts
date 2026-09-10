@@ -9,19 +9,17 @@ const pluginHiddenApi = registerInternalPlugin(
     {
         id: 'revenge.api.hidden',
         name: 'Developer Mode',
-        description: 'Exposes Revenge internal APIs for debugging.',
+        description: 'Exposes internal Revenge APIs for debugging.',
         author: 'Revenge',
         icon: 'WrenchIcon',
     },
     {
-        preInit({ decorate }) {
-            decorate(plugin => {
-                plugin.api.unscoped.hidden = hiddenApi
+        preInit({ cleanup, unscoped }) {
+            unscoped.hidden = hiddenApi
 
-                return () => {
-                    // biome-ignore lint/performance/noDelete: We want to remove the API completely
-                    delete plugin.api.unscoped.hidden
-                }
+            cleanup(() => {
+                // biome-ignore lint/performance/noDelete: We want to remove the API completely
+                delete unscoped.hidden
             })
         },
     },

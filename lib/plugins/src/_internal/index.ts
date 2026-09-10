@@ -7,7 +7,7 @@ import {
 import { exists, rm } from '@revenge-mod/modules/native/fs'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import { sleepReject } from '@revenge-mod/utils/promise'
-import { pUnscopedApi as uapi } from '../apis'
+import { pUnscopedApi } from '../apis'
 import { pluginStorageDirFor, PluginStatus as Status } from '../constants'
 import {
     addPluginApiDecorator,
@@ -122,7 +122,7 @@ export interface PluginSource {
     channel: string
 }
 
-export const pUnscopedApi = uapi
+export { pUnscopedApi }
 export const pEmitter = new TypedEventEmitter<{
     register: [AnyPlugin, PluginOptions<any>, update?: true]
     unregister: [AnyPlugin]

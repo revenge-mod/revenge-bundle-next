@@ -8,37 +8,36 @@ import { externals } from './externals'
 import { modules } from './modules'
 import { plugins } from './plugins'
 import { react } from './react'
+import { utils } from './utils'
 import type {
     UnscopedInitPluginApi,
     UnscopedPluginApi,
     UnscopedPreInitPluginApi,
 } from '../types'
 
-// @ts-expect-error: This will be modified by libraries later
 export const pUnscopedApi:
     | UnscopedPreInitPluginApi
     | UnscopedInitPluginApi
-    | UnscopedPluginApi = {
-    modules,
-    patcher,
-    plugins,
-    react,
-    assets,
-    externals,
-}
-
-defineLazyProperties(pUnscopedApi, {
-    components: () => {
-        guardIndexInitialized('Components')
-        return Components
+    | UnscopedPluginApi = defineLazyProperties(
+    {
+        modules,
+        patcher,
+        plugins,
+        react,
+        assets,
+        externals,
+        utils,
+    } as typeof pUnscopedApi,
+    {
+        components: () => {
+            guardIndexInitialized('Components')
+            return Components
+        },
+        discord: () => {
+            return Discord.discord
+        },
     },
-})
-
-defineLazyProperties(pUnscopedApi, {
-    discord: () => {
-        return Discord.discord
-    },
-})
+)
 
 export function guardIndexInitialized(name: string) {
     if (!isModuleInitialized(0))

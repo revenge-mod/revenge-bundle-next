@@ -6,7 +6,7 @@ import {
     uninstallExternalPlugin,
 } from '@revenge-mod/plugins/_'
 import { getErrorStack } from '@revenge-mod/utils/error'
-import { deleteJsonStorageForPlugin } from '~plugins/preinit/api.json-storage'
+import { deleteJsonStorageForPlugin } from '~plugins/preinit/api/json-storage'
 import PluginClearDataConfirmationAlert from '../components/PluginClearDataConfirmationAlert'
 import PluginHasDependenciesAlert from '../components/PluginHasDependenciesAlert'
 import PluginHasDependentsAlert from '../components/PluginHasDependentsAlert'
