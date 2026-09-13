@@ -91,12 +91,9 @@ export interface PluginStateObject {
     requiredByUser?: boolean
 }
 
-export interface PersistedPluginStates {
-    states: {
-        [id: PluginManifest['id']]: PluginStateObject
-    }
-    /** Real saved states from user storage, passed only during defaults-only boot. */
-    savedStates?: {
+/** Flags of every loaded slot, keyed by slot ID then plugin ID. */
+export interface PluginSlotStates {
+    [slot: string]: {
         [id: PluginManifest['id']]: PluginStateObject
     }
 }

@@ -26,7 +26,7 @@ import {
 } from '@revenge-mod/plugins/_'
 import {
     usePluginEnabled,
-    usePluginEnabledInSavedStates,
+    usePluginEnabledInActiveSlot,
     usePluginStatus,
 } from '@revenge-mod/plugins/_/react'
 import {
@@ -90,8 +90,7 @@ export default function PluginOptionsActionSheet({
 }
 
 function PluginOptions({ plugin, sheetKey }: PluginOptionsActionSheetProps) {
-    const enabled = usePluginEnabled(plugin)
-    const savedEnabled = usePluginEnabledInSavedStates(plugin)
+    const savedEnabled = usePluginEnabledInActiveSlot(plugin)
     const meta = getInternalPluginMeta(plugin)
     const essential = isPluginEssential(meta)
     const pendingUpdate = isPluginPendingUpdate(plugin)
@@ -118,9 +117,8 @@ function PluginOptions({ plugin, sheetKey }: PluginOptionsActionSheetProps) {
                             ref={switchRef}
                         >
                             <InstalledPluginSwitch
-                                enabled={enabled}
                                 plugin={plugin}
-                                savedEnabled={savedEnabled}
+                                enabled={savedEnabled}
                                 toggleDisabled={pendingUpdate}
                             />
                         </Pressable>

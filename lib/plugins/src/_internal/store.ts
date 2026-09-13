@@ -1,7 +1,7 @@
 import { createStore } from 'zustand/vanilla'
 
 /**
- * Reactive and observable source of truth for {@link InternalPluginMeta.flags} and {@link Plugin.status}.
+ * Reactive and observable source of truth for the boot slot: {@link InternalPluginMeta.flags} and {@link Plugin.status}.
  *
  * @see {@link file://./react.ts} for React bindings
  *
@@ -11,75 +11,82 @@ import { createStore } from 'zustand/vanilla'
 export interface PluginStoreState {
     /** Registered plugin IDs, in registration order. */
     ids: string[]
-    /** Flags of the running plugins, keyed by plugin ID. */
-    sessionFlags: Record<string, number>
-    /**
-     * Flags of the saved setup, keyed by plugin ID. Only filled during a defaults-only boot,
-     * when the session runs on defaults while the UI shows and edits the saved setup.
-     */
-    savedFlags: Record<string, number | undefined>
+    /** Flags of every known slot, keyed by slot ID then plugin ID. */
+    slots: Record<string, Record<string, number>>
+    /** Slot the user chose. The UI reads and edits it. */
+    activeSlot: string
+    /** Slot this boot runs on. Same as {@link PluginStoreState.activeSlot} on a normal boot. */
+    bootSlot: string
     /** Plugin lifecycle status, keyed by plugin ID. */
     status: Record<string, number>
 }
 
 export const pluginStore = createStore<PluginStoreState>(() => ({
     ids: [],
-    sessionFlags: {},
-    savedFlags: {},
+    slots: {},
+    activeSlot: '',
+    bootSlot: '',
     status: {},
 }))
+
+export function hydrateSlots(
+    slots: Record<string, Record<string, number>>,
+    activeSlot: string,
+    bootSlot: string,
+) {
+    pluginStore.setState({ slots, activeSlot, bootSlot })
+}
 
 /** Tracks plugin, resetting status. Re-registration overwrites the previous entry. */
 export function addPlugin(id: string, flags: number) {
     pluginStore.setState(state => ({
         ids: state.ids.includes(id) ? state.ids : [...state.ids, id],
-        sessionFlags: { ...state.sessionFlags, [id]: flags },
+        slots: withFlags(state, state.bootSlot, id, flags),
         status: { ...state.status, [id]: 0 },
     }))
 }
 
+/** Drops the plugin from every slot, so a reinstall starts from its defaults. */
 export function removePlugin(id: string) {
     pluginStore.setState(state => {
-        const sessionFlags = { ...state.sessionFlags }
-        const savedFlags = { ...state.savedFlags }
+        const slots: PluginStoreState['slots'] = {}
+        for (const slot in state.slots) {
+            const flags = { ...state.slots[slot] }
+            delete flags[id]
+            slots[slot] = flags
+        }
+
         const status = { ...state.status }
-        delete sessionFlags[id]
-        delete savedFlags[id]
         delete status[id]
 
         return {
             ids: state.ids.filter(other => other !== id),
-            sessionFlags,
-            savedFlags,
+            slots,
             status,
         }
     })
 }
 
-export function getSessionFlags(id: string): number {
-    return pluginStore.getState().sessionFlags[id] ?? 0
+export function getFlags(slot: string, id: string): number {
+    return pluginStore.getState().slots[slot]?.[id] ?? 0
 }
 
-export function setSessionFlags(id: string, flags: number) {
+export function setFlags(slot: string, id: string, flags: number) {
     pluginStore.setState(state => ({
-        sessionFlags: { ...state.sessionFlags, [id]: flags },
+        slots: withFlags(state, slot, id, flags),
     }))
 }
 
-/** Saved flags for a plugin, or `undefined` when the saved setup is not tracked separately. */
-export function getSavedFlags(id: string): number | undefined {
-    return pluginStore.getState().savedFlags[id]
-}
-
-export function setSavedFlags(id: string, flags: number) {
-    pluginStore.setState(state => ({
-        savedFlags: { ...state.savedFlags, [id]: flags },
-    }))
-}
-
-// hydrated at boot
-export function hydrateSavedFlags(flags: Record<string, number>) {
-    pluginStore.setState({ savedFlags: flags })
+function withFlags(
+    state: PluginStoreState,
+    slot: string,
+    id: string,
+    flags: number,
+): PluginStoreState['slots'] {
+    return {
+        ...state.slots,
+        [slot]: { ...state.slots[slot], [id]: flags },
+    }
 }
 
 export function getStatus(id: string): number {

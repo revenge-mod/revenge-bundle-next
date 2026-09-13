@@ -13,12 +13,18 @@ import {
     pPending,
 } from './dependency-graph'
 import { pEmitter } from './emitter'
-import { disablePlugin, handlePluginError, stopPlugin } from './lifecycles'
+import {
+    disablePluginInActiveSlot,
+    handlePluginError,
+    stopPlugin,
+} from './lifecycles'
 import { callPluginSystemMethodSync } from './native'
 import { isPluginEnabled, isPluginStartedLate } from './predicates'
 import {
+    applySlotFlags,
+    BootSlot,
+    BootStates,
     flagsToPluginState,
-    InitialPersistedStates,
     pluginStateToFlags,
 } from './state'
 import * as store from './store'
@@ -101,9 +107,7 @@ function register<O extends PluginApiExtensionsOptions>(
     // Store entry must exist before the accessors below are read
     store.addPlugin(
         id,
-        InitialPersistedStates[id]
-            ? pluginStateToFlags(InitialPersistedStates[id])
-            : defflags,
+        BootStates[id] ? pluginStateToFlags(BootStates[id]) : defflags,
     )
 
     const plugin = {
@@ -119,7 +123,7 @@ function register<O extends PluginApiExtensionsOptions>(
         get startedLate(): boolean {
             return isPluginStartedLate(plugin)
         },
-        disable: (): Promise<void> => disablePlugin(plugin),
+        disable: (): Promise<void> => disablePluginInActiveSlot(plugin),
         stop: (): Promise<void> => stopPlugin(plugin),
         reportError: (e: unknown) => handlePluginError(e, plugin, false),
         requireReload: () => {
@@ -146,19 +150,17 @@ function register<O extends PluginApiExtensionsOptions>(
             pEmitter.emit('statusUpdate', plugin)
         },
         set flags(flags: number) {
-            if (flags === store.getSessionFlags(id)) return
+            if (flags === store.getFlags(BootSlot, id)) return
 
             const newState = callPluginSystemMethodSync(
                 'revenge.plugins.states.update',
-                [id, flagsToPluginState(flags)],
+                [BootSlot, id, flagsToPluginState(flags)],
             )
 
-            store.setSessionFlags(id, pluginStateToFlags(newState))
-
-            pEmitter.emit('stateUpdate', plugin)
+            applySlotFlags(BootSlot, id, pluginStateToFlags(newState))
         },
         get flags() {
-            return store.getSessionFlags(id)
+            return store.getFlags(BootSlot, id)
         },
     }
 

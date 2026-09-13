@@ -1,9 +1,4 @@
-import { callPluginSystemMethodSync } from './_internal/native'
-
-const { storageRootPath } = callPluginSystemMethodSync(
-    'revenge.plugins.getConstants',
-    [],
-)
+import { storageRootPath } from './_internal/constants'
 
 /** Absolute path to per-plugin storage directory. */
 // TODO: is it best to dupe this logic with the native side???

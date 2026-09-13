@@ -243,7 +243,7 @@ declare module '@revenge-mod/modules/native' {
     export interface NativeMethods {
         'revenge.plugins.getConstants': [
             [],
-            { storageRootPath: string; defaultsOnly: boolean },
+            { storageRootPath: string; defaultsOnlySlot: string },
         ]
     }
 }

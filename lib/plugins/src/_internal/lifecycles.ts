@@ -31,7 +31,7 @@ import {
 import { getInternalPluginMeta } from './registry'
 import {
     isDefaultsOnlyBoot,
-    isPluginEnabledInSavedStates,
+    isPluginEnabledInActiveSlot,
     writePluginEnabledState,
 } from './state'
 import type { InitPluginApi, PluginApi, PreInitPluginApi } from '../types'
@@ -135,9 +135,9 @@ function tryPreparePluginStart(plugin: AnyPlugin) {
     meta.apiLevel = PluginApiLevel.Start
 }
 
-/** Disables plugin, cascading stop and disable to dependents. */
-export async function disablePlugin(plugin: AnyPlugin) {
-    if (!isPluginEnabledInSavedStates(plugin))
+/** Disables plugin in active slot, cascading stop and disable to dependents. */
+export async function disablePluginInActiveSlot(plugin: AnyPlugin) {
+    if (!isPluginEnabledInActiveSlot(plugin))
         throw new Error(`Plugin "${plugin.manifest.id}" is not enabled`)
 
     const meta = getInternalPluginMeta(plugin)
@@ -149,7 +149,8 @@ export async function disablePlugin(plugin: AnyPlugin) {
 
     await Promise.all(
         getPluginDependents(plugin).map(dep => {
-            if (isPluginEnabledInSavedStates(dep)) return disablePlugin(dep)
+            if (isPluginEnabledInActiveSlot(dep))
+                return disablePluginInActiveSlot(dep)
         }),
     )
 
@@ -161,15 +162,18 @@ export async function disablePlugin(plugin: AnyPlugin) {
     meta.flags &= ~PluginFlags.Enabled
 }
 
-/** Enables plugin after ensuring required dependencies are enabled. */
-export async function enablePlugin(plugin: AnyPlugin, requiredByUser: boolean) {
-    if (isPluginEnabledInSavedStates(plugin))
+/** Enables plugin in active slot after ensuring required dependencies are enabled. */
+export async function enablePluginInActiveSlot(
+    plugin: AnyPlugin,
+    requiredByUser: boolean,
+) {
+    if (isPluginEnabledInActiveSlot(plugin))
         throw new Error(`Plugin "${plugin.manifest.id}" is already enabled`)
 
     await Promise.all(
         getPluginDependencies(plugin).map(dep => {
-            if (!isPluginEnabledInSavedStates(dep))
-                return enablePlugin(dep, false)
+            if (!isPluginEnabledInActiveSlot(dep))
+                return enablePluginInActiveSlot(dep, false)
         }),
     )
 

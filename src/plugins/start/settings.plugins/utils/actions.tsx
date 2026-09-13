@@ -1,10 +1,10 @@
 import {
-    disablePlugin,
-    enablePlugin,
+    disablePluginInActiveSlot,
+    enablePluginInActiveSlot,
     getMissingPluginDependencies,
     getPluginDependencies,
     getPluginDependents,
-    isPluginEnabledInSavedStates,
+    isPluginEnabledInActiveSlot,
     runPluginLate,
 } from '@revenge-mod/plugins/_'
 import {
@@ -59,12 +59,12 @@ export async function handleEnablePlugin(plugin: AnyPlugin) {
 
     const dependencies = getPluginDependencies(plugin)
     const disabledDeps = dependencies.filter(
-        dep => !isPluginEnabledInSavedStates(dep),
+        dep => !isPluginEnabledInActiveSlot(dep),
     )
 
     async function action() {
         try {
-            await enablePlugin(plugin, true)
+            await enablePluginInActiveSlot(plugin, true)
         } catch (e) {
             // Requirements not satisfied by native, don't try to start
             showErrorToast(messageOf(e))
@@ -81,9 +81,9 @@ export async function handleEnablePlugin(plugin: AnyPlugin) {
 
 export async function handleDisablePlugin(plugin: AnyPlugin) {
     const dependents = getPluginDependents(plugin, true)
-    const action = () => disablePlugin(plugin)
+    const action = () => disablePluginInActiveSlot(plugin)
 
-    const enabledDeps = dependents.filter(isPluginEnabledInSavedStates)
+    const enabledDeps = dependents.filter(isPluginEnabledInActiveSlot)
 
     if (enabledDeps.length)
         showPluginHasDependentsAlert(plugin, enabledDeps, action)

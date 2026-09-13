@@ -1,4 +1,10 @@
+import { callPluginSystemMethodSync } from './native'
 import type { PluginVersion } from '../types'
+
+export const { storageRootPath, defaultsOnlySlot } = callPluginSystemMethodSync(
+    'revenge.plugins.getConstants',
+    [],
+)
 
 /** Bundle version applied to internal plugins. */
 export const InternalPluginVersion: PluginVersion = (() => {

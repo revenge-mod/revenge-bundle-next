@@ -1,5 +1,5 @@
 import { getInternalPluginMeta, pList } from './registry'
-import { isPluginEnabledInSavedStates } from './state'
+import { isPluginEnabledInActiveSlot } from './state'
 import type { AnyPlugin } from './types'
 
 /**
@@ -23,7 +23,7 @@ export function getPluginDependencies(
             if (dep) {
                 if (
                     !spec.optional ||
-                    (isPluginEnabledInSavedStates(dep) &&
+                    (isPluginEnabledInActiveSlot(dep) &&
                         !unsatisfiedOptionalDependencies.includes(depId))
                 )
                     deps.push(dep)
@@ -59,7 +59,7 @@ export function getPluginDependents(
 ): AnyPlugin[] {
     const { id } = plugin.manifest
     const dependents: AnyPlugin[] = []
-    const enabled = isPluginEnabledInSavedStates(plugin)
+    const enabled = isPluginEnabledInActiveSlot(plugin)
 
     for (const p of pList.values()) {
         const spec = p.manifest.dependencies?.[id]

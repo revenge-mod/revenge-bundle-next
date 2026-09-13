@@ -3,15 +3,11 @@ import { styles } from '@revenge-mod/components/_'
 import FormSwitch from '@revenge-mod/components/FormSwitch'
 import { Design } from '@revenge-mod/discord/design'
 import {
-    isDefaultsOnlyBoot,
     isPluginEssential,
     isPluginPendingUpdate,
     isPluginStartable,
 } from '@revenge-mod/plugins/_'
-import {
-    usePluginEnabled,
-    usePluginEnabledInSavedStates,
-} from '@revenge-mod/plugins/_/react'
+import { usePluginEnabledInActiveSlot } from '@revenge-mod/plugins/_/react'
 import { formatVersion } from '@revenge-mod/plugins/utils'
 import { memo, useCallback, useState } from 'react'
 import { Pressable } from 'react-native'
@@ -137,8 +133,7 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
     plugin: AnyPlugin
     meta: InternalPluginMeta
 }) {
-    const enabled = usePluginEnabled(plugin)
-    const savedEnabled = usePluginEnabledInSavedStates(plugin)
+    const savedEnabled = usePluginEnabledInActiveSlot(plugin)
 
     const {
         manifest: { name, description, version, author, icon },
@@ -201,8 +196,7 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
                     >
                         <InstalledPluginSwitch
                             plugin={plugin}
-                            enabled={enabled}
-                            savedEnabled={savedEnabled}
+                            enabled={savedEnabled}
                             toggleDisabled={toggleDisabled}
                         />
                     </Pressable>
@@ -212,15 +206,14 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
     )
 })
 
+/** The switch answers for the slot the user chose, since that is what toggling it writes. */
 export const InstalledPluginSwitch = memo(function InstalledPluginSwitch({
     plugin,
     enabled,
-    savedEnabled,
     toggleDisabled,
 }: {
     plugin: AnyPlugin
     enabled: boolean
-    savedEnabled: boolean
     toggleDisabled: boolean
 }) {
     return (
@@ -233,7 +226,7 @@ export const InstalledPluginSwitch = memo(function InstalledPluginSwitch({
                     : handleDisablePlugin(plugin)
                 ).catch(e => showErrorToast(messageOf(e)))
             }}
-            value={isDefaultsOnlyBoot ? savedEnabled : enabled}
+            value={enabled}
         />
     )
 })

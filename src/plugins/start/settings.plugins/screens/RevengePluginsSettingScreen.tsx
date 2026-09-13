@@ -10,7 +10,7 @@ import { reloadApp } from '@revenge-mod/modules/native/app'
 import {
     getInternalPluginMeta,
     isDefaultsOnlyBoot,
-    isPluginEnabledInSavedStates,
+    isPluginEnabledInActiveSlot,
     isPluginEssential,
     isPluginInternal,
     isPluginPendingReload,
@@ -59,11 +59,11 @@ const SearchDebounceTime = 100
 const Filters: FilterAndSortActionSheetProps['filters'] = {
     Enabled: {
         icon: getAssetIdByName('CircleCheckIcon')!,
-        filter: plugin => isPluginEnabledInSavedStates(plugin),
+        filter: plugin => isPluginEnabledInActiveSlot(plugin),
     },
     Disabled: {
         icon: getAssetIdByName('CircleXIcon')!,
-        filter: plugin => !isPluginEnabledInSavedStates(plugin),
+        filter: plugin => !isPluginEnabledInActiveSlot(plugin),
     },
     'Has Errors': {
         icon: getAssetIdByName('CircleErrorIcon')!,
@@ -100,9 +100,9 @@ const Sorts = {
     'Enabled first': [
         getAssetIdByName('CircleCheckIcon')!,
         (a, b) =>
-            isPluginEnabledInSavedStates(a) === isPluginEnabledInSavedStates(b)
+            isPluginEnabledInActiveSlot(a) === isPluginEnabledInActiveSlot(b)
                 ? a.manifest.name.localeCompare(b.manifest.name)
-                : isPluginEnabledInSavedStates(a)
+                : isPluginEnabledInActiveSlot(a)
                   ? -1
                   : 1,
     ],

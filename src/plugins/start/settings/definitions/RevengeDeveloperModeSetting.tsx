@@ -1,8 +1,8 @@
 import TableRowAssetIcon from '@revenge-mod/components/TableRowAssetIcon'
 import { ToastActionCreators } from '@revenge-mod/discord/actions'
 import {
-    disablePlugin,
-    enablePlugin,
+    disablePluginInActiveSlot,
+    enablePluginInActiveSlot,
     isDefaultsOnlyBoot,
     pList,
     runPluginLate,
@@ -29,10 +29,10 @@ const RevengeDeveloperModeSetting: SettingsItem = {
         if (!plugin) return
 
         if (enabled)
-            enablePlugin(plugin, true)
+            enablePluginInActiveSlot(plugin, true)
                 .then(() => runPluginLate(plugin))
                 .catch(showFailureToast)
-        else disablePlugin(plugin).catch(showFailureToast)
+        else disablePluginInActiveSlot(plugin).catch(showFailureToast)
     },
 }
 

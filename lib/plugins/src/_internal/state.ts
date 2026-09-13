@@ -1,56 +1,78 @@
 /**
- * Two things are tracked separately:
- * - saved: what is on disk, and what applies on the next boot. The UI edits this.
- * - session: what is true for the plugins running right now.
+ * Plugin flags, per slot.
  *
- * On a normal boot they are the same thing. During a defaults-only boot the session runs on defaults.
- * Each states have different apply functions and listeners.
+ * A slot is a named set of plugin flags:
+ * - {@link ActiveSlot}: the slot the user chose. The UI reads and edits it.
+ * - {@link BootSlot}: the slot this boot runs on. `meta.flags` of a running plugin is this one.
+ *
+ * Both IDs are the same on a normal boot. However, a defaults-only boot sets {@link BootSlot} to an ephemeral slot.
  */
 
 import { registerJSMethod } from '@revenge-mod/modules/native'
 import { exists, rm } from '@revenge-mod/modules/native/fs'
 import { pluginStorageDirFor } from '../constants'
-import { PluginFlags, PluginStatus as Status } from './constants'
+import {
+    defaultsOnlySlot,
+    PluginFlags,
+    PluginStatus as Status,
+} from './constants'
 import { pEmitter } from './emitter'
 import { stopPlugin } from './lifecycles'
 import { callPluginSystemMethod, callPluginSystemMethodSync } from './native'
-import { isPluginEnabled } from './predicates'
 import { getInternalPluginMeta, pList } from './registry'
 import * as store from './store'
 import type { Plugin, PluginManifest } from '../types'
 import type { PluginSystemErrorPayload } from './errors'
-import type {
-    AnyPlugin,
-    PersistedPluginStates,
-    PluginStateObject,
-} from './types'
+import type { AnyPlugin, PluginSlotStates, PluginStateObject } from './types'
 
 const Flag = PluginFlags
-/** Flags sent from native that should be persisted. */
+/** Flags native persists, so a push from it is the whole answer for them. */
 const PersistedFlags = Flag.Enabled | Flag.RequiredByUser
 
-const SessionStateMethod = 'revenge.plugins.states.update'
-const SavedStateMethod = 'revenge.plugins.states.updateSaved'
+const StateUpdateMethod = 'revenge.plugins.states.update'
 
-const persisted: PersistedPluginStates = callPluginSystemMethodSync(
+const slotInfo = callPluginSystemMethodSync(
+    'revenge.plugins.states.getSlots',
+    [],
+)
+const slotStates: PluginSlotStates = callPluginSystemMethodSync(
     'revenge.plugins.states.read',
     [],
 )
 
-export const InitialPersistedStates = persisted.states
-/** Whether boot ignores saved states to load default plugins only. */
-export const isDefaultsOnlyBoot = persisted.savedStates != null
+/** Slot the user chose. The UI reads and edits it. */
+export const ActiveSlot = slotInfo.active
+/** Slot this boot runs on. */
+export const BootSlot = slotInfo.oneShot ?? slotInfo.active
+/** Whether boot ignores the chosen slot to load default plugins only. */
+export const isDefaultsOnlyBoot = BootSlot === defaultsOnlySlot
 
-export function isPluginEnabledInSavedStates(plugin: AnyPlugin): boolean {
-    const saved = store.getSavedFlags(plugin.manifest.id)
-    return saved === undefined
-        ? isPluginEnabled(plugin)
-        : Boolean(saved & Flag.Enabled)
+export const BootStates = slotStates[BootSlot]
+
+/// HYDRATION
+
+const hydrated: Record<string, Record<string, number>> = {}
+for (const slot in slotStates) {
+    const flags: Record<string, number> = {}
+    for (const id in slotStates[slot])
+        flags[id] = pluginStateToFlags(slotStates[slot]![id]!)
+    hydrated[slot] = flags
+}
+hydrated[ActiveSlot] ??= {}
+hydrated[BootSlot] ??= {}
+store.hydrateSlots(hydrated, ActiveSlot, BootSlot)
+
+/// METHODS
+
+export function isPluginEnabledInActiveSlot(plugin: AnyPlugin): boolean {
+    return Boolean(
+        store.getFlags(ActiveSlot, plugin.manifest.id) & Flag.Enabled,
+    )
 }
 
-/** Removes boot snapshot entry, allowing reinstalled plugin to register with default state. */
-export function forgetInitialPluginState(id: PluginManifest['id']) {
-    delete InitialPersistedStates[id]
+/** Removes a snapshotted boot state, allowing reinstalled plugin to register with default state. */
+export function forgetBootPluginState(id: PluginManifest['id']) {
+    delete BootStates[id]
 }
 
 export function pluginStateToFlags(state: PluginStateObject): number {
@@ -71,28 +93,13 @@ export function flagsToPluginState(flags: number): PluginStateObject {
     }
 }
 
-// The saved setup is reactive, so the UI re-renders when it changes during a defaults-only boot.
-if (persisted.savedStates) {
-    const saved: Record<string, number> = {}
-    for (const id in persisted.savedStates)
-        saved[id] = pluginStateToFlags(persisted.savedStates[id]!)
+/// EVENTS
 
-    store.hydrateSavedFlags(saved)
-}
-
-registerJSMethod(SessionStateMethod, (id, state) => {
-    applySessionFlags(
-        id as PluginManifest['id'],
-        pluginStateToFlags(state as PluginStateObject),
-    )
-})
-
-registerJSMethod(SavedStateMethod, (id, state) => {
+registerJSMethod(StateUpdateMethod, (slot, id, state) => {
     const flags = pluginStateToFlags(state as PluginStateObject)
 
-    if (isDefaultsOnlyBoot) applySavedFlags(id as PluginManifest['id'], flags)
-    // Outside a defaults-only boot, session == saved
-    else applySessionFlags(id as PluginManifest['id'], flags)
+    if (slot === BootSlot) applyBootFlags(id as PluginManifest['id'], flags)
+    else applySlotFlags(slot as string, id as PluginManifest['id'], flags)
 })
 
 registerJSMethod(
@@ -106,7 +113,11 @@ registerJSMethod(
     },
 )
 
-async function applySessionFlags(id: PluginManifest['id'], flags: number) {
+/**
+ * Applies boot flags to a plugin. If the plugin is running, it may be stopped if it is being disabled.
+ * Flags that are not persisted in native (JS-only flags) are preserved.
+ */
+export async function applyBootFlags(id: PluginManifest['id'], flags: number) {
     const plugin = pList.get(id)
     if (!plugin) return
 
@@ -121,20 +132,26 @@ async function applySessionFlags(id: PluginManifest['id'], flags: number) {
         if (meta.status && !(meta.status & Status.Stopping))
             await stopPlugin(plugin)
 
+    // State update is handled in the meta.flags setter
     meta.flags = flags
 }
 
-function applySavedFlags(id: PluginManifest['id'], flags: number) {
+/** Applies flags to a plugin in a specific slot. */
+export function applySlotFlags(
+    slot: string,
+    id: PluginManifest['id'],
+    flags: number,
+) {
     const plugin = pList.get(id)
     if (!plugin) return
-    if (store.getSavedFlags(id) === flags) return
+    if (store.getFlags(slot, id) === flags) return
 
-    store.setSavedFlags(id, flags)
+    store.setFlags(slot, id, flags)
     pEmitter.emit('stateUpdate', plugin)
 }
 
 /**
- * Persists enabled state to native and syncs saved states.
+ * Persists enabled state to native.
  *
  * Throws `PluginSystemError` when native rejects state change (e.g. `DEPENDENCIES_UNSATISFIED`).
  */
@@ -148,15 +165,6 @@ export async function writePluginEnabledState(
         enabled,
         requiredByUser,
     ])
-
-    // Copy what native just persisted, so the UI follows the saved setup, not the session
-    if (isDefaultsOnlyBoot)
-        store.setSavedFlags(
-            plugin.manifest.id,
-            enabled
-                ? Flag.Enabled | (requiredByUser ? Flag.RequiredByUser : 0)
-                : 0,
-        )
 }
 
 /** Deletes plugin storage directory on filesystem. */
@@ -166,19 +174,36 @@ export async function deleteStorageForPlugin(plugin: Plugin<any, any>) {
     if (await exists(dir)) await rm(dir)
 }
 
+/**
+ * Selects the slot for the next boot.
+ *
+ * @param oneShot Applies to the next boot only.
+ */
+export function setActiveSlot(slot: string, oneShot?: boolean) {
+    callPluginSystemMethodSync('revenge.plugins.states.setActiveSlot', [
+        slot,
+        oneShot,
+    ])
+}
+
 /** Requests defaults-only mode for subsequent boot. */
 export function requestNextBootDefaultsOnly() {
-    callPluginSystemMethodSync(
-        'revenge.plugins.states.requestNextBootDefaultsOnly',
-        [],
-    )
+    setActiveSlot(defaultsOnlySlot, true)
 }
 
 declare module '@revenge-mod/modules/native' {
     interface NativeMethods {
         'revenge.plugins.startNative': [[id: PluginManifest['id']], null]
-        'revenge.plugins.states.read': [[], PersistedPluginStates]
-        'revenge.plugins.states.requestNextBootDefaultsOnly': [[], void]
+        /** Flags of every loaded slot. */
+        'revenge.plugins.states.read': [[], PluginSlotStates]
+        'revenge.plugins.states.getSlots': [
+            [],
+            { active: string; oneShot?: string; slots: string[] },
+        ]
+        'revenge.plugins.states.setActiveSlot': [
+            [slot: string, oneShot?: boolean],
+            null,
+        ]
         /**
          * Persists plugin enabled state. Rejects with `DEPENDENCIES_UNSATISFIED` when required
          * dependencies are missing, disabled, or incompatible.
@@ -191,9 +216,9 @@ declare module '@revenge-mod/modules/native' {
             ],
             null,
         ]
-        /** JS reporting the flags of a running plugin. Answers with them. */
+        /** JS reporting the flags it changed in a slot. Answers with them. */
         'revenge.plugins.states.update': [
-            [id: PluginManifest['id'], state: PluginStateObject],
+            [slot: string, id: PluginManifest['id'], state: PluginStateObject],
             PluginStateObject,
         ]
     }
