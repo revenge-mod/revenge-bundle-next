@@ -7,21 +7,25 @@ import {
 import { ReactJSXRuntimeModuleId, ReactModuleId } from '@revenge-mod/react'
 import { proxify } from '@revenge-mod/utils/proxy'
 
-const { loose, relative } = withDependencies
+const { partial, relative } = withDependencies
 
 export let ReactNavigationNative: typeof import('@react-navigation/native') =
     proxify(
         () => {
+            const [, _createClassModuleId] = lookupModule(
+                withName('_createClass'),
+            )
+            const [, _classCallCheckModuleId] = lookupModule(
+                withName('_classCallCheck'),
+            )
+
             const [module] = lookupModule(
                 withProps<typeof ReactNavigationNative>('useLinkTo').and(
                     withDependencies(
-                        loose([
+                        partial([
                             [],
-                            loose([
-                                [
-                                    withName('_createClass'),
-                                    withName('_classCallCheck'),
-                                ],
+                            partial([
+                                [_createClassModuleId, _classCallCheckModuleId],
                             ]),
                         ]),
                     ),
@@ -39,13 +43,32 @@ export let ReactNavigationStack: typeof import('@react-navigation/stack') =
     proxify(
         () => {
             const firstDep = relative.withDependencies(
-                loose([[[]], ReactModuleId, ReactJSXRuntimeModuleId]),
+                partial([
+                    ReactModuleId,
+                    ReactJSXRuntimeModuleId,
+                    null,
+                    relative(2, true),
+                ]),
+                1,
+            )
+
+            // TODO: Remove once stable >344201
+            const firstDepLegacy = relative.withDependencies(
+                partial([[[]], ReactModuleId, ReactJSXRuntimeModuleId]),
                 1,
             )
 
             const [module] = lookupModule(
                 withProps<typeof ReactNavigationStack>('StackView')
-                    .and(withDependencies(loose([firstDep, null, relative(2)])))
+                    .and(
+                        withDependencies(
+                            partial([firstDep, null, relative(2)]),
+                        ).or(
+                            withDependencies(
+                                partial([firstDepLegacy, null, relative(2)]),
+                            ),
+                        ),
+                    )
                     .keyAs(
                         'revenge.externals.ReactNavigation.ReactNavigationStack',
                     ),

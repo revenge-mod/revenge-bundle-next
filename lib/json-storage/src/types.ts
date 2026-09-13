@@ -3,7 +3,7 @@ import type { JsonStorage, JsonStorageOptions } from '.'
 
 declare module '@revenge-mod/plugins/types' {
     export interface UnscopedPreInitPluginApi {
-        jsonStorage: typeof import('.')
+        jsonStorage: typeof import('@revenge-mod/json-storage')
     }
 
     export interface PluginApiExtensionsOptions {

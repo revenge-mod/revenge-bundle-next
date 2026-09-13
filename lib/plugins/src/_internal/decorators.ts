@@ -51,8 +51,11 @@ export function decoratePluginApi(
             const { handleError } = getInternalPluginMeta(dep)
 
             try {
-                for (const decorator of decorators)
-                    plugin.api.cleanup(decorator(plugin, meta.options))
+                for (const decorator of decorators) {
+                    const cleanup = decorator(plugin, meta.options)
+                    if (typeof cleanup === 'function')
+                        plugin.api.cleanup(cleanup)
+                }
             } catch (e) {
                 handleError(e)
                 handleDependentError(e)

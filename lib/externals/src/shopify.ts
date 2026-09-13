@@ -27,21 +27,7 @@ export let FlashList: typeof import('@shopify/flash-list') = proxify(
                         null,
                         // TODO: Decouple?
                         ImportTrackerModuleId,
-                    ]).or(
-                        // TODO: Remove when stable > 340206+
-                        // [React, JSXRuntime, (Platform), (FlashListExports), (Reanimated), (RNBottomSheet), (BottomSheet), ImportTracker]
-                        withDependencies([
-                            ReactModuleId,
-                            ReactJSXRuntimeModuleId,
-                            null,
-                            null,
-                            null,
-                            null,
-                            null,
-                            // TODO: Decouple?
-                            ImportTrackerModuleId,
-                        ]),
-                    ),
+                    ]),
                 )
                 .keyAs('revenge.externals.Shopify.FlashList'),
         )

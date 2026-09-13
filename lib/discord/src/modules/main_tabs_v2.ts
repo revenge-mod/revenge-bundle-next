@@ -7,7 +7,7 @@ import { proxify } from '@revenge-mod/utils/proxy'
 import { ImportTrackerModuleId } from '../common/import-tracker'
 import type { NavigationContainerRef } from '@react-navigation/core'
 
-const { loose, relative } = withDependencies
+const { partial, relative } = withDependencies
 
 export interface RootNavigationRef {
     getRootNavigationRef<
@@ -22,10 +22,10 @@ export let RootNavigationRef: RootNavigationRef = proxify(
             withProps<RootNavigationRef>('getRootNavigationRef')
                 .and(
                     withDependencies([
-                        loose([
+                        partial([
                             relative.withDependencies([], 1),
                             relative.withDependencies(
-                                loose([relative(1), relative(2)]),
+                                partial([relative(1), relative(2)]),
                                 2,
                             ),
                         ]),

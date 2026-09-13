@@ -1,21 +1,14 @@
 import { DispatcherModuleId } from '@revenge-mod/discord/common/flux'
 import { ImportTrackerModuleId } from '@revenge-mod/discord/common/import-tracker'
+import { lookupModule, waitForModules } from '@revenge-mod/modules/finders'
 import {
-    lookupModule,
-    lookupModules,
-    waitForModules,
-} from '@revenge-mod/modules/finders'
-import {
+    anyOf,
     createFilterGenerator,
     withDependencies,
 } from '@revenge-mod/modules/finders/filters'
 import { isModuleExportBad } from '@revenge-mod/modules/metro/utils'
-import { asap, noop } from '@revenge-mod/utils/callback'
-import {
-    cache,
-    cacheFilterResultForId,
-    Uncached,
-} from '../../../modules/src/caches'
+import { noop } from '@revenge-mod/utils/callback'
+import { cacheFilterResultForId } from '../../../modules/src/caches'
 import { FilterResultFlags } from '../../../modules/src/finders/_internal'
 import { FilterScopes } from '../../../modules/src/finders/filters/constants'
 import type {
@@ -63,11 +56,22 @@ export function getStore<T>(
 
 /// STORE FILTERING
 
-const { last, includes } = withDependencies
+const { last, unordered, ordered } = withDependencies
 
-// The import tracker is checked first, as it is far cheaper than resolving includes
+// TODO: This currently introduces too many false positives
+// Assumption is that modules that require Flux stores are getting initialized by the second anyOf filter
+// The import tracker is checked first, as it is far cheaper than resolving an unordered set
 const withFluxStoreDeps = withDependencies(last([ImportTrackerModuleId])).and(
-    withDependencies(includes([DispatcherModuleId])),
+    anyOf(
+        // For general stores:
+        // With DispatcherModuleId anywhere
+        withDependencies(unordered([DispatcherModuleId])),
+        // For LibdiscoreStore and MobileCacheSnapshotStore based:
+        // With DispatcherModuleId anywhere followed by ImportTrackerModuleId second level deep
+        withDependencies(
+            unordered([ordered([DispatcherModuleId, ImportTrackerModuleId])]),
+        ),
+    ),
 )
 
 export type WithStore = FilterGenerator<
@@ -137,10 +141,11 @@ waitForModules(withStore(), (store, id) => {
     Stores[name] = store
 })
 
-if (cache === Uncached)
-    asap(() => {
-        const lookup = lookupModules(withStore())
+/** see TODO at {@link withFluxStoreDeps} */
+// if (cache === Uncached)
+//     asap(() => {
+//         const lookup = lookupModules(withStore())
 
-        // Initialize all stores
-        for (const _ of lookup);
-    })
+//         // Initialize all stores
+//         for (const _ of lookup);
+//     })

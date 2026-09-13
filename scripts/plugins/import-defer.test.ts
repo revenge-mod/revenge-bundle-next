@@ -207,21 +207,21 @@ describe('importDefer', () => {
             expect(run('function f(ns) {}')).toBe(expected('function f(ns) {}'))
         })
 
-        // // Known limitation: references are resolved structurally, without scope
-        // // analysis, so an inner binding of the same name is rewritten as though
-        // // it were the import. No module currently shadows a deferred namespace.
-        // // Remove `.failing` once scope tracking lands.
-        // test.failing('should leave references to a shadowing binding alone', () => {
-        //     expect(run('function f(ns) { return ns.foo }')).toBe(
-        //         expected('function f(ns) { return ns.foo }'),
-        //     )
-        // })
+        // Known limitation: references are resolved structurally, without scope
+        // analysis, so an inner binding of the same name is rewritten as though
+        // it were the import. No module currently shadows a deferred namespace.
+        // Remove `.fails` once scope tracking lands.
+        test.fails('should leave references to a shadowing binding alone', () => {
+            expect(run('function f(ns) { return ns.foo }')).toBe(
+                expected('function f(ns) { return ns.foo }'),
+            )
+        })
 
-        // test.failing('should leave a shadowing destructuring pattern alone', () => {
-        //     // Currently emits `const { ns: ns() }`, which is a syntax error.
-        //     expect(run('function f(o) { const { ns } = o }')).toBe(
-        //         expected('function f(o) { const { ns } = o }'),
-        //     )
-        // })
+        test.fails('should leave a shadowing destructuring pattern alone', () => {
+            // Currently emits `const { ns: ns() }`, which is a syntax error.
+            expect(run('function f(o) { const { ns } = o }')).toBe(
+                expected('function f(o) { const { ns } = o }'),
+            )
+        })
     })
 })

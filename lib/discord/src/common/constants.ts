@@ -5,15 +5,15 @@ import {
 } from '@revenge-mod/modules/finders/filters'
 import type { DiscordModules } from '@revenge-mod/discord/types'
 
-const { loose, relative } = withDependencies
+const { partial, relative } = withDependencies
 
 export const [Constants, ConstantsModuleId] = lookupModule(
     withProps<DiscordModules.Constants>('ME')
         .and(
             withDependencies(
-                loose([
+                partial([
                     null,
-                    relative.withDependencies(loose([relative(2, true)]), 1),
+                    relative.withDependencies(partial([relative(2, true)]), 1),
                 ]),
             ),
         )

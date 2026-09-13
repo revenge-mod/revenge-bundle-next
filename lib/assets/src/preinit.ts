@@ -1,4 +1,8 @@
-import { lookupModules, waitForModules } from '@revenge-mod/modules/finders'
+import {
+    lookupModule,
+    lookupModules,
+    waitForModules,
+} from '@revenge-mod/modules/finders'
 import {
     withDependencies,
     withName,
@@ -17,16 +21,6 @@ import type { ReactNative } from '@revenge-mod/react/types'
 import type { Asset, PackagerAsset } from './types'
 
 const { relative } = withDependencies
-
-// https://github.com/facebook/react-native/blob/main/packages/react-native/Libraries/Image/AssetSourceResolver.js
-const withAssetSourceResolver = withDependencies([
-    withName('_classCallCheck'),
-    withName('_createClass'),
-    relative(1),
-    relative(2),
-    null,
-    null,
-])
 
 const cachedOnly = { cached: true }
 
@@ -94,6 +88,21 @@ const unsubAR = waitForModules(
 export let AssetsRegistryModuleId: Metro.ModuleID | undefined
 export let AssetsRegistry: ReactNative.AssetsRegistry = proxify(() => {
     if (AssetsRegistryModuleId !== undefined) return __r(AssetsRegistryModuleId)
+
+    const [, _classCallCheckModuleId] = lookupModule(
+        withName('_classCallCheck'),
+    )
+    const [, _createClassModuleId] = lookupModule(withName('_createClass'))
+
+    // https://github.com/facebook/react-native/blob/main/packages/react-native/Libraries/Image/AssetSourceResolver.js
+    const withAssetSourceResolver = withDependencies([
+        _classCallCheckModuleId,
+        _createClassModuleId,
+        relative(1),
+        relative(2),
+        null,
+        null,
+    ])
 
     for (const [, id] of lookupModules(withDependencies([[]]), {
         initialize: false,

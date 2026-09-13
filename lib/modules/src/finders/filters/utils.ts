@@ -1,7 +1,7 @@
 import { isModuleInitialized } from '@revenge-mod/modules/metro/utils'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import { withProps } from '.'
-import { and, or } from './composite'
+import { allOf, anyOf } from './composite'
 import { FilterScopes } from './constants'
 import type { Metro } from '@revenge-mod/modules/types'
 import type {
@@ -97,10 +97,10 @@ const Helpers: FilterHelpers = Object.setPrototypeOf(
             return this
         },
         and(filter) {
-            return and(this, filter)
+            return allOf(this, filter)
         },
         or(filter) {
-            return or(this, filter)
+            return anyOf(this, filter)
         },
         new() {
             const newFilter = ((
@@ -197,6 +197,11 @@ export function createFilterGenerator<A extends any[]>(
         filter_.scopes = isDefaultScopesStatic
             ? defaultScopes
             : defaultScopes(args)
+
+        Object.defineProperty(filter_, 'name', {
+            value: `Filter(${filter_.key})`,
+        })
+
         return Object.setPrototypeOf(filter_, Helpers)
     }
 

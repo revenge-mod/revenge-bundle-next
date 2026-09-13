@@ -33,6 +33,8 @@ export interface PreInitPluginApiUtils {
     proxy: typeof import('@revenge-mod/utils/proxy')
     tree: typeof import('@revenge-mod/utils/tree')
     react: typeof import('@revenge-mod/utils/react')
+    /** This API is available in and after the `init` phase.  */
+    discord: unknown
 }
 
 export interface PluginApiUtils extends PreInitPluginApiUtils {
