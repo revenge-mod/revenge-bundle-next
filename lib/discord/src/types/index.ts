@@ -418,6 +418,16 @@ export namespace DiscordModules {
         // export type FormRadio = FC
         // export type FormCheckbox = FC
 
+        export interface CheckboxProps {
+            checked: boolean
+            description?: string
+            label?: string
+            onToggle?: (checked: boolean) => void
+            required?: boolean
+        }
+
+        export type Checkbox = FC<CheckboxProps>
+
         export interface ActionSheetProps {
             scrollable?: boolean
             startExpanded?: boolean

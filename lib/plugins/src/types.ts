@@ -1,3 +1,4 @@
+import type { PluginApiComponents } from '@revenge-mod/components/types'
 import type { FunctionComponent } from 'react'
 import type {
     InitPluginApiDiscord,
@@ -31,7 +32,7 @@ export interface UnscopedPreInitPluginApi<
 export interface UnscopedInitPluginApi<
     O extends PluginApiExtensionsOptions = PluginApiExtensionsOptions,
 > extends UnscopedPreInitPluginApi<O> {
-    components: typeof import('@revenge-mod/components')
+    components: PluginApiComponents
     discord: InitPluginApiDiscord
 }
 

@@ -1,8 +1,9 @@
-import { lookupModule, lookupModules } from '@revenge-mod/modules/finders'
+import { lookupModule } from '@revenge-mod/modules/finders'
 import {
     anyOf,
     withDependencies,
     withProps,
+    withSingleProp,
 } from '@revenge-mod/modules/finders/filters'
 import {
     ReactJSXRuntimeModuleId,
@@ -56,45 +57,43 @@ export let Design: Design = proxify(
 
 // design/components/Forms/native/FormSwitch.native.tsx
 export let FormSwitch: DiscordModules.Components.FormSwitch = proxify(() => {
-    for (const [, id] of lookupModules(
-        withDependencies(
-            partial([
-                null,
-                ReactModuleId,
-                ReactNativeModuleId,
-                ReactJSXRuntimeModuleId,
-            ]),
-        )
+    const [module] = lookupModule(
+        withSingleProp('FormSwitch')
             .and(
-                anyOf(
-                    withDependencies(
-                        ordered([
-                            TokensModuleId,
-                            ordered([relative(1), ImportTrackerModuleId]),
-                            [ImportTrackerModuleId],
-                            ImportTrackerModuleId,
-                        ]),
-                    ),
-                    // TODO: Remove once stable > 345205
-                    withDependencies(
-                        last([
-                            relative(1),
-                            relative(2),
-                            null,
-                            null,
-                            ImportTrackerModuleId,
-                        ]),
+                withDependencies(
+                    partial([
+                        null,
+                        ReactModuleId,
+                        ReactNativeModuleId,
+                        ReactJSXRuntimeModuleId,
+                    ]),
+                ).and(
+                    anyOf(
+                        withDependencies(
+                            ordered([
+                                TokensModuleId,
+                                ordered([relative(1), ImportTrackerModuleId]),
+                                [ImportTrackerModuleId],
+                                ImportTrackerModuleId,
+                            ]),
+                        ),
+                        // TODO: Remove once stable > 345205
+                        withDependencies(
+                            last([
+                                relative(1),
+                                relative(2),
+                                null,
+                                null,
+                                ImportTrackerModuleId,
+                            ]),
+                        ),
                     ),
                 ),
             )
             .keyAs('revenge.discord.design.FormSwitch'),
-        {
-            initialize: false,
-        },
-    )) {
-        const FormSwitch_ = __r(id)!.FormSwitch
-        if (FormSwitch_) return (FormSwitch = FormSwitch_)
-    }
+    )
+
+    if (module) return (FormSwitch = module.FormSwitch)
 })!
 
 export interface Design {
@@ -112,6 +111,7 @@ export interface Design {
     AlertModal: DiscordModules.Components.AlertModal
     Button: DiscordModules.Components.Button
     Card: DiscordModules.Components.Card
+    Checkbox: DiscordModules.Components.Checkbox
     ContextMenu: DiscordModules.Components.ContextMenu
     ContextMenuItem: DiscordModules.Components.ContextMenuItem
     FloatingActionButton: DiscordModules.Components.FloatingActionButton
