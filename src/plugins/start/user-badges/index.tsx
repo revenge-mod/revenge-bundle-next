@@ -11,6 +11,7 @@ import { insteadJSX } from '@revenge-mod/react/jsx-runtime'
 import { createElement, isValidElement } from 'react'
 import { Image } from 'react-native'
 import { Badges, UsersWithBadges } from './constants'
+import manifest from './manifest.json'
 import { styles, useBadgeStyles } from './styles'
 import { mapElementTree, patchRender } from './utils'
 import type { FC, ReactElement, ReactNode } from 'react'
@@ -48,13 +49,7 @@ const DummyBadges = [
 ] as unknown as ProfileBadgeRowsProps['badges']
 
 registerInternalPlugin(
-    {
-        id: 'revenge.user-badges',
-        name: 'User Badges',
-        description: 'Badges for Revenge contributors and sponsors.',
-        author: 'Revenge',
-        icon: 'ShieldUserIcon',
-    },
+    manifest,
     {
         start({ cleanup }) {
             const unsub = getModules(

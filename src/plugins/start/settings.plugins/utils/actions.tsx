@@ -1,11 +1,14 @@
 import {
     disablePluginInActiveSlot,
     enablePluginInActiveSlot,
+    getLinkedOptionalDependents,
     getMissingPluginDependencies,
     getPluginDependencies,
     getPluginDependents,
+    getRelinkableDependents,
     isPluginEnabledInActiveSlot,
     runPluginLate,
+    stopPlugin,
 } from '@revenge-mod/plugins/_'
 import {
     installFromRepo,
@@ -16,6 +19,7 @@ import {
     showPluginHasDependenciesAlert,
     showPluginHasDependentsAlert,
     showPluginMissingDependenciesAlert,
+    showPluginRelinkAlert,
 } from './alerts'
 import { confirmPlan, messageOf, showErrorToast } from './repos'
 import type { AnyPlugin } from '@revenge-mod/plugins/_'
@@ -72,6 +76,22 @@ export async function handleEnablePlugin(plugin: AnyPlugin) {
         }
 
         await runPluginLate(plugin).catch(noop)
+
+        // Dependents started while this was disabled aren't linked to this plugin.
+        // Only a restart will relink.
+        const relinkable = getRelinkableDependents(plugin)
+        if (relinkable.length)
+            showPluginRelinkAlert(plugin, relinkable, async restart => {
+                await Promise.all(
+                    relinkable
+                        .filter(dep => restart.has(dep.manifest.id))
+                        .map(dep =>
+                            stopPlugin(dep)
+                                .then(() => runPluginLate(dep))
+                                .catch(noop),
+                        ),
+                )
+            })
     }
 
     if (disabledDeps.length)
@@ -80,12 +100,27 @@ export async function handleEnablePlugin(plugin: AnyPlugin) {
 }
 
 export async function handleDisablePlugin(plugin: AnyPlugin) {
-    const dependents = getPluginDependents(plugin, true)
-    const action = () => disablePluginInActiveSlot(plugin)
+    const optionals = getLinkedOptionalDependents(plugin)
+    const required = getPluginDependents(plugin)
 
-    const enabledDeps = dependents.filter(isPluginEnabledInActiveSlot)
+    const action = async (keepRunning: Set<string>) => {
+        await disablePluginInActiveSlot(plugin)
 
-    if (enabledDeps.length)
-        showPluginHasDependentsAlert(plugin, enabledDeps, action)
-    else await action()
+        await Promise.all(
+            optionals.map(dep => {
+                if (!keepRunning.has(dep.manifest.id))
+                    return disablePluginInActiveSlot(dep).catch(noop)
+
+                // Restarts without this plugin, so it links one fewer dependency than before.
+                return runPluginLate(dep).catch(noop)
+            }),
+        )
+    }
+
+    const enabledRequired = required.filter(isPluginEnabledInActiveSlot)
+
+    // Required dependents will be disabled via cascade. Optionals can be restarted.
+    if (enabledRequired.length || optionals.length)
+        showPluginHasDependentsAlert(plugin, enabledRequired, optionals, action)
+    else await action(new Set())
 }

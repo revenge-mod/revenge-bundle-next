@@ -5,6 +5,7 @@ import {
     registerInternalPlugin,
 } from '@revenge-mod/plugins/_'
 import { BuildEnvironment, FullVersion } from '~/constants'
+import manifest from './manifest.json'
 
 if (__DEV__) {
     AppStartPerformance.mark('👊', 'Plugins register')
@@ -14,13 +15,7 @@ if (__DEV__) {
     let tsInit: number
 
     registerInternalPlugin(
-        {
-            id: 'revenge.logging',
-            name: 'Logging',
-            description: 'Logs assisting Revenge developers.',
-            author: 'Revenge',
-            icon: 'PaperIcon',
-        },
+        manifest,
         {
             preInit() {
                 tsPreInit = performance.now()

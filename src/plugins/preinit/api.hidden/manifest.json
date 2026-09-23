@@ -1,0 +1,7 @@
+{
+  "id": "revenge.api.hidden",
+  "name": "Developer Mode",
+  "description": "Exposes internal Revenge APIs for debugging.",
+  "author": "Revenge",
+  "icon": "WrenchIcon"
+}

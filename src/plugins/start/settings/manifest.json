@@ -1,0 +1,7 @@
+{
+  "id": "revenge.settings",
+  "name": "Settings",
+  "description": "Settings UI for Revenge.",
+  "author": "Revenge",
+  "icon": "SettingsIcon"
+}

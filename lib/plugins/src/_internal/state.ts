@@ -193,7 +193,13 @@ export function requestNextBootDefaultsOnly() {
 
 declare module '@revenge-mod/modules/native' {
     interface NativeMethods {
-        'revenge.plugins.startNative': [[id: PluginManifest['id']], null]
+        /**
+         * Starts a plugin's native half, stopping it first if it is running.
+         * Throws with `RELOAD_REQUIRED` when the stop could not undo the plugin cleanly.
+         */
+        'revenge.plugins.restart': [[id: PluginManifest['id']], null]
+        /** Stops a plugin's native half. */
+        'revenge.plugins.stop': [[id: PluginManifest['id']], null]
         /** Flags of every loaded slot. */
         'revenge.plugins.states.read': [[], PluginSlotStates]
         'revenge.plugins.states.getSlots': [

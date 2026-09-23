@@ -45,6 +45,8 @@ export function decoratePluginApi(
     const { handleError: handleDependentError } = meta
 
     for (const dep of deps) {
+        meta.linkedDependencies.add(dep.manifest.id)
+
         const decorators = store.get(dep)
 
         if (decorators) {

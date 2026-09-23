@@ -1,9 +1,11 @@
 import { registerJSMethod } from '@revenge-mod/modules/native'
+import { noop } from '@revenge-mod/utils/callback'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import {
     disablePluginInActiveSlot,
     forgetBootPluginState,
     getInternalPluginMeta,
+    getLinkedOptionalDependents,
     InternalPluginFlags,
     isPluginEnabledInActiveSlot,
     PluginFlags,
@@ -11,6 +13,7 @@ import {
     pList,
     registerInternalPlugin,
     registerPlugin,
+    runPluginLate,
     toPluginSystemErrorPayload,
     unregisterPlugin,
 } from '.'
@@ -40,6 +43,7 @@ interface ExternalPlugin {
     failed?: boolean
     /** Plugin provenance. Missing or `repo: null` means sideloaded. */
     source?: PluginSource | null
+    /** Declared optional dependencies native sees installed at an incompatible version. */
     unsatisfiedOptionalDependencies?: string[]
     /** Native boot and validation errors. */
     errors?: PluginSystemErrorPayload[]
@@ -114,6 +118,33 @@ export function registerExternalPlugins() {
         },
     )
 
+    registerJSMethod(
+        'revenge.plugins.events.dependenciesUpdated',
+        (update: {
+            unsatisfiedOptionalDependencies: Record<
+                PluginManifest['id'],
+                PluginManifest['id'][]
+            >
+        }) => {
+            if (__DEV__)
+                nativeLoggingHook(
+                    `\u001b[33mPlugin dependency graph updated: ${JSON.stringify(
+                        update,
+                    )}\u001b[0m`,
+                    1,
+                )
+
+            for (const plugin of pList.values()) {
+                const deps =
+                    update.unsatisfiedOptionalDependencies[plugin.manifest.id]
+                if (deps)
+                    getInternalPluginMeta(
+                        plugin,
+                    ).unsatisfiedOptionalDependencies = new Set(deps)
+            }
+        },
+    )
+
     registerRepositoryEvents()
 
     const externals = callPluginSystemMethodSync('revenge.plugins.list', [])
@@ -121,7 +152,15 @@ export function registerExternalPlugins() {
 
     for (const external of externals)
         try {
-            if (pList.has(external.manifest.id)) continue
+            const known = pList.get(external.manifest.id)
+
+            // JS internal plugins are already registered before we grab native descriptors
+            // so we only apply the descriptors instead of re-registering them.
+            if (known) {
+                applyNativeDescriptor(known, external)
+                continue
+            }
+
             registerExternalPlugin(external)
         } catch (e) {
             nativeLoggingHook(
@@ -131,20 +170,35 @@ export function registerExternalPlugins() {
         }
 }
 
+function applyNativeDescriptor(plugin: AnyPlugin, external: ExternalPlugin) {
+    const meta = getInternalPluginMeta(plugin)
+
+    meta.source = external.source
+    if (external.unsatisfiedOptionalDependencies)
+        meta.unsatisfiedOptionalDependencies = new Set(
+            external.unsatisfiedOptionalDependencies,
+        )
+
+    /** @see {@link PluginFlags.Failed} */
+    if (external.failed) {
+        meta.flags |= PluginFlags.Failed
+        pPending.delete(plugin)
+    }
+
+    if (external.errors?.length)
+        meta.nativeErrors = Object.freeze(external.errors)
+}
+
 /** Registers external plugin instance from native descriptor. */
 export function registerExternalPlugin(external: ExternalPlugin) {
-    const {
-        manifest,
-        script,
-        internal,
-        essential,
-        enabledByDefault,
-        api,
-        failed,
-        source,
-        unsatisfiedOptionalDependencies,
-        errors,
-    } = external
+    const { manifest, script, internal, essential, enabledByDefault, api } =
+        external
+
+    // JS internal plugins data take priority
+    if (internal && pList.has(manifest.id)) {
+        applyNativeDescriptor(pList.get(manifest.id)!, external)
+        return
+    }
 
     const id = internal
         ? registerInternalPlugin(
@@ -161,22 +215,7 @@ export function registerExternalPlugin(external: ExternalPlugin) {
               enabledByDefault ? PluginFlags.Enabled : 0,
           )
 
-    const plugin = pList.get(id)!
-    const meta = getInternalPluginMeta(plugin)
-
-    meta.source = source
-    if (unsatisfiedOptionalDependencies?.length)
-        meta.unsatisfiedOptionalDependencies = Object.freeze(
-            unsatisfiedOptionalDependencies,
-        )
-
-    /** @see {@link PluginFlags.Failed} */
-    if (failed) {
-        meta.flags |= PluginFlags.Failed
-        pPending.delete(plugin)
-    }
-
-    if (errors?.length) meta.nativeErrors = Object.freeze(errors)
+    applyNativeDescriptor(pList.get(id)!, external)
 
     return id
 }
@@ -188,8 +227,15 @@ export async function setUpdatesPaused(plugin: AnyPlugin, paused: boolean) {
     meta.source = newSource
 }
 
-/** Uninstalls external plugin, removing files, state, and runtime registration. */
+/**
+ * Uninstalls an external plugin, removing files, state, and runtime registration.
+ *
+ * Optional dependents stopped by the disable cascade are restarted. Required dependents stay disabled.
+ */
 export async function uninstallExternalPlugin(plugin: AnyPlugin) {
+    // Read before disabling, which would modify the list.
+    const optionals = getLinkedOptionalDependents(plugin)
+
     if (isPluginEnabledInActiveSlot(plugin))
         await disablePluginInActiveSlot(plugin)
 
@@ -201,6 +247,9 @@ export async function uninstallExternalPlugin(plugin: AnyPlugin) {
     forgetBootPluginState(plugin.manifest.id)
 
     unregisterPlugin(plugin)
+
+    // Restart optional dependents that were stopped by cascade.
+    await Promise.all(optionals.map(dep => runPluginLate(dep).catch(noop)))
 }
 
 /** Resyncs plugin source metadata from native registry. */

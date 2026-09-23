@@ -1,0 +1,7 @@
+{
+  "id": "revenge.no-track",
+  "name": "No Track",
+  "description": "Disables Discord and Sentry analytics.",
+  "author": "Revenge",
+  "icon": "AnalyticsIcon"
+}

@@ -18,21 +18,13 @@ import { FullVersion } from '~constants'
 import { cache as assetsCache } from '../../../../lib/assets/src/caches'
 import { cache as modulesCache } from '../../../../lib/modules/src/caches'
 import { mErrorChain } from '../../../../lib/modules/src/metro/runtime'
-import pluginSettings from '../../start/settings'
 import defer * as Alerts from './components/alerts'
 import defer * as ErrorBoundaryScreen from './components/ErrorBoundaryScreen'
+import manifest from './manifest.json'
 import type { Component, ReactNode } from 'react'
 
 registerInternalPlugin(
-    {
-        id: 'revenge.recovery',
-        name: 'Recovery',
-        description:
-            'Handles errors and provides troubleshooting options for Revenge.',
-        author: 'Revenge',
-        icon: 'ShieldIcon',
-        dependencies: { [pluginSettings]: {} },
-    },
+    manifest,
     {
         preInit({ cleanup }) {
             cleanup(freezeDetectionService())

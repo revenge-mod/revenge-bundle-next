@@ -5,15 +5,10 @@ import {
 } from '@revenge-mod/plugins/_'
 import defer * as Discord from './discord'
 import defer * as JsonStorage from './json-storage'
+import manifest from './manifest.json'
 
 registerInternalPlugin(
-    {
-        id: 'revenge.api',
-        name: 'Plugin API',
-        description: 'Provides the Revenge plugin API.',
-        author: 'Revenge',
-        icon: 'PollsIcon',
-    },
+    manifest,
     {
         preInit(api) {
             JsonStorage.preInit(api)

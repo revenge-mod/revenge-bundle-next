@@ -1,5 +1,5 @@
+import { parseBundleVersion } from './manifest'
 import { callPluginSystemMethodSync } from './native'
-import type { PluginVersion } from '../types'
 
 export const { storageRootPath, defaultsOnlySlot } = callPluginSystemMethodSync(
     'revenge.plugins.getConstants',
@@ -7,12 +7,7 @@ export const { storageRootPath, defaultsOnlySlot } = callPluginSystemMethodSync(
 )
 
 /** Bundle version applied to internal plugins. */
-export const InternalPluginVersion: PluginVersion = (() => {
-    const [segments, label] = __BUILD_VERSION__.split('-')
-    const nums = segments.split('.').map(Number)
-    if (!label) return { nums }
-    return { nums, label }
-})()
+export const InternalPluginVersion = parseBundleVersion(__BUILD_VERSION__)
 
 /** Timeout in milliseconds before force-stopping a plugin. */
 export const MaxStopWaitTime = 5000

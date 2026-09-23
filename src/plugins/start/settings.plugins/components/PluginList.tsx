@@ -21,10 +21,11 @@ const gutterCompensation = { margin: -PLUGIN_CARD_HALF_GUTTER }
 export function PluginFlashList({
     plugins,
     onContentSizeChange,
-}: { plugins: AnyPlugin[] } & Pick<
-    FlashListProps<AnyPlugin>,
-    'onContentSizeChange'
->) {
+    actions,
+}: {
+    plugins: AnyPlugin[]
+    actions?: (plugin: AnyPlugin) => React.ReactNode
+} & Pick<FlashListProps<AnyPlugin>, 'onContentSizeChange'>) {
     const hideTooltips = useHidePluginTooltips()
 
     return (
@@ -35,19 +36,21 @@ export function PluginFlashList({
             onScrollBeginDrag={hideTooltips}
             fadingEdgeLength={plugins.length === 1 ? 0 : 16}
             keyExtractor={plugin => plugin.manifest.id}
-            renderItem={({
-                item: {
-                    manifest: { name, description, version, author, icon },
-                },
-            }) => (
-                <PluginCard
-                    name={name}
-                    description={description}
-                    version={formatVersion(version)}
-                    author={author}
-                    icon={icon}
-                />
-            )}
+            renderItem={({ item: plugin }) => {
+                const { name, description, version, author, icon } =
+                    plugin.manifest
+
+                return (
+                    <PluginCard
+                        name={name}
+                        description={description}
+                        version={formatVersion(version)}
+                        author={author}
+                        icon={icon}
+                        actions={actions?.(plugin)}
+                    />
+                )
+            }}
         />
     )
 }

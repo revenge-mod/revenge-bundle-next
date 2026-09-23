@@ -1,3 +1,4 @@
+import { registerJSMethod } from '@revenge-mod/modules/native'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import { sleepReject } from '@revenge-mod/utils/promise'
 import { pUnscopedApi as uapi } from '../apis'
@@ -14,7 +15,11 @@ import {
     pDecoratorsPreInit,
     pDecoratorsStart,
 } from './decorators'
-import { getPluginDependencies, getPluginDependents } from './dependencies'
+import {
+    getLinkedDependents,
+    getPluginDependencies,
+    getPluginDependents,
+} from './dependencies'
 import { computePendingNodes, pListOrdered, pPending } from './dependency-graph'
 import {
     formatPluginSystemErrorPayload,
@@ -28,7 +33,7 @@ import {
     isPluginStopped,
     requirePluginStartableState,
 } from './predicates'
-import { getInternalPluginMeta } from './registry'
+import { getInternalPluginMeta, pList } from './registry'
 import {
     isDefaultsOnlyBoot,
     isPluginEnabledInActiveSlot,
@@ -205,7 +210,7 @@ export async function runPluginLate(plugin: AnyPlugin) {
             .map(async function runLate(plugin) {
                 getInternalPluginMeta(plugin).flags |= PluginFlags.StartedLate
 
-                await callPluginSystemMethod('revenge.plugins.startNative', [
+                await callPluginSystemMethod('revenge.plugins.restart', [
                     plugin.manifest.id,
                 ])
 
@@ -341,8 +346,12 @@ export async function startPlugin(plugin: AnyPlugin) {
     }
 }
 
-/** Stops running plugin, cascading stop to dependents and executing cleanups. */
-export async function stopPlugin(plugin: AnyPlugin) {
+/**
+ * Stops running plugin, cascading stop to linked dependents and executing cleanups.
+ *
+ * @param stopNative Pass `false` when native asked for the stop and will end its own half.
+ */
+export async function stopPlugin(plugin: AnyPlugin, stopNative = true) {
     if (!isPluginEnabled(plugin))
         throw new Error(`Plugin "${plugin.manifest.id}" is not enabled`)
 
@@ -377,11 +386,7 @@ export async function stopPlugin(plugin: AnyPlugin) {
     )
         throw new Error(`Plugin "${id}" is not running`)
 
-    await Promise.all(
-        getPluginDependents(plugin, true).map(
-            dep => !isPluginStopped(dep) && stopPlugin(dep),
-        ),
-    )
+    await Promise.all(getLinkedDependents(plugin).map(dep => stopPlugin(dep)))
 
     meta.status |= Status.Stopping
 
@@ -403,9 +408,21 @@ export async function stopPlugin(plugin: AnyPlugin) {
         meta.apiLevel = PluginApiLevel.None
         meta.promises.length = 0
         meta.cleanups.length = 0
+        meta.linkedDependencies.clear()
         meta.status = 0
     }
+
+    if (stopNative) await callPluginSystemMethod('revenge.plugins.stop', [id])
 }
+
+// Native is stopping a plugin and is waiting on us to stop the JS half , and to cascade.
+registerJSMethod('revenge.plugins.stopping', async (id: string) => {
+    const plugin = pList.get(id)
+    // Native-only plugin, or one JS never started.
+    if (!plugin || isPluginStopped(plugin)) return
+
+    await stopPlugin(plugin, false)
+})
 
 async function cleanupPlugin(meta: InternalPluginMeta) {
     async function handleStopError(e: unknown) {

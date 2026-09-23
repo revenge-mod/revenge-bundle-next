@@ -11,6 +11,7 @@ import {
     getInternalPluginMeta,
     getPluginDependencies,
     getPluginDependents,
+    getUnsatisfiedPluginDependencies,
     InternalPluginFlags,
     isDefaultsOnlyBoot,
     isPluginEssential,
@@ -297,9 +298,9 @@ function AdvancedSection({ plugin }: { plugin: AnyPlugin }) {
                                 title: `Dependencies of ${name}`,
                                 unsatisfiedTitle: `Unsatisfied dependencies of ${name}`,
                                 unsatisfiedPlugins:
-                                    meta.unsatisfiedOptionalDependencies.map(
-                                        id => pList.get(id) ?? id,
-                                    ),
+                                    getUnsatisfiedPluginDependencies(
+                                        plugin,
+                                    ).map(id => pList.get(id) ?? id),
                                 plugins: dependencies,
                                 dependencyMap: plugin.manifest.dependencies!,
                             },
@@ -347,7 +348,7 @@ function PauseUpdatesRow({ plugin }: { plugin: AnyPlugin }) {
         <TableSwitchRow
             icon={<TableRowAssetIcon name="HandRequestDenyIcon" />}
             label="Pause updates"
-            subLabel={`Stay on this version. Other plugins won't be able to update if they need a higher version of ${plugin.manifest.name}.`}
+            subLabel={`Stay on this version. Other plugins won't be able to update if they need a newer version of ${plugin.manifest.name}.`}
             value={held}
             onValueChange={value => {
                 setHeld(value)

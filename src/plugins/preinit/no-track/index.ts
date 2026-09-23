@@ -10,6 +10,7 @@ import {
 } from '@revenge-mod/plugins/_'
 import { noop } from '@revenge-mod/utils/callback'
 import { getCurrentStack } from '@revenge-mod/utils/error'
+import manifest from './manifest.json'
 
 const cachedOnly = {
     cached: true,
@@ -40,13 +41,7 @@ const fakeSentryCarrier = new Proxy(
 const getFakeCarrier = () => fakeSentryCarrier
 
 registerInternalPlugin(
-    {
-        id: 'revenge.no-track',
-        name: 'No Track',
-        description: 'Disables Discord and Sentry analytics.',
-        author: 'Revenge',
-        icon: 'AnalyticsIcon',
-    },
+    manifest,
     {
         preInit({ cleanup, plugin }) {
             if (isPluginStartedLate(plugin)) plugin.requireReload()

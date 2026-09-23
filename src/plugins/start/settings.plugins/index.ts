@@ -11,7 +11,7 @@ import {
     updateAllPlugins,
 } from '@revenge-mod/plugins/_/repositories'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
-import pluginSettings from '../settings'
+import manifest from './manifest.json'
 import { addDefaultRepoIfNeeded } from './repos'
 import type { JsonStorage } from '@revenge-mod/json-storage'
 import type { PluginApi } from '@revenge-mod/plugins/types'
@@ -32,14 +32,7 @@ const CircleXIconComponent = lookupGeneratedIconComponent(
 )!
 
 registerInternalPlugin<{ jsonStorage: Storage }>(
-    {
-        id: 'revenge.settings.plugins',
-        name: 'Plugin Settings',
-        description: 'Plugin management UI for Revenge.',
-        author: 'Revenge',
-        icon: 'PuzzlePieceIcon',
-        dependencies: { [pluginSettings]: {} },
-    },
+    manifest,
     {
         jsonStorage: {
             load: true,

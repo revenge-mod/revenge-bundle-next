@@ -4,15 +4,10 @@ import {
     PluginFlags,
     registerInternalPlugin,
 } from '@revenge-mod/plugins/_'
+import manifest from './manifest.json'
 
 const pluginHiddenApi = registerInternalPlugin(
-    {
-        id: 'revenge.api.hidden',
-        name: 'Developer Mode',
-        description: 'Exposes internal Revenge APIs for debugging.',
-        author: 'Revenge',
-        icon: 'WrenchIcon',
-    },
+    manifest,
     {
         preInit({ cleanup, unscoped }) {
             unscoped.hidden = hiddenApi

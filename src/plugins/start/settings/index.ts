@@ -15,6 +15,7 @@ import { asap, noop } from '@revenge-mod/utils/callback'
 import { getCurrentStack } from '@revenge-mod/utils/error'
 import { useReRender } from '@revenge-mod/utils/react'
 import { cloneElement, useEffect } from 'react'
+import manifest from './manifest.json'
 import type { SettingsSection } from '@revenge-mod/discord/modules/settings'
 import type { AnyFunction, KeyWithType } from '@revenge-mod/utils/types'
 import type {
@@ -52,13 +53,7 @@ let DEBUG_patchedNavigator = false
 let SettingHookHarness: MemoComponentModule['default'] | undefined
 
 const pluginSettings = registerInternalPlugin(
-    {
-        id: 'revenge.settings',
-        name: 'Settings',
-        description: 'Settings UI for Revenge.',
-        author: 'Revenge',
-        icon: 'SettingsIcon',
-    },
+    manifest,
     {
         start() {
             onSettingsModulesLoaded(() => {

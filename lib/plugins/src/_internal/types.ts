@@ -16,14 +16,23 @@ export type InternalPluginManifest = Omit<
     Partial<Pick<PluginManifest, 'version' | 'format' | 'dependencies'>>
 
 export interface InternalPluginMeta {
+    /**
+     * Whether the plugin has an implementation.
+     *
+     * Internal plugins register their manifests before pre-init, so the dependency graph is complete before dependency resolution.
+     * However, plugin options may only arrive after certain stages. This is `true` once the options have been set.
+     */
+    attached: boolean
     /** Handles critical errors during plugin execution. */
     handleError: (e: unknown) => Promise<void>
     promises: Promise<void>[]
     cleanups: PluginCleanup[]
     iflags: number
     apiLevel: number
-    /** Installed optional dependencies that are unsatisfied, from native. */
-    unsatisfiedOptionalDependencies: readonly string[]
+    /** Installed optional dependencies that are unsatisfied reported by native. */
+    unsatisfiedOptionalDependencies: ReadonlySet<string>
+    /** Dependency IDs this was linked to (JS side only) to track decorators. */
+    linkedDependencies: Set<string>
     options: PluginOptions<any>
     optionsFactory?: PluginOptionsFactory<any>
     status: number

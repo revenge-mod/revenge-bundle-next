@@ -1,5 +1,6 @@
 import { getPluginDependencies, isPluginStartable } from '../_internal'
 import { pApis } from './decorators'
+import { isReservedDependency } from './manifest'
 import type { AnyPlugin } from '../_internal'
 
 // Plugin dependency resolution graph nodes. We need to ensure dependencies are started before the plugin.
@@ -20,12 +21,11 @@ export const pListOrdered: AnyPlugin[] = []
 export const pPending = new Set<AnyPlugin>()
 
 // Reserved dependency IDs verified by native
-export const ApiDependencyId = 'revenge.api'
-export const DiscordDependencyId = 'discord'
-
-export function isReservedDependency(id: string) {
-    return id === ApiDependencyId || id === DiscordDependencyId
-}
+export {
+    ApiDependencyId,
+    DiscordDependencyId,
+    isReservedDependency,
+} from './manifest'
 
 /** Checks whether plugin declares graphable dependencies outside reserved set. */
 function hasGraphableDependencies(plugin: AnyPlugin): boolean {

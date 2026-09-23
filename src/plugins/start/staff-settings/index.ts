@@ -9,16 +9,11 @@ import {
     registerInternalPlugin,
 } from '@revenge-mod/plugins/_'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
+import manifest from './manifest.json'
 import type { DiscordModules } from '@revenge-mod/discord/types'
 
 registerInternalPlugin(
-    {
-        id: 'revenge.staff-settings',
-        name: 'Staff Settings',
-        description: "Allows accessing Discord's Staff Settings.",
-        author: 'Revenge',
-        icon: 'StaffBadgeIcon',
-    },
+    manifest,
     {
         start({ cleanup, logger, plugin }) {
             const CircleInformationIcon = lookupGeneratedIconComponent(

@@ -5,19 +5,14 @@ import {
     PluginFlags,
 } from './constants'
 import { pApis } from './decorators'
-import {
-    ApiDependencyId,
-    DiscordDependencyId,
-    isReservedDependency,
-    pLeafOrSingleNodes,
-    pPending,
-} from './dependency-graph'
+import { pLeafOrSingleNodes, pPending } from './dependency-graph'
 import { pEmitter } from './emitter'
 import {
     disablePluginInActiveSlot,
     handlePluginError,
     stopPlugin,
 } from './lifecycles'
+import { completeInternalManifest } from './manifest'
 import { callPluginSystemMethodSync } from './native'
 import { isPluginEnabled, isPluginStartedLate } from './predicates'
 import {
@@ -63,6 +58,9 @@ export function registerPlugin<O extends PluginApiExtensionsOptions>(
  * Registers an internal plugin.
  * If not passed, version, manifest format, and reserved dependencies are filled automatically.
  *
+ * The manifest has usually been registered already by {@link registerInternalManifest} at pre-init,
+ * in which case this attaches the implementation to the same instance rather than creating a new one.
+ *
  * @see {@link registerPlugin}
  *
  * @param manifest Partial or complete plugin manifest.
@@ -74,17 +72,28 @@ export function registerInternalPlugin<O extends PluginApiExtensionsOptions>(
     defflags: number,
     iflags = 0,
 ) {
-    manifest.version ??= InternalPluginVersion
-    // TODO: This has to be shared from native somehow.
-    manifest.format ??= 1
+    return register(
+        completeInternalManifest(manifest, InternalPluginVersion),
+        options,
+        defflags,
+        iflags,
+    )
+}
 
-    if (!isReservedDependency(manifest.id)) {
-        manifest.dependencies ??= {}
-        manifest.dependencies[ApiDependencyId] ??= { version: '*' }
-        manifest.dependencies[DiscordDependencyId] ??= { version: '*' }
-    }
+/**
+ * Registers an internal plugin's manifest without its implementation.
+ *
+ * The plugin cannot run until its implementation is registered via {@link registerInternalPlugin}.
+ */
+export function registerInternalManifest(manifest: InternalPluginManifest) {
+    const completed = completeInternalManifest(manifest, InternalPluginVersion)
+    const { id } = completed
 
-    return register(manifest as PluginManifest, options, defflags, iflags)
+    if (pList.has(id))
+        throw new Error(`Plugin with ID "${id}" already registered`)
+
+    // Disabled until the implementation is attached.
+    return create(completed, undefined, 0, 0, false)
 }
 
 function register<O extends PluginApiExtensionsOptions>(
@@ -93,13 +102,54 @@ function register<O extends PluginApiExtensionsOptions>(
     defflags: number,
     iflags: number,
 ) {
-    if (pList.has(manifest.id)) {
-        if (!iflags)
-            throw new Error(
-                `Plugin with ID "${manifest.id}" already registered`,
-            )
+    const existing = pList.get(manifest.id)
+    if (existing) {
+        const meta = getInternalPluginMeta(existing)!
+        if (meta.attached)
+            throw new Error(`Plugin "${manifest.id}" already attached`)
+
+        return attach(existing, meta, options, defflags, iflags)
     }
 
+    return create(manifest, options, defflags, iflags, true)
+}
+
+function attach<O extends PluginApiExtensionsOptions>(
+    plugin: AnyPlugin,
+    meta: InternalPluginMeta,
+    options: PluginOptions<O> | PluginOptionsFactory<O>,
+    defflags: number,
+    iflags: number,
+) {
+    const { id } = plugin.manifest
+    const resolved = typeof options === 'function' ? undefined : options
+
+    plugin.lifecycles.preInit = resolved?.preInit
+    plugin.lifecycles.init = resolved?.init
+    plugin.lifecycles.start = resolved?.start
+    plugin.lifecycles.stop = resolved?.stop
+    plugin.SettingsComponent = resolved?.SettingsComponent
+
+    meta.options = resolved ?? {}
+    meta.optionsFactory = typeof options === 'function' ? options : undefined
+    meta.iflags = iflags
+    meta.attached = true
+
+    // Sync the actual default flags to native
+    if (!BootStates[id]) meta.flags = defflags
+
+    index(plugin, meta)
+
+    return id
+}
+
+function create<O extends PluginApiExtensionsOptions>(
+    manifest: PluginManifest,
+    options: PluginOptions<O> | PluginOptionsFactory<O> | undefined,
+    defflags: number,
+    iflags: number,
+    attached: boolean,
+) {
     const factory = typeof options === 'function' ? options : undefined
     const resolved = typeof options === 'function' ? undefined : options
     const { id } = manifest
@@ -133,12 +183,14 @@ function register<O extends PluginApiExtensionsOptions>(
     } satisfies AnyPlugin
 
     const meta: InternalPluginMeta = {
+        attached,
         cleanups: [],
         nativeErrors: Object.freeze([]),
         promises: [],
         iflags,
         apiLevel: PluginApiLevel.None,
-        unsatisfiedOptionalDependencies: Object.freeze([]),
+        unsatisfiedOptionalDependencies: new Set<string>(),
+        linkedDependencies: new Set(),
         handleError: e => handlePluginError(e, plugin, true),
         options: resolved ?? {},
         optionsFactory: factory,
@@ -167,14 +219,18 @@ function register<O extends PluginApiExtensionsOptions>(
     pMetadata.set(plugin, meta)
     pList.set(id, plugin)
 
-    if (iflags & InternalPluginFlags.API) {
+    if (attached) index(plugin, meta)
+
+    return id
+}
+
+function index(plugin: AnyPlugin, meta: InternalPluginMeta) {
+    if (meta.iflags & InternalPluginFlags.API) {
         pLeafOrSingleNodes.add(plugin)
         pApis.add(plugin)
     } else if (isPluginEnabled(plugin)) pPending.add(plugin)
 
     pEmitter.emit('register', plugin, meta.options)
-
-    return manifest.id
 }
 
 export function unregisterPlugin(plugin: AnyPlugin) {

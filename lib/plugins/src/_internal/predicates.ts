@@ -52,8 +52,27 @@ export function isPluginFailed(plugin: AnyPlugin): boolean {
     return Boolean(meta.flags & Flag.Failed)
 }
 
-/** Validates if a plugin can start: enabled, not `PendingReload`, and not session-skipped. `PendingUpdate` does not block execution. */
+/**
+ * Whether a plugin has an implementation.
+ *
+ * @see {@link InternalPluginMeta.attached}
+ */
+export function isPluginAttached(plugin: AnyPlugin): boolean {
+    return getInternalPluginMeta(plugin).attached
+}
+
+/**
+ * Validates if a plugin can start:
+ *
+ * 1. Attached
+ * 2. Enabled
+ * 3. Not {@link Flag.PendingReload}. {@link Flag.PendingUpdate} does not block execution.
+ * 4. Not session-skipped
+ */
 export function requirePluginStartableState(plugin: AnyPlugin) {
+    if (!isPluginAttached(plugin))
+        throw new Error(`Plugin "${plugin.manifest.id}" has no implementation`)
+
     if (!isPluginEnabled(plugin))
         throw new Error(`Plugin "${plugin.manifest.id}" is not enabled`)
 
