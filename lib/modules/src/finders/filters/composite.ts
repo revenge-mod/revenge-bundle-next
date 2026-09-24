@@ -1,6 +1,5 @@
 import { FilterScopes } from '.'
 import { createFilterGenerator } from './utils'
-import type { Metro } from '@revenge-mod/modules/types'
 import type {
     Filter,
     FilterBase,
@@ -68,32 +67,12 @@ const directAllOf = createFilterGenerator(
     allOfScopesGenerator,
 ) as AllOf
 
-const allOfPrefilterCache = new WeakMap<FilterBase, Set<Metro.ModuleID>>()
-
 const prefilteredAllOf = createFilterGenerator(
     ([filter, prefilter], id, exports, initialized) => {
-        if (initialized) {
-            if (filter(id, exports, true)) {
-                // Avoid running the prefilter again if we already know it passed
-                const cache = allOfPrefilterCache.get(prefilter)
-                return (
-                    // biome-ignore lint/complexity/useOptionalChain: Hot path should be optimized
-                    (cache && cache.has(id)) || prefilter(id, exports, true)
-                )
-            }
+        if (initialized)
+            return filter(id, exports, true) && prefilter(id, exports, true)
 
-            return false
-        }
-
-        const result = prefilter(id, undefined, false)
-        if (result) {
-            // Cache prefilter hits to avoid calling the prefilter again
-            // Prefilters are usually more expensive
-            let set = allOfPrefilterCache.get(prefilter)
-            if (!set) allOfPrefilterCache.set(prefilter, (set = new Set()))
-            set.add(id)
-        }
-        return result
+        return prefilter(id, undefined, false)
     },
     allOfKeyGenerator,
     allOfScopesGenerator,
@@ -161,7 +140,6 @@ const directAnyOf = createFilterGenerator(
 
 const prefilteredAnyOf = createFilterGenerator(
     ([filter, prefilter], id, exports, initialized) => {
-        // TODO(PalmDevs): Potential optimization: Add prefilter cache here too?
         if (initialized)
             return filter(id, exports, true) || prefilter(id, exports, true)
         return prefilter(id, undefined, false)
