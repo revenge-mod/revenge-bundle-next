@@ -58,8 +58,7 @@ export let AlertActionCreators: DiscordModules.Actions.AlertActionCreators =
                         null,
                         [ReactNativeModuleId, ImportTrackerModuleId],
                         relative(1),
-                        // TODO: Shifted from +2 to +3 on 344201+
-                        relative.within(2, 3),
+                        relative(3),
                         ImportTrackerModuleId,
                     ]),
                 ),

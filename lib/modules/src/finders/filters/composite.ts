@@ -56,9 +56,6 @@ export type AllOf = FilterGenerator<
     ) => Filter<MergeFilterInfo<FilterInfoOf<F1>, FilterInfoOf<F2>>>
 >
 
-/** @deprecated Use {@link AllOf} instead */
-export type And = AllOf
-
 const allOfKeyGenerator = ([a, b]: Parameters<AllOf>) =>
     `revenge.allOf(${a.key},${b.key})`
 
@@ -143,18 +140,12 @@ export const allOf = Object.assign(
     },
 ) satisfies AllOf
 
-/** @deprecated Use {@link allOf} instead. */
-export const and = allOf
-
 export type AnyOf = FilterGenerator<
     <F1 extends FilterBase, F2 extends FilterBase>(
         f1: F1,
         f2: F2,
     ) => Filter<UnionFilterInfo<FilterInfoOf<F1>, FilterInfoOf<F2>>>
 >
-
-/** @deprecated Use {@link AnyOf} instead. */
-export type Or = AnyOf
 
 const anyOfKeyGenerator = ([a, b]: Parameters<AnyOf>) =>
     `revenge.anyOf(${a.key},${b.key})`
@@ -216,6 +207,3 @@ export const anyOf = Object.assign(
         ),
     },
 ) satisfies AnyOf
-
-/** @deprecated Use {@link anyOf} instead. */
-export const or = anyOf

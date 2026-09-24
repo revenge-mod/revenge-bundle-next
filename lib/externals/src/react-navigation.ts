@@ -52,21 +52,11 @@ export let ReactNavigationStack: typeof import('@react-navigation/stack') =
                 1,
             )
 
-            // TODO: Remove once stable >344201
-            const firstDepLegacy = relative.withDependencies(
-                partial([[[]], ReactModuleId, ReactJSXRuntimeModuleId]),
-                1,
-            )
-
             const [module] = lookupModule(
                 withProps<typeof ReactNavigationStack>('StackView')
                     .and(
                         withDependencies(
                             partial([firstDep, null, relative(2)]),
-                        ).or(
-                            withDependencies(
-                                partial([firstDepLegacy, null, relative(2)]),
-                            ),
                         ),
                     )
                     .keyAs(

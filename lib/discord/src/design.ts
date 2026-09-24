@@ -1,6 +1,5 @@
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
-    anyOf,
     withDependencies,
     withProps,
     withSingleProp,
@@ -68,25 +67,13 @@ export let FormSwitch: DiscordModules.Components.FormSwitch = proxify(() => {
                         ReactJSXRuntimeModuleId,
                     ]),
                 ).and(
-                    anyOf(
-                        withDependencies(
-                            ordered([
-                                TokensModuleId,
-                                ordered([relative(1), ImportTrackerModuleId]),
-                                [ImportTrackerModuleId],
-                                ImportTrackerModuleId,
-                            ]),
-                        ),
-                        // TODO: Remove once stable > 345205
-                        withDependencies(
-                            last([
-                                relative(1),
-                                relative(2),
-                                null,
-                                null,
-                                ImportTrackerModuleId,
-                            ]),
-                        ),
+                    withDependencies(
+                        ordered([
+                            TokensModuleId,
+                            ordered([relative(1), ImportTrackerModuleId]),
+                            [ImportTrackerModuleId],
+                            ImportTrackerModuleId,
+                        ]),
                     ),
                 ),
             )
