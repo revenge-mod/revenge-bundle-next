@@ -75,11 +75,11 @@ const server = createServer(async (req, res) => {
 
         if (needRebuild) await debouncedBuild()
 
-        const bundle = await readFile(file).catch(() => null)
-        if (!bundle)
+        const contents = await readFile(file).catch(() => null)
+        if (!contents)
             throw new Error(`Could not serve ${friendlyName}! No file found.`)
 
-        const hash = crc32(bundle).toString(16)
+        const hash = crc32(contents).toString(16)
 
         if (req.headers['if-none-match'] === hash) {
             console.debug(
@@ -95,9 +95,9 @@ const server = createServer(async (req, res) => {
 
         res.writeHead(200, {
             ETag: hash,
-            'Content-Length': bundle.byteLength,
+            'Content-Length': contents.byteLength,
         })
-        res.end(bundle)
+        res.end(contents)
     } catch (e) {
         console.error(e)
 
