@@ -18,6 +18,7 @@ import {
     isPluginInternal,
     isPluginPendingUpdate,
     isPluginStartable,
+    isPluginStarted,
     PluginFlags,
     PluginStatus,
     pList,
@@ -443,14 +444,20 @@ function PluginActions({
     plugin: AnyPlugin
     closeSheet: () => void
 }) {
-    const [settingsRef, showEnableTooltip] = usePluginTooltip(
-        PluginTooltip.Enable,
+    const [controlRef, showControlBlockedTooltip] = usePluginTooltip(
+        PluginTooltip.ControlBlocked,
     )
+    const [settingsRef, showStartTooltip] = usePluginTooltip(
+        PluginTooltip.Start,
+    )
+
     const meta = getInternalPluginMeta(plugin)
     const startable = isPluginStartable(plugin)
+    const started = isPluginStarted(plugin)
     const enabled = usePluginEnabled(plugin)
     // Any lifecycle progress counts as running, stop waits for in-flight lifecycles
     const running = Boolean(usePluginStatus(plugin))
+    const notActionable = !running && (!startable || isDefaultsOnlyBoot)
 
     return (
         <Stack
@@ -459,22 +466,29 @@ function PluginActions({
             style={{ paddingHorizontal: 8, paddingVertical: 16 }}
         >
             {enabled && !isPluginEssential(meta) && (
-                <IconButton
-                    variant="secondary"
-                    size="lg"
-                    icon={running ? StopIcon : PlayIcon}
-                    label={running ? 'Stop' : 'Start'}
-                    // Nothing can start in a defaults-only boot, stopping a default plugin is still fine
-                    disabled={!running && (!startable || isDefaultsOnlyBoot)}
-                    onPress={async () => {
-                        try {
-                            if (running) await stopPlugin(plugin)
-                            else await runPluginLate(plugin)
-                        } catch (e) {
-                            showErrorToast(messageOf(e))
-                        }
+                <Pressable
+                    onPress={() => {
+                        if (notActionable) showControlBlockedTooltip()
                     }}
-                />
+                >
+                    <IconButton
+                        ref={controlRef}
+                        variant="secondary"
+                        size="lg"
+                        icon={running ? StopIcon : PlayIcon}
+                        label={running ? 'Stop' : 'Start'}
+                        // Nothing can start in a defaults-only boot, stopping a default plugin is still fine
+                        disabled={notActionable}
+                        onPress={async () => {
+                            try {
+                                if (running) await stopPlugin(plugin)
+                                else await runPluginLate(plugin)
+                            } catch (e) {
+                                showErrorToast(messageOf(e))
+                            }
+                        }}
+                    />
+                </Pressable>
             )}
             <IconButton
                 variant="secondary"
@@ -499,7 +513,7 @@ function PluginActions({
             {plugin.SettingsComponent && (
                 <Pressable
                     onPress={() => {
-                        if (!startable) showEnableTooltip()
+                        if (!started) showStartTooltip()
                     }}
                 >
                     <IconButton
@@ -508,7 +522,7 @@ function PluginActions({
                         size="lg"
                         icon={SettingsIcon}
                         label="Settings"
-                        disabled={!startable}
+                        disabled={!started}
                         onPress={() => {
                             openPluginSettings(plugin)
                             closeSheet()

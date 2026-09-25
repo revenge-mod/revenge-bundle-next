@@ -5,7 +5,7 @@ import { Design } from '@revenge-mod/discord/design'
 import {
     isPluginEssential,
     isPluginPendingUpdate,
-    isPluginStartable,
+    isPluginStarted,
 } from '@revenge-mod/plugins/_'
 import { usePluginEnabledInActiveSlot } from '@revenge-mod/plugins/_/react'
 import { formatVersion } from '@revenge-mod/plugins/utils'
@@ -140,13 +140,13 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
     } = plugin
 
     const essential = isPluginEssential(meta)
-    const startable = isPluginStartable(plugin)
+    const started = isPluginStarted(plugin)
     const pendingUpdate = isPluginPendingUpdate(plugin)
 
     const toggleDisabled = essential || pendingUpdate
 
-    const [settingsRef, showEnableTooltip] = usePluginTooltip(
-        PluginTooltip.Enable,
+    const [settingsRef, showStartTooltip] = usePluginTooltip(
+        PluginTooltip.Start,
     )
 
     const [switchRef, showToggleTooltip] = usePluginTooltip(
@@ -173,7 +173,7 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
                     {plugin.SettingsComponent && (
                         <Pressable
                             onPress={() => {
-                                if (!startable) showEnableTooltip()
+                                if (!started) showStartTooltip()
                             }}
                         >
                             <IconButton
@@ -181,7 +181,7 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
                                 size="sm"
                                 variant="secondary"
                                 icon={SettingsIcon}
-                                disabled={!startable}
+                                disabled={!started}
                                 onPress={() => {
                                     openPluginSettings(plugin)
                                 }}

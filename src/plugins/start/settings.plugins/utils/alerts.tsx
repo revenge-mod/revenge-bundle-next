@@ -3,7 +3,7 @@ import { Design } from '@revenge-mod/discord/design'
 import { RootNavigationRef } from '@revenge-mod/discord/modules/main_tabs_v2'
 import {
     deleteStorageForPlugin,
-    isPluginStartable,
+    isPluginStarted,
     uninstallExternalPlugin,
 } from '@revenge-mod/plugins/_'
 import { getErrorStack } from '@revenge-mod/utils/error'
@@ -61,7 +61,7 @@ export function showPluginUninstallConfirmation(
 }
 
 export function openPluginSettings(plugin: AnyPlugin) {
-    if (!plugin.SettingsComponent || !isPluginStartable(plugin)) return
+    if (!plugin.SettingsComponent || !isPluginStarted(plugin)) return
 
     const navigation = RootNavigationRef.getRootNavigationRef()
     if (navigation.isReady()) navigation.navigate(plugin.manifest.id)
