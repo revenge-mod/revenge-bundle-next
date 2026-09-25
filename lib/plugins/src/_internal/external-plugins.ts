@@ -1,38 +1,31 @@
-import {
-    callNativeMethod,
-    callNativeMethodSync,
-    registerJSMethod,
-} from '@revenge-mod/modules/native'
+import { registerJSMethod } from '@revenge-mod/modules/native'
+import { noop } from '@revenge-mod/utils/callback'
 import { getErrorStack } from '@revenge-mod/utils/error'
-import { pUnscopedApi } from '../apis'
 import {
-    disablePlugin,
-    forgetInitialPluginState,
+    disablePluginInActiveSlot,
     getInternalPluginMeta,
-    handlePluginError,
+    getLinkedOptionalDependents,
     InternalPluginFlags,
-    isPluginEnabled,
+    isPluginEnabledInActiveSlot,
     PluginFlags,
     pEmitter,
     pList,
     registerInternalPlugin,
     registerPlugin,
-    toPluginError,
+    runPluginLate,
+    toPluginSystemErrorPayload,
+    unregisterPlugin,
 } from '.'
 import { pPending } from './dependency-graph'
-import { registerRepositoryEvents } from './repositories'
-import type { AnyFunction } from '@revenge-mod/utils/types'
-import type {
-    PluginLifecycles,
-    PluginManifest,
-    PluginOptions,
-    PluginOptionsFactory,
-} from '../types'
+import { callPluginSystemMethod, callPluginSystemMethodSync } from './native'
+import { registerRepositoryEvents, setPluginHeld } from './repositories'
+import { createOptionsFactory } from './script'
+import type { PluginManifest } from '../types'
 import type {
     AnyPlugin,
-    PluginError,
     PluginInstallReadyEvent,
     PluginSource,
+    PluginSystemErrorPayload,
 } from '.'
 
 interface ExternalPlugin {
@@ -43,23 +36,23 @@ interface ExternalPlugin {
     enabledByDefault?: boolean
     api?: boolean
     /**
-     * The plugin failed to load at native boot (session-skip).
-     * It is registered so the user sees it and the reasons, but it never runs this session.
-     * - Dependency failures keep the enabled flag (auto-recovers next boot once resolved).
-     * - Own-fault failures (bad code, bad manifest) arrive already disabled by native.
+     * Session-skipped plugin failing native boot discovery.
+     * Registered for UI visibility without executing during active session.
      */
     failed?: boolean
-    /** Where the plugin came from. Missing or `repo: null` means sideloaded. */
+    /** Plugin provenance. Missing or `repo: null` means sideloaded. */
     source?: PluginSource | null
+    /** Declared optional dependencies native sees installed at an incompatible version. */
     unsatisfiedOptionalDependencies?: string[]
-    /** Errors the native side already hit (eg. at boot before JS was up, after faulty update). */
-    errors?: PluginError[]
+    /** Native boot and validation errors. */
+    errors?: PluginSystemErrorPayload[]
 }
 
 type PluginInstallResult =
     | { error: false; plugin: ExternalPlugin }
-    | { error: PluginError }
+    | { error: PluginSystemErrorPayload }
 
+/** Registers native event listeners and imports native-discovered plugins. */
 export function registerExternalPlugins() {
     registerJSMethod(
         'revenge.plugins.events.pluginInstallResult',
@@ -69,17 +62,15 @@ export function registerExternalPlugins() {
                 return
             }
 
-            // Native only fires this for fresh installs of new IDs
-            // Updates go through `pluginUpdated` instead and apply at reload
+            // Native dispatches fresh installs for new IDs only
             const { plugin } = result
 
             try {
-                // Drop the stale boot snapshot entry (from before a mid-session uninstall)
-                // so the fresh install registers disabled
-                forgetInitialPluginState(plugin.manifest.id)
                 registerExternalPlugin(plugin)
             } catch (e) {
-                pEmitter.emit('install', { error: toPluginError(e) })
+                pEmitter.emit('install', {
+                    error: toPluginSystemErrorPayload(e),
+                })
                 return
             }
 
@@ -101,8 +92,7 @@ export function registerExternalPlugins() {
             id: string
             version: string
         }) {
-            // The new version is on disk only, the running plugin keeps its old code until reload
-            // PendingUpdate causes the reload alert to show up
+            // New version exists on disk only; running plugin continues until reload
             const plugin = pList.get(id)
             if (plugin) {
                 const meta = getInternalPluginMeta(plugin)
@@ -119,21 +109,55 @@ export function registerExternalPlugins() {
     )
 
     registerJSMethod(
-        'revenge.plugins.events.pluginInstallReady',
+        'revenge.plugins.events.pluginInstallFileReady',
         (event: PluginInstallReadyEvent) => {
             pEmitter.emit('installReady', event)
         },
     )
 
+    registerJSMethod(
+        'revenge.plugins.events.dependenciesUpdated',
+        (update: {
+            unsatisfiedOptionalDependencies: Record<
+                PluginManifest['id'],
+                PluginManifest['id'][]
+            >
+        }) => {
+            if (__DEV__)
+                nativeLoggingHook(
+                    `\u001b[33mPlugin dependency graph updated: ${JSON.stringify(
+                        update,
+                    )}\u001b[0m`,
+                    1,
+                )
+
+            for (const plugin of pList.values()) {
+                const deps =
+                    update.unsatisfiedOptionalDependencies[plugin.manifest.id]
+                if (deps)
+                    getInternalPluginMeta(
+                        plugin,
+                    ).unsatisfiedOptionalDependencies = new Set(deps)
+            }
+        },
+    )
+
     registerRepositoryEvents()
 
-    const externals = callNativeMethodSync('revenge.plugins.list', [])
+    const externals = callPluginSystemMethodSync('revenge.plugins.list', [])
     if (!externals) return
 
     for (const external of externals)
         try {
-            // Skip plugins whose JS counterpart is already registered
-            if (pList.has(external.manifest.id)) continue
+            const known = pList.get(external.manifest.id)
+
+            // JS internal plugins are already registered before we grab native descriptors
+            // so we only apply the descriptors instead of re-registering them.
+            if (known) {
+                applyNativeDescriptor(known, external)
+                continue
+            }
+
             registerExternalPlugin(external)
         } catch (e) {
             nativeLoggingHook(
@@ -143,19 +167,35 @@ export function registerExternalPlugins() {
         }
 }
 
+function applyNativeDescriptor(plugin: AnyPlugin, external: ExternalPlugin) {
+    const meta = getInternalPluginMeta(plugin)
+
+    meta.source = external.source
+    if (external.unsatisfiedOptionalDependencies)
+        meta.unsatisfiedOptionalDependencies = new Set(
+            external.unsatisfiedOptionalDependencies,
+        )
+
+    /** @see {@link PluginFlags.Failed} */
+    if (external.failed) {
+        meta.flags |= PluginFlags.Failed
+        pPending.delete(plugin)
+    }
+
+    if (external.errors?.length)
+        meta.nativeErrors = Object.freeze(external.errors)
+}
+
+/** Registers external plugin instance from native descriptor. */
 export function registerExternalPlugin(external: ExternalPlugin) {
-    const {
-        manifest,
-        script,
-        internal,
-        essential,
-        enabledByDefault,
-        api,
-        failed,
-        source,
-        unsatisfiedOptionalDependencies,
-        errors,
-    } = external
+    const { manifest, script, internal, essential, enabledByDefault, api } =
+        external
+
+    // JS internal plugins data take priority
+    if (internal && pList.has(manifest.id)) {
+        applyNativeDescriptor(pList.get(manifest.id)!, external)
+        return
+    }
 
     const id = internal
         ? registerInternalPlugin(
@@ -172,42 +212,43 @@ export function registerExternalPlugin(external: ExternalPlugin) {
               enabledByDefault ? PluginFlags.Enabled : 0,
           )
 
-    const plugin = pList.get(id)!
-    const meta = getInternalPluginMeta(plugin)
-
-    meta.source = source
-    if (unsatisfiedOptionalDependencies?.length)
-        meta.unsatisfiedOptionalDependencies = Object.freeze(
-            unsatisfiedOptionalDependencies,
-        )
-
-    /** @see {@link PluginFlags.Failed} */
-    if (failed) {
-        meta.flags |= PluginFlags.Failed
-        pPending.delete(plugin)
-    }
-
-    // Sync errors the native side already caught
-    if (errors?.length)
-        for (const error of errors) handlePluginError(error, plugin)
+    applyNativeDescriptor(pList.get(id)!, external)
 
     return id
 }
 
-export async function uninstallExternalPlugin(plugin: AnyPlugin) {
-    if (isPluginEnabled(plugin)) await disablePlugin(plugin)
-
-    await callNativeMethod('revenge.plugins.uninstall', [plugin.manifest.id])
-
-    // Native cleared its persisted flags, drop our boot snapshot entry too
-    forgetInitialPluginState(plugin.manifest.id)
-
-    pList.delete(plugin.manifest.id)
-    pEmitter.emit('unregister', plugin)
+/** Updates update-hold state for plugin. */
+export async function setUpdatesPaused(plugin: AnyPlugin, paused: boolean) {
+    const meta = getInternalPluginMeta(plugin)
+    const newSource = await setPluginHeld(plugin.manifest.id, paused)
+    meta.source = newSource
 }
 
+/**
+ * Uninstalls an external plugin, removing files, state, and runtime registration.
+ *
+ * Optional dependents stopped by the disable cascade are restarted. Required dependents stay disabled.
+ */
+export async function uninstallExternalPlugin(plugin: AnyPlugin) {
+    // Read before disabling, which would modify the list.
+    const optionals = getLinkedOptionalDependents(plugin)
+
+    if (isPluginEnabledInActiveSlot(plugin))
+        await disablePluginInActiveSlot(plugin)
+
+    await callPluginSystemMethod('revenge.plugins.uninstall', [
+        plugin.manifest.id,
+    ])
+
+    unregisterPlugin(plugin)
+
+    // Restart optional dependents that were stopped by cascade.
+    await Promise.all(optionals.map(dep => runPluginLate(dep).catch(noop)))
+}
+
+/** Resyncs plugin source metadata from native registry. */
 export async function resyncPluginSources() {
-    const externals = await callNativeMethod('revenge.plugins.list', [])
+    const externals = await callPluginSystemMethod('revenge.plugins.list', [])
     if (!externals) return
 
     for (const external of externals) {
@@ -216,71 +257,27 @@ export async function resyncPluginSources() {
 
         const meta = getInternalPluginMeta(plugin)
         meta.source = external.source
-        pEmitter.emit('flagUpdate', plugin)
+        pEmitter.emit('metadataUpdate', plugin)
     }
 }
 
-export function confirmInstall(
+/** Submits user response to staged sideload installation prompt. */
+export function confirmInstallFile(
     token: string,
     accepted: boolean,
 ): Promise<{ result: 'installed' | 'pending' | 'cancelled' }> {
-    return callNativeMethod('revenge.plugins.confirmInstall', [token, accepted])
-}
-
-function assertIsFunction(
-    name: string,
-    value: unknown,
-): asserts value is AnyFunction {
-    if (typeof value !== 'function')
-        throw new Error(`${name} must be a function, got ${typeof value}`)
-}
-
-function createOptionsFactory(
-    id: string,
-    script?: string,
-): PluginOptionsFactory {
-    if (!script) return () => ({})
-
-    return () => {
-        const opts = new Function(
-            'revenge',
-            'plugin',
-            `return ${script}\n//# sourceURL=Revenge:Plugin:${id}`,
-        )(
-            pUnscopedApi,
-            // See types.consumers.ts
-            (opts: PluginOptions) => opts,
-        )?.default
-
-        if (typeof opts !== 'object' || opts === null)
-            throw new Error('Plugin options must be an object')
-
-        if (
-            opts.SettingsComponent !== undefined &&
-            typeof opts.SettingsComponent !== 'function'
-        )
-            throw new Error(
-                'SettingsComponent must be a function React component',
-            )
-
-        for (const key of ['preInit', 'init', 'start'] as Array<
-            keyof PluginLifecycles
-        >) {
-            if (opts[key] !== undefined) {
-                assertIsFunction(key, opts[key])
-            }
-        }
-
-        return opts
-    }
+    return callPluginSystemMethod('revenge.plugins.confirmInstallFile', [
+        token,
+        accepted,
+    ])
 }
 
 declare module '@revenge-mod/modules/native' {
     interface NativeMethods {
         'revenge.plugins.list': [[], ExternalPlugin[] | null]
-        'revenge.plugins.installFile': [[], null]
         'revenge.plugins.uninstall': [[string], null]
-        'revenge.plugins.confirmInstall': [
+        'revenge.plugins.installFile': [[], null]
+        'revenge.plugins.confirmInstallFile': [
             [token: string, accepted: boolean],
             { result: 'installed' | 'pending' | 'cancelled' },
         ]

@@ -14,7 +14,6 @@ import { debounce } from '@revenge-mod/utils/callback'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { View } from 'react-native'
 import { BrowsePluginMasonryFlashList } from '../components/PluginList'
-import PluginStatesProvider from '../components/PluginStateProvider'
 import PluginTooltipsProvider from '../components/TooltipProvider'
 import { runInstallFlow } from '../utils/repos'
 import type { RepoPluginListing } from '@revenge-mod/plugins/_/repositories'
@@ -30,20 +29,22 @@ const SearchDebounceTime = 100
 export default function RevengePluginsBrowseSettingScreen() {
     return (
         <LayerScope>
-            <PluginStatesProvider>
+            <PluginTooltipsProvider>
                 <Page spacing={16}>
-                    <PluginTooltipsProvider>
-                        <Screen />
-                    </PluginTooltipsProvider>
+                    <Screen />
                 </Page>
-            </PluginStatesProvider>
+            </PluginTooltipsProvider>
         </LayerScope>
     )
 }
 
-// TODO: Let the user pick a release channel
-/** The channel a listing displays: `latest`, else its first channel. */
-function displayChannelOf(listing: RepoPluginListing): string | undefined {
+/** The channel a listing displays: preferred, `latest`, else its first channel. */
+function displayChannelOf(
+    listing: RepoPluginListing,
+    preferredChannel: string,
+): string | undefined {
+    if (preferredChannel && listing.channels[preferredChannel])
+        return preferredChannel
     if (listing.channels.latest) return 'latest'
     return Object.keys(listing.channels)[0]
 }
@@ -85,7 +86,9 @@ function Screen() {
         const all: BrowseEntry[] = []
 
         setInternalRepos(
-            repos.filter(repo => repo.internal).map(repo => repo.url),
+            repos
+                .filter(repo => repo.internal && repo.enabled)
+                .map(repo => repo.url),
         )
 
         await Promise.all(
@@ -100,7 +103,10 @@ function Screen() {
 
                             for (const listing of listings) {
                                 const plugin = pList.get(listing.id)
-                                const displayChannel = displayChannelOf(listing)
+                                const displayChannel = displayChannelOf(
+                                    listing,
+                                    '',
+                                )
                                 const displayVersion = displayChannel
                                     ? (listing.channels[displayChannel] ?? '')
                                     : ''
@@ -111,7 +117,6 @@ function Screen() {
                                     repoName: repo.name ?? null,
                                     repositoryText,
                                     version: displayVersion,
-                                    // TODO: Let the user pick a release channel
                                     channel: displayChannel,
                                     size:
                                         listing.versions[displayVersion]
@@ -154,12 +159,20 @@ function Screen() {
     }, [load])
 
     const install = useCallback(
-        async (entry: BrowseEntry) => {
+        async (entry: BrowseEntry, channel?: string, version?: string) => {
+            const targetChannel = channel || entry.channel
+            const targetVersion =
+                version ||
+                (targetChannel
+                    ? (entry.listing.channels[targetChannel] ?? '')
+                    : '') ||
+                entry.version
+
             // Pin the displayed version, channel, and repository, so the plan matches the card
             await runInstallFlow(
                 entry.listing.id,
-                entry.version || undefined,
-                entry.channel,
+                targetVersion || undefined,
+                targetChannel,
                 // Internal repos so external plugins can link against internal plugins as well
                 [...internalRepos, entry.repoUrl],
             )

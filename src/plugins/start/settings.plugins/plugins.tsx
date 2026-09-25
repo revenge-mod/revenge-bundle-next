@@ -11,6 +11,8 @@ import {
     isPluginErrored,
     isPluginPendingReload,
     isPluginPendingUpdate,
+    isPluginStarted,
+    isPluginStopped,
     pEmitter,
     pList,
 } from '@revenge-mod/plugins/_'
@@ -31,7 +33,10 @@ const PluginsFailedToStartAlertKey = 'plugins-failed-to-start'
 
 /// SETTINGS ROUTES
 
-pEmitter.on('started', plugin => {
+pEmitter.on('statusUpdate', plugin => {
+    // statusUpdate covers every phase, and only a started plugin registers its route
+    if (!isPluginStarted(plugin)) return
+
     if (plugin.SettingsComponent) {
         const api = plugin.api as PluginApi<any>
         const Component = plugin.SettingsComponent!
@@ -110,13 +115,14 @@ function showErrorAlertIfNeeded() {
     )
 }
 
-pEmitter.on('flagUpdate', plugin => {
+pEmitter.on('stateUpdate', plugin => {
     if (isPluginPendingReload(plugin) || isPluginPendingUpdate(plugin))
         showPendingReloadAlertIfNeeded()
 })
 
-pEmitter.on('stopped', plugin => {
-    if (isPluginErrored(plugin)) showErrorAlertIfNeeded()
+pEmitter.on('statusUpdate', plugin => {
+    if (isPluginStopped(plugin) && isPluginErrored(plugin))
+        showErrorAlertIfNeeded()
 })
 
 /// PLUGIN INSTALL FEEDBACK

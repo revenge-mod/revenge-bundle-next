@@ -57,7 +57,8 @@
     "hermes-compiler": "250829098.0.15",
     "magic-string": "^1.2.2",
     "react-native-click-outside": "^0.1.1",
-    "rolldown": "1.2.1"
+    "rolldown": "1.2.1",
+    "zustand": "^5.0.15"
   },
   "overrides": {
     "@react-native/community-cli-plugin": "npm:dry-uninstall",

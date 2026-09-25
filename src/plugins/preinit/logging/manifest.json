@@ -1,0 +1,11 @@
+{
+  "id": "revenge.logging",
+  "name": "Logging",
+  "description": "Logs assisting Revenge developers.",
+  "author": "Revenge",
+  "icon": "PaperIcon",
+  "enabledByDefault": true,
+  "build": {
+    "devOnly": true
+  }
+}

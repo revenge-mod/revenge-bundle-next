@@ -45,12 +45,12 @@ declare global {
     export interface ImportMeta {
         glob<T = any>(
             pattern: ImportMetaGlobPattern,
-            options?: ImportMetaGlobOptions,
-        ): Record<string, () => Promise<T>>
+            options: ImportMetaGlobOptions & { eager: true },
+        ): Record<string, T>
         glob<T = any>(
             pattern: ImportMetaGlobPattern,
-            options: Extract<ImportMetaGlobOptions, { eager: true }>,
-        ): Record<string, T>
+            options?: ImportMetaGlobOptions,
+        ): Record<string, () => Promise<T>>
     }
 }
 

@@ -1,5 +1,5 @@
 import { Design } from '@revenge-mod/discord/design'
-import { confirmInstall } from '@revenge-mod/plugins/_'
+import { confirmInstallFile } from '@revenge-mod/plugins/_'
 import type { PluginInstallReadyEvent } from '@revenge-mod/plugins/_'
 
 const { AlertModal, AlertActionButton, Text } = Design
@@ -31,12 +31,12 @@ export default function PluginInstallConfirmAlert({
                     <AlertActionButton
                         text="Install"
                         variant="primary"
-                        onPress={() => confirmInstall(prompt.token, true)}
+                        onPress={() => confirmInstallFile(prompt.token, true)}
                     />
                     <AlertActionButton
                         text="Cancel"
                         variant="secondary"
-                        onPress={() => confirmInstall(prompt.token, false)}
+                        onPress={() => confirmInstallFile(prompt.token, false)}
                     />
                 </>
             }

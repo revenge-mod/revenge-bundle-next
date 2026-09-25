@@ -1,8 +1,3 @@
-/**
- * This patch allows us to store instances of Proxy, so we can check whether a value is created using Proxy or not.
- * This is especially useful for blacklisting exports that cannot be patched.
- */
-
 import { asap } from './callback'
 import { getCurrentStack } from './error'
 

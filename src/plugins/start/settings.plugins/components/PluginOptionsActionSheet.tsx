@@ -7,23 +7,35 @@ import {
 import { Design } from '@revenge-mod/discord/design'
 import { Clipboard } from '@revenge-mod/externals/react-native-clipboard'
 import {
-    formatPluginError,
+    formatPluginSystemErrorPayload,
     getInternalPluginMeta,
     getPluginDependencies,
     getPluginDependents,
+    getUnsatisfiedPluginDependencies,
     InternalPluginFlags,
     isDefaultsOnlyBoot,
-    isPluginEnabledInSavedStates,
     isPluginEssential,
     isPluginInternal,
     isPluginPendingUpdate,
     isPluginStartable,
+    isPluginStarted,
     PluginFlags,
+    PluginStatus,
+    pList,
     runPluginLate,
+    setUpdatesPaused,
     stopPlugin,
 } from '@revenge-mod/plugins/_'
-import { listRepos } from '@revenge-mod/plugins/_/repositories'
-import { PluginStatus } from '@revenge-mod/plugins/constants'
+import {
+    usePluginEnabled,
+    usePluginEnabledInActiveSlot,
+    usePluginStatus,
+} from '@revenge-mod/plugins/_/react'
+import {
+    listRepoPlugins,
+    listRepos,
+    refreshRepo,
+} from '@revenge-mod/plugins/_/repositories'
 import { formatVersion } from '@revenge-mod/plugins/utils'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import { useEffect, useState } from 'react'
@@ -34,21 +46,29 @@ import {
     showPluginClearDataConfirmation,
     showPluginUninstallConfirmation,
 } from '../utils/alerts'
-import { messageOf, showErrorToast } from '../utils/repos'
+import { messageOf, runInstallFlow, showErrorToast } from '../utils/repos'
 import { InstalledPluginSwitch, PluginInfo } from './PluginCard'
-import { usePluginEnabled, usePluginStatus } from './PluginStateProvider'
 import PluginTooltipsProvider, {
     PluginTooltip,
     usePluginTooltip,
 } from './TooltipProvider'
-import type { AnyPlugin } from '@revenge-mod/plugins/_'
+import type { AnyPlugin, PluginSource } from '@revenge-mod/plugins/_'
 
 export interface PluginOptionsActionSheetProps {
     plugin: AnyPlugin
     sheetKey: string
 }
 
-const { ActionSheet, IconButton, TableRowGroup, TableRow, Stack } = Design
+const {
+    ActionSheet,
+    IconButton,
+    TableRowGroup,
+    TableRow,
+    TableRadioGroup,
+    TableRadioRow,
+    TableSwitchRow,
+    Stack,
+} = Design
 
 const FileWarningIcon = getAssetIdByName('FileWarningIcon', 'png')!
 const PlayIcon = getAssetIdByName('PlayIcon', 'png')!
@@ -72,7 +92,7 @@ export default function PluginOptionsActionSheet({
 }
 
 function PluginOptions({ plugin, sheetKey }: PluginOptionsActionSheetProps) {
-    const enabled = usePluginEnabled(plugin)
+    const savedEnabled = usePluginEnabledInActiveSlot(plugin)
     const meta = getInternalPluginMeta(plugin)
     const essential = isPluginEssential(meta)
     const pendingUpdate = isPluginPendingUpdate(plugin)
@@ -99,11 +119,8 @@ function PluginOptions({ plugin, sheetKey }: PluginOptionsActionSheetProps) {
                             ref={switchRef}
                         >
                             <InstalledPluginSwitch
-                                enabled={enabled}
                                 plugin={plugin}
-                                savedEnabled={isPluginEnabledInSavedStates(
-                                    plugin,
-                                )}
+                                enabled={savedEnabled}
                                 toggleDisabled={pendingUpdate}
                             />
                         </Pressable>
@@ -117,6 +134,10 @@ function PluginOptions({ plugin, sheetKey }: PluginOptionsActionSheetProps) {
                 }}
             />
             <StatusSection plugin={plugin} />
+            {meta.source && (
+                <ChannelSection plugin={plugin} source={meta.source} />
+            )}
+            <UpdatesSection plugin={plugin} />
             <AdvancedSection plugin={plugin} />
         </Stack>
     )
@@ -131,7 +152,7 @@ function StatusSection({ plugin }: { plugin: AnyPlugin }) {
         <TableRowGroup title="Status">
             <TableRow
                 icon={<TableRowAssetIcon name="CircleInformationIcon" />}
-                label="Status (TODO)"
+                label="Status"
                 subLabel={bitFieldToString(PluginStatus, status)}
             />
             {errors.length > 0 && (
@@ -147,7 +168,9 @@ function StatusSection({ plugin }: { plugin: AnyPlugin }) {
                     subLabel={`${errors.length} errors. Tap to copy.`}
                     onPress={() => {
                         Clipboard.setString(
-                            errors.map(formatPluginError).join('\n\n'),
+                            errors
+                                .map(formatPluginSystemErrorPayload)
+                                .join('\n\n'),
                         )
                         showCopiedToClipboardToast()
                     }}
@@ -155,6 +178,83 @@ function StatusSection({ plugin }: { plugin: AnyPlugin }) {
             )}
         </TableRowGroup>
     )
+}
+
+function ChannelSection({
+    plugin,
+    source,
+}: {
+    plugin: AnyPlugin
+    source: PluginSource
+}) {
+    const [channels, setChannels] = useState<Record<string, string>>({})
+    const [selected, setSelected] = useState(source.channel)
+
+    useEffect(() => {
+        const { repo } = source
+        if (!repo) return
+
+        listRepoPlugins(repo)
+            .then(listings => {
+                const listing = listings.find(l => l.id === plugin.manifest.id)
+                if (listing) setChannels(listing.channels)
+            })
+            .catch(() =>
+                refreshRepo(repo)
+                    .then(() => listRepoPlugins(repo))
+                    .then(listings => {
+                        const listing = listings.find(
+                            l => l.id === plugin.manifest.id,
+                        )
+                        if (listing) setChannels(listing.channels)
+                    })
+                    .catch(() => {}),
+            )
+    }, [source, plugin.manifest.id])
+
+    if (Object.keys(channels).length === 0) return null
+
+    const handleChange = (value: string) => {
+        const { repo } = source
+        if (!repo) return
+
+        setSelected(value)
+
+        const targetVersion = channels[value]!
+        if (targetVersion === formatVersion(plugin.manifest.version)) {
+            ToastActionCreators.open({
+                key: 'REVENGE_PLUGIN_VERSION_ALREADY_INSTALLED',
+                content: 'This version is already installed',
+                IconComponent: () => (
+                    <TableRowAssetIcon name="CircleCheckIcon" />
+                ),
+            })
+            return
+        }
+
+        listRepos()
+            .then(it =>
+                it.filter(r => r.internal && r.enabled).map(it => it.url),
+            )
+            .then(repos => {
+                runInstallFlow(plugin.manifest.id, undefined, value, [
+                    repo,
+                    ...repos,
+                ])
+            })
+    }
+
+    return source.repo ? (
+        <TableRadioGroup
+            title="Channel"
+            value={selected}
+            onChange={v => handleChange(v as string)}
+        >
+            {Object.keys(channels).map(c => (
+                <TableRadioRow key={c} label={c} value={c} />
+            ))}
+        </TableRadioGroup>
+    ) : null
 }
 
 function AdvancedSection({ plugin }: { plugin: AnyPlugin }) {
@@ -189,18 +289,76 @@ function AdvancedSection({ plugin }: { plugin: AnyPlugin }) {
             {dependencies.length > 0 && (
                 <TableRow
                     icon={<TableRowAssetIcon name="ListBulletsIcon" />}
-                    label="Dependencies (TODO)"
+                    label="Dependencies"
                     subLabel={`${name} depends on ${dependencies.length} other plugins`}
+                    onPress={() => {
+                        ActionSheetActionCreators.openLazy(
+                            import('./PluginRelationsListActionSheet'),
+                            `plugin-deps-${id}`,
+                            {
+                                title: `Dependencies of ${name}`,
+                                unsatisfiedTitle: `Unsatisfied dependencies of ${name}`,
+                                unsatisfiedPlugins:
+                                    getUnsatisfiedPluginDependencies(
+                                        plugin,
+                                    ).map(id => pList.get(id) ?? id),
+                                plugins: dependencies,
+                                dependencyMap: plugin.manifest.dependencies!,
+                            },
+                            'stack',
+                        )
+                    }}
                 />
             )}
             {dependents.length > 0 && (
                 <TableRow
                     icon={<TableRowAssetIcon name="ListBulletsIcon" />}
-                    label="Dependents (TODO)"
+                    label="Dependents"
                     subLabel={`${dependents.length} other plugins depend on ${name}`}
+                    onPress={() => {
+                        ActionSheetActionCreators.openLazy(
+                            import('./PluginRelationsListActionSheet'),
+                            `plugin-dependents-${id}`,
+                            {
+                                title: `Dependents of ${name}`,
+                                plugins: dependents,
+                            },
+                            'stack',
+                        )
+                    }}
                 />
             )}
         </TableRowGroup>
+    )
+}
+
+function UpdatesSection({ plugin }: { plugin: AnyPlugin }) {
+    return (
+        <TableRowGroup title="Updates">
+            <PauseUpdatesRow plugin={plugin} />
+            {/* TODO: Check for updates for specific plugin */}
+        </TableRowGroup>
+    )
+}
+
+function PauseUpdatesRow({ plugin }: { plugin: AnyPlugin }) {
+    const meta = getInternalPluginMeta(plugin)
+    const [held, setHeld] = useState(meta.source?.held ?? false)
+
+    return (
+        <TableSwitchRow
+            icon={<TableRowAssetIcon name="HandRequestDenyIcon" />}
+            label="Pause updates"
+            subLabel={`Stay on this version. Other plugins won't be able to update if they need a newer version of ${plugin.manifest.name}.`}
+            value={held}
+            onValueChange={value => {
+                setHeld(value)
+                setUpdatesPaused(plugin, value).catch(e => {
+                    setHeld(!value)
+                    showErrorToast(messageOf(e))
+                })
+            }}
+        />
     )
 }
 
@@ -286,14 +444,20 @@ function PluginActions({
     plugin: AnyPlugin
     closeSheet: () => void
 }) {
-    const [settingsRef, showEnableTooltip] = usePluginTooltip(
-        PluginTooltip.Enable,
+    const [controlRef, showControlBlockedTooltip] = usePluginTooltip(
+        PluginTooltip.ControlBlocked,
     )
+    const [settingsRef, showStartTooltip] = usePluginTooltip(
+        PluginTooltip.Start,
+    )
+
     const meta = getInternalPluginMeta(plugin)
     const startable = isPluginStartable(plugin)
+    const started = isPluginStarted(plugin)
     const enabled = usePluginEnabled(plugin)
     // Any lifecycle progress counts as running, stop waits for in-flight lifecycles
     const running = Boolean(usePluginStatus(plugin))
+    const notActionable = !running && (!startable || isDefaultsOnlyBoot)
 
     return (
         <Stack
@@ -302,22 +466,29 @@ function PluginActions({
             style={{ paddingHorizontal: 8, paddingVertical: 16 }}
         >
             {enabled && !isPluginEssential(meta) && (
-                <IconButton
-                    variant="secondary"
-                    size="lg"
-                    icon={running ? StopIcon : PlayIcon}
-                    label={running ? 'Stop' : 'Start'}
-                    // Nothing can start in a defaults-only boot, stopping a default plugin is still fine
-                    disabled={!running && (!startable || isDefaultsOnlyBoot)}
-                    onPress={async () => {
-                        try {
-                            if (running) await stopPlugin(plugin)
-                            else await runPluginLate(plugin)
-                        } catch (e) {
-                            showErrorToast(messageOf(e))
-                        }
+                <Pressable
+                    onPress={() => {
+                        if (notActionable) showControlBlockedTooltip()
                     }}
-                />
+                >
+                    <IconButton
+                        ref={controlRef}
+                        variant="secondary"
+                        size="lg"
+                        icon={running ? StopIcon : PlayIcon}
+                        label={running ? 'Stop' : 'Start'}
+                        // Nothing can start in a defaults-only boot, stopping a default plugin is still fine
+                        disabled={notActionable}
+                        onPress={async () => {
+                            try {
+                                if (running) await stopPlugin(plugin)
+                                else await runPluginLate(plugin)
+                            } catch (e) {
+                                showErrorToast(messageOf(e))
+                            }
+                        }}
+                    />
+                </Pressable>
             )}
             <IconButton
                 variant="secondary"
@@ -342,7 +513,7 @@ function PluginActions({
             {plugin.SettingsComponent && (
                 <Pressable
                     onPress={() => {
-                        if (!startable) showEnableTooltip()
+                        if (!started) showStartTooltip()
                     }}
                 >
                     <IconButton
@@ -351,7 +522,7 @@ function PluginActions({
                         size="lg"
                         icon={SettingsIcon}
                         label="Settings"
-                        disabled={!startable}
+                        disabled={!started}
                         onPress={() => {
                             openPluginSettings(plugin)
                             closeSheet()

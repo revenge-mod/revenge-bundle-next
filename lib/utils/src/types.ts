@@ -26,6 +26,7 @@ export type KeyWithType<O extends AnyObject, T> = {
 /// PLUGIN API EXTENSIONS
 
 export interface PreInitPluginApiUtils {
+    bitset: typeof import('@revenge-mod/utils/bitset')
     callback: typeof import('@revenge-mod/utils/callback')
     error: typeof import('@revenge-mod/utils/error')
     object: typeof import('@revenge-mod/utils/object')

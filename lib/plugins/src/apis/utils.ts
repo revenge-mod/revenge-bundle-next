@@ -1,3 +1,4 @@
+import * as UtilsBitset from '@revenge-mod/utils/bitset'
 import * as UtilsCallback from '@revenge-mod/utils/callback'
 import defer * as UtilsDiscord from '@revenge-mod/utils/discord'
 import * as UtilsError from '@revenge-mod/utils/error'
@@ -11,6 +12,7 @@ import type { PluginApiUtils } from '@revenge-mod/utils/types'
 
 export const utils = UtilsObject.defineLazyProperties(
     {
+        bitset: UtilsBitset,
         callback: UtilsCallback,
         error: UtilsError,
         object: UtilsObject,

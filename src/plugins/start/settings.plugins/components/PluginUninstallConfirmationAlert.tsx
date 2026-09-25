@@ -19,7 +19,7 @@ export default function PluginUninstallConfirmationAlert({
 
     return (
         <AlertModal
-            title="Uninstall plugin?"
+            title={`Uninstall ${plugin.manifest.name}?`}
             content={
                 <Text color="text-default">
                     <Text variant="text-md/semibold" color="text-default">

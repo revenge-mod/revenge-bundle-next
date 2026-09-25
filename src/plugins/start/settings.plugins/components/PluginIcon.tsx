@@ -8,8 +8,10 @@ const PuzzlePieceIcon = getAssetIdByName('PuzzlePieceIcon', 'png')!
 export function PluginIcon({
     icon,
     size = 20,
+    danger = false,
 }: {
     icon?: string
+    danger?: boolean
     size?: number
 }) {
     const styles = usePluginIconStyles()
@@ -26,7 +28,11 @@ export function PluginIcon({
                       ? (getAssetIdByName(icon) ?? PuzzlePieceIcon)
                       : PuzzlePieceIcon
             }
-            style={[!dataUrl && styles.icon, { width: size, height: size }]}
+            style={[
+                !dataUrl && styles.icon,
+                danger && styles.danger,
+                { width: size, height: size },
+            ]}
         />
     )
 }
@@ -34,5 +40,8 @@ export function PluginIcon({
 const usePluginIconStyles = Design.createStyles({
     icon: {
         tintColor: Tokens.default.colors.TEXT_DEFAULT,
+    },
+    danger: {
+        tintColor: Tokens.default.colors.TEXT_FEEDBACK_CRITICAL,
     },
 })

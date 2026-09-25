@@ -3,14 +3,13 @@ import { styles } from '@revenge-mod/components/_'
 import FormSwitch from '@revenge-mod/components/FormSwitch'
 import { Design } from '@revenge-mod/discord/design'
 import {
-    isDefaultsOnlyBoot,
-    isPluginEnabledInSavedStates,
     isPluginEssential,
     isPluginPendingUpdate,
-    isPluginStartable,
+    isPluginStarted,
 } from '@revenge-mod/plugins/_'
+import { usePluginEnabledInActiveSlot } from '@revenge-mod/plugins/_/react'
 import { formatVersion } from '@revenge-mod/plugins/utils'
-import { memo } from 'react'
+import { memo, useCallback, useState } from 'react'
 import { Pressable } from 'react-native'
 import { handleDisablePlugin, handleEnablePlugin } from '../utils/actions'
 import { openPluginSettings } from '../utils/alerts'
@@ -20,9 +19,9 @@ import {
     showPluginOptionsActionSheet,
 } from '../utils/sheets'
 import { PluginIcon } from './PluginIcon'
-import { usePluginEnabled } from './PluginStateProvider'
 import { PluginTooltip, usePluginTooltip } from './TooltipProvider'
 import type { AnyPlugin, InternalPluginMeta } from '@revenge-mod/plugins/_'
+import type { RepoPluginListing } from '@revenge-mod/plugins/_/repositories'
 
 const { Card, Text, Stack, IconButton, Button, createStyles } = Design
 
@@ -134,21 +133,20 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
     plugin: AnyPlugin
     meta: InternalPluginMeta
 }) {
-    const enabled = usePluginEnabled(plugin)
-    const savedEnabled = isPluginEnabledInSavedStates(plugin)
+    const savedEnabled = usePluginEnabledInActiveSlot(plugin)
 
     const {
         manifest: { name, description, version, author, icon },
     } = plugin
 
     const essential = isPluginEssential(meta)
-    const startable = isPluginStartable(plugin)
+    const started = isPluginStarted(plugin)
     const pendingUpdate = isPluginPendingUpdate(plugin)
 
     const toggleDisabled = essential || pendingUpdate
 
-    const [settingsRef, showEnableTooltip] = usePluginTooltip(
-        PluginTooltip.Enable,
+    const [settingsRef, showStartTooltip] = usePluginTooltip(
+        PluginTooltip.Start,
     )
 
     const [switchRef, showToggleTooltip] = usePluginTooltip(
@@ -175,7 +173,7 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
                     {plugin.SettingsComponent && (
                         <Pressable
                             onPress={() => {
-                                if (!startable) showEnableTooltip()
+                                if (!started) showStartTooltip()
                             }}
                         >
                             <IconButton
@@ -183,7 +181,7 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
                                 size="sm"
                                 variant="secondary"
                                 icon={SettingsIcon}
-                                disabled={!startable}
+                                disabled={!started}
                                 onPress={() => {
                                     openPluginSettings(plugin)
                                 }}
@@ -198,8 +196,7 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
                     >
                         <InstalledPluginSwitch
                             plugin={plugin}
-                            enabled={enabled}
-                            savedEnabled={savedEnabled}
+                            enabled={savedEnabled}
                             toggleDisabled={toggleDisabled}
                         />
                     </Pressable>
@@ -209,15 +206,14 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
     )
 })
 
+/** The switch answers for the slot the user chose, since that is what toggling it writes. */
 export const InstalledPluginSwitch = memo(function InstalledPluginSwitch({
     plugin,
     enabled,
-    savedEnabled,
     toggleDisabled,
 }: {
     plugin: AnyPlugin
     enabled: boolean
-    savedEnabled: boolean
     toggleDisabled: boolean
 }) {
     return (
@@ -230,7 +226,7 @@ export const InstalledPluginSwitch = memo(function InstalledPluginSwitch({
                     : handleDisablePlugin(plugin)
                 ).catch(e => showErrorToast(messageOf(e)))
             }}
-            value={isDefaultsOnlyBoot ? savedEnabled : enabled}
+            value={enabled}
         />
     )
 })
@@ -246,6 +242,8 @@ export const BrowsePluginCard = memo(function BrowsePluginCard({
     author,
     icon,
     id,
+    listing,
+    channel,
     repositoryText,
     onInstall,
 }: {
@@ -255,9 +253,19 @@ export const BrowsePluginCard = memo(function BrowsePluginCard({
     author: string
     icon?: string
     id: string
+    listing: RepoPluginListing
+    channel: string
     repositoryText: string
-    onInstall: () => void
+    onInstall: (channel?: string, version?: string) => Promise<unknown>
 }) {
+    const [installing, setInstalling] = useState(false)
+
+    const install = useCallback(() => {
+        const result = onInstall()
+        setInstalling(true)
+        result.finally(() => setInstalling(false))
+    }, [onInstall])
+
     return (
         <PluginCard
             name={name}
@@ -279,8 +287,10 @@ export const BrowsePluginCard = memo(function BrowsePluginCard({
                                 version,
                                 icon,
                                 id,
+                                listing,
+                                channel,
                                 repositoryText,
-                                onInstall,
+                                onInstall: install,
                             })
                         }}
                     />
@@ -288,7 +298,9 @@ export const BrowsePluginCard = memo(function BrowsePluginCard({
                         size="sm"
                         text="Install"
                         icon={DownloadIcon}
-                        onPress={onInstall}
+                        loading={installing}
+                        disabled={installing}
+                        onPress={install}
                     />
                 </>
             }

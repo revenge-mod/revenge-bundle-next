@@ -1,0 +1,9 @@
+{
+  "id": "revenge.api",
+  "name": "Plugin API",
+  "description": "Provides the Revenge plugin API.",
+  "author": "Revenge",
+  "icon": "PollsIcon",
+  "essential": true,
+  "api": true
+}

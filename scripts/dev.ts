@@ -14,6 +14,7 @@ const lanHost = process.argv.includes('--lan')
 
 const Port = 4040
 const BundlePath = './dist/revenge.bundle'
+const BundleManifestPath = './dist/manifest.json'
 
 console.info(chalk.redBright(`\nRevenge ${chalk.white(`v${pkg.version}`)}\n`))
 
@@ -50,22 +51,41 @@ watcher.subscribe(process.cwd(), (err, events) => {
 
 const server = createServer(async (req, res) => {
     try {
-        if (needRebuild) await debouncedBuild()
+        const path = req.url?.split('?')[0]
+
+        let file: string
+        let friendlyName: string
+        if (path === '/manifest.json') {
+            file = BundleManifestPath
+            friendlyName = 'manifest'
+        } else if (path === '/revenge.bundle') {
+            file = BundlePath
+            friendlyName = 'bundle'
+        } else {
+            res.writeHead(404)
+            res.end('Not found')
+            return
+        }
+
         console.debug(
             chalk.gray(
-                `\u{1F79B} Receiving request from ${req.socket.remoteAddress}`,
+                `\u{1F79B} Receiving request for ${friendlyName} from ${req.socket.remoteAddress}`,
             ),
         )
 
-        const bundle = await readFile(BundlePath).catch(() => null)
-        if (!bundle)
-            throw new Error('Could not serve the bundle! No file found.')
+        if (needRebuild) await debouncedBuild()
 
-        const hash = crc32(bundle).toString(16)
+        const contents = await readFile(file).catch(() => null)
+        if (!contents)
+            throw new Error(`Could not serve ${friendlyName}! No file found.`)
+
+        const hash = crc32(contents).toString(16)
 
         if (req.headers['if-none-match'] === hash) {
             console.debug(
-                chalk.gray('\u{1F4BE} ETag matched, responding with 304'),
+                chalk.gray(
+                    `\u{1F4BE} ETag matched for ${friendlyName}, responding with 304`,
+                ),
             )
 
             res.writeHead(304)
@@ -75,9 +95,9 @@ const server = createServer(async (req, res) => {
 
         res.writeHead(200, {
             ETag: hash,
-            'Content-Length': bundle.byteLength,
+            'Content-Length': contents.byteLength,
         })
-        res.end(bundle)
+        res.end(contents)
     } catch (e) {
         console.error(e)
 

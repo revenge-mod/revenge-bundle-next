@@ -1,21 +1,17 @@
 import TableRowAssetIcon from '@revenge-mod/components/TableRowAssetIcon'
 import { ToastActionCreators } from '@revenge-mod/discord/actions'
 import {
-    disablePlugin,
-    enablePlugin,
+    disablePluginInActiveSlot,
+    enablePluginInActiveSlot,
     isDefaultsOnlyBoot,
-    isPluginEnabled,
-    pEmitter,
     pList,
     runPluginLate,
 } from '@revenge-mod/plugins/_'
+import { usePluginEnabledById } from '@revenge-mod/plugins/_/react'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
-import { useReRender } from '@revenge-mod/utils/react'
-import { useEffect } from 'react'
 import pluginHiddenApi from '~plugins/preinit/api.hidden'
 import { Setting } from '../constants'
 import type { SettingsItem } from '@revenge-mod/discord/modules/settings'
-import type { AnyPlugin } from '@revenge-mod/plugins/_'
 
 const RevengeDeveloperModeSetting: SettingsItem = {
     parent: Setting.Revenge,
@@ -27,38 +23,17 @@ const RevengeDeveloperModeSetting: SettingsItem = {
             ? 'Unavailable in Recovery Mode. Reload to exit.'
             : 'Exposes internal Revenge APIs for development purposes. Use with caution.',
     useIsDisabled: () => isDefaultsOnlyBoot,
-    useValue: useDeveloperModeEnabled,
+    useValue: () => usePluginEnabledById(pluginHiddenApi),
     onValueChange: enabled => {
         const plugin = pList.get(pluginHiddenApi)
         if (!plugin) return
 
         if (enabled)
-            enablePlugin(plugin)
+            enablePluginInActiveSlot(plugin, true)
                 .then(() => runPluginLate(plugin))
                 .catch(showFailureToast)
-        else disablePlugin(plugin).catch(showFailureToast)
+        else disablePluginInActiveSlot(plugin).catch(showFailureToast)
     },
-}
-
-function useDeveloperModeEnabled() {
-    const plugin = pList.get(pluginHiddenApi)
-    const reRender = useReRender()
-
-    useEffect(() => {
-        const handle = (changed: AnyPlugin) => {
-            if (changed === plugin) reRender()
-        }
-
-        pEmitter.on('enabled', handle)
-        pEmitter.on('disabled', handle)
-
-        return () => {
-            pEmitter.off('enabled', handle)
-            pEmitter.off('disabled', handle)
-        }
-    }, [plugin, reRender])
-
-    return plugin ? isPluginEnabled(plugin) : false
 }
 
 function showFailureToast(e: unknown) {

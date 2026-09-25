@@ -11,6 +11,11 @@ import { importGlobPlugin } from 'rolldown/experimental'
 import { fileURLToPath } from 'url'
 import pkg from '../package.json' with { type: 'json' }
 import { exists } from './_shared'
+import {
+    getBundleManifest,
+    getInternalPluginManifests,
+    PluginsDir,
+} from './manifest'
 import asRequire from './plugins/as-require'
 import hermesSwcPlugin from './plugins/hermes-swc'
 import hermesCPlugin from './plugins/hermesc'
@@ -107,11 +112,6 @@ export default async function build(dev = Dev, log = true) {
             },
         },
         tsconfig: 'tsconfig.json',
-        // propertyReadSideEffects: false works around a Rolldown bug where
-        // property reads on tree-shaken import bindings are kept as "side
-        // effects" while their imports are removed, producing free-variable
-        // references (e.g. `FibonacciHeap.MinFibonacciHeap` from mnemonist's
-        // barrel) that throw ReferenceError at runtime.
         treeshake: true,
         moduleTypes: {
             '.webp': 'dataurl',
@@ -193,6 +193,16 @@ export default async function build(dev = Dev, log = true) {
                 `\u{2714} Compiled successfully! ${chalk.gray(`(took ${(performance.now() - start).toFixed(2)}ms)`)}`,
             ),
         )
+
+    const manifest = getBundleManifest(
+        pkg.version,
+        await getInternalPluginManifests(PluginsDir, dev),
+    )
+
+    await writeFile('./dist/manifest.json', JSON.stringify(manifest))
+
+    if (log)
+        console.info(chalk.cyanBright('\u{1F5BB} Internal manifests emitted'))
 }
 
 async function generateAssets() {

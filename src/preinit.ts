@@ -37,6 +37,10 @@ onModuleFirstRequired(IndexModuleId, function onIndexRequired() {
             }
         })
 
+        // Register internal plugin manifests before dependency resolution
+        // @as-require
+        import('~/plugins/manifests')
+
         // Run all preinit plugins
         // @as-require
         import('~/plugins/preinit')
