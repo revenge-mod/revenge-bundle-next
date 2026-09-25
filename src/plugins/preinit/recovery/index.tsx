@@ -5,9 +5,7 @@ import { withName } from '@revenge-mod/modules/finders/filters'
 import { callNativeMethod } from '@revenge-mod/modules/native'
 import { instead } from '@revenge-mod/patcher'
 import {
-    InternalPluginFlags,
     isDefaultsOnlyBoot,
-    PluginFlags,
     registerInternalPlugin,
 } from '@revenge-mod/plugins/_'
 import { onRunApplicationFinished } from '@revenge-mod/react/native'
@@ -23,38 +21,33 @@ import defer * as ErrorBoundaryScreen from './components/ErrorBoundaryScreen'
 import manifest from './manifest.json'
 import type { Component, ReactNode } from 'react'
 
-registerInternalPlugin(
-    manifest,
-    {
-        preInit({ cleanup }) {
-            cleanup(freezeDetectionService())
-        },
-        start({ cleanup }) {
-            // @as-require
-            import('./settings')
-
-            cleanup(errorBoundaryService())
-
-            asap(() => {
-                if (isDefaultsOnlyBoot) {
-                    Actions.AlertActionCreators.openAlert(
-                        'revenge-recovery',
-                        <Alerts.RecoveryModal />,
-                    )
-                }
-
-                if (assetsCache.outdated || modulesCache.outdated) {
-                    Actions.AlertActionCreators.openAlert(
-                        'revenge-loader-outdated',
-                        <Alerts.LoaderOutdatedModal />,
-                    )
-                }
-            })
-        },
+registerInternalPlugin(manifest, {
+    preInit({ cleanup }) {
+        cleanup(freezeDetectionService())
     },
-    PluginFlags.Enabled,
-    InternalPluginFlags.Internal | InternalPluginFlags.Essential,
-)
+    start({ cleanup }) {
+        // @as-require
+        import('./settings')
+
+        cleanup(errorBoundaryService())
+
+        asap(() => {
+            if (isDefaultsOnlyBoot) {
+                Actions.AlertActionCreators.openAlert(
+                    'revenge-recovery',
+                    <Alerts.RecoveryModal />,
+                )
+            }
+
+            if (assetsCache.outdated || modulesCache.outdated) {
+                Actions.AlertActionCreators.openAlert(
+                    'revenge-loader-outdated',
+                    <Alerts.LoaderOutdatedModal />,
+                )
+            }
+        })
+    },
+})
 
 const FreezeDetectionTimeout = 5000
 

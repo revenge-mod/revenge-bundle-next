@@ -9,10 +9,16 @@ export const PluginsDir = `${__dirname}/../src/plugins`
 
 interface BundleManifestPlugin {
     id: string
+    /** Cannot be turned off. Implies {@link enabledByDefault}. */
+    essential?: true
+    /** On until the user says otherwise. */
+    enabledByDefault?: true
     dependencies?: Record<string, { version?: string }>
 }
 
-interface RawBundleManifestPlugin extends BundleManifestPlugin {
+interface RawBundleManifestPlugin
+    extends Omit<BundleManifestPlugin, 'enabledByDefault'> {
+    enabledByDefault?: boolean | 'dev'
     build?: {
         devOnly?: boolean
     }
@@ -53,8 +59,23 @@ export async function getInternalPluginManifests(
                 )
 
             seen.set(manifest.id, where)
+
+            const { enabledByDefault } = manifest
+            if (
+                enabledByDefault !== undefined &&
+                typeof enabledByDefault !== 'boolean' &&
+                enabledByDefault !== 'dev'
+            )
+                throw new Error(
+                    `Internal plugin "${manifest.id}" has an invalid enabledByDefault: ${JSON.stringify(enabledByDefault)}`,
+                )
+
             manifests.push({
                 id: manifest.id,
+                ...(manifest.essential && { essential: true }),
+                ...((enabledByDefault === 'dev' ? dev : enabledByDefault) && {
+                    enabledByDefault: true,
+                }),
                 ...(manifest.dependencies && {
                     dependencies: manifest.dependencies,
                 }),
@@ -77,6 +98,7 @@ export function getBundleManifest(
     plugins: BundleManifestPlugin[],
 ) {
     return {
+        format: 1,
         version,
         plugins,
     }

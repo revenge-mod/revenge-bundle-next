@@ -1,11 +1,7 @@
 import { ToastActionCreators } from '@revenge-mod/discord/actions'
 import { onSettingsModulesLoaded } from '@revenge-mod/discord/modules/settings'
 import { JsonStorageUpdateMode } from '@revenge-mod/json-storage'
-import {
-    InternalPluginFlags,
-    PluginFlags,
-    registerInternalPlugin,
-} from '@revenge-mod/plugins/_'
+import { registerInternalPlugin } from '@revenge-mod/plugins/_'
 import {
     refreshAllRepos,
     updateAllPlugins,
@@ -31,34 +27,29 @@ const CircleXIconComponent = lookupGeneratedIconComponent(
     'CircleXIcon-secondary',
 )!
 
-registerInternalPlugin<{ jsonStorage: Storage }>(
-    manifest,
-    {
-        jsonStorage: {
-            load: true,
-            default: {
-                autoUpdate: true,
-            },
-        },
-        async start(api_) {
-            api = api_
-
-            // @as-require
-            import('./plugins')
-
-            onSettingsModulesLoaded(() => {
-                // @as-require
-                import('./register')
-            })
-
-            const settings = await api.jsonStorage.get()
-            autoUpdateService(settings)
-            defaultRepoRestoreService(settings, api.jsonStorage)
+registerInternalPlugin<{ jsonStorage: Storage }>(manifest, {
+    jsonStorage: {
+        load: true,
+        default: {
+            autoUpdate: true,
         },
     },
-    PluginFlags.Enabled,
-    InternalPluginFlags.Internal | InternalPluginFlags.Essential,
-)
+    async start(api_) {
+        api = api_
+
+        // @as-require
+        import('./plugins')
+
+        onSettingsModulesLoaded(() => {
+            // @as-require
+            import('./register')
+        })
+
+        const settings = await api.jsonStorage.get()
+        autoUpdateService(settings)
+        defaultRepoRestoreService(settings, api.jsonStorage)
+    },
+})
 
 function autoUpdateService(settings: Storage) {
     if (!settings.autoUpdate) return

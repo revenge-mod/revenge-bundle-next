@@ -2,18 +2,12 @@
 
 import { useStore } from 'zustand/react'
 import { PluginFlags } from './constants'
-import { pluginStore } from './store'
+import { pluginStore, resolveFlags } from './store'
 import type { AnyPlugin } from '.'
-import type { PluginStoreState } from './store'
-
-/** Flags of a plugin in a slot. */
-function flagsIn(state: PluginStoreState, slot: string, id: string): number {
-    return state.slots[slot]?.[id] ?? 0
-}
 
 export function usePluginEnabledById(id: string): boolean {
     return useStore(pluginStore, state =>
-        Boolean(flagsIn(state, state.bootSlot, id) & PluginFlags.Enabled),
+        Boolean(resolveFlags(state, state.bootSlot, id) & PluginFlags.Enabled),
     )
 }
 
@@ -28,7 +22,9 @@ export function usePluginEnabled(plugin: AnyPlugin): boolean {
 export function usePluginEnabledInActiveSlot(plugin: AnyPlugin): boolean {
     const id = plugin.manifest.id
     return useStore(pluginStore, state =>
-        Boolean(flagsIn(state, state.activeSlot, id) & PluginFlags.Enabled),
+        Boolean(
+            resolveFlags(state, state.activeSlot, id) & PluginFlags.Enabled,
+        ),
     )
 }
 
@@ -39,7 +35,9 @@ export function usePluginStatus(plugin: AnyPlugin): number {
 
 export function usePluginFlags(plugin: AnyPlugin): number {
     const id = plugin.manifest.id
-    return useStore(pluginStore, state => flagsIn(state, state.bootSlot, id))
+    return useStore(pluginStore, state =>
+        resolveFlags(state, state.bootSlot, id),
+    )
 }
 
 /** Subscribes to registered plugin IDs, in registration order. */
@@ -51,7 +49,7 @@ export function useEnabledPluginCountInActiveSlot(): number {
     return useStore(pluginStore, state => {
         let count = 0
         for (const id of state.ids)
-            if (flagsIn(state, state.activeSlot, id) & PluginFlags.Enabled)
+            if (resolveFlags(state, state.activeSlot, id) & PluginFlags.Enabled)
                 count++
         return count
     })

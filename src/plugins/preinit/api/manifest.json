@@ -3,5 +3,7 @@
   "name": "Plugin API",
   "description": "Provides the Revenge plugin API.",
   "author": "Revenge",
-  "icon": "PollsIcon"
+  "icon": "PollsIcon",
+  "essential": true,
+  "api": true
 }

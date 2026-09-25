@@ -3,7 +3,6 @@ import { noop } from '@revenge-mod/utils/callback'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import {
     disablePluginInActiveSlot,
-    forgetBootPluginState,
     getInternalPluginMeta,
     getLinkedOptionalDependents,
     InternalPluginFlags,
@@ -67,8 +66,6 @@ export function registerExternalPlugins() {
             const { plugin } = result
 
             try {
-                // Drop stale boot snapshot entry so fresh install registers disabled
-                forgetBootPluginState(plugin.manifest.id)
                 registerExternalPlugin(plugin)
             } catch (e) {
                 pEmitter.emit('install', {
@@ -242,9 +239,6 @@ export async function uninstallExternalPlugin(plugin: AnyPlugin) {
     await callPluginSystemMethod('revenge.plugins.uninstall', [
         plugin.manifest.id,
     ])
-
-    // Native cleared persisted flags, drop the initial snapshot entry
-    forgetBootPluginState(plugin.manifest.id)
 
     unregisterPlugin(plugin)
 

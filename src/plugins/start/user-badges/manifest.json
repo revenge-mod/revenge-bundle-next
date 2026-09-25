@@ -3,5 +3,6 @@
   "name": "User Badges",
   "description": "Badges for Revenge contributors and sponsors.",
   "author": "Revenge",
-  "icon": "ShieldUserIcon"
+  "icon": "ShieldUserIcon",
+  "essential": true
 }

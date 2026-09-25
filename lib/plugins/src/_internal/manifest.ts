@@ -24,6 +24,12 @@ export function parseBundleVersion(version: string): PluginVersion {
     return label ? { nums, label } : { nums }
 }
 
+export function isEnabledByDefault(manifest: InternalPluginManifest): boolean {
+    const { essential, enabledByDefault } = manifest
+    if (essential) return true
+    return enabledByDefault === 'dev' ? __DEV__ : enabledByDefault === true
+}
+
 export function completeInternalManifest(
     manifest: InternalPluginManifest,
     version: PluginVersion,
@@ -37,5 +43,7 @@ export function completeInternalManifest(
         manifest.dependencies[DiscordDependencyId] ??= { version: '*' }
     }
 
-    return manifest as PluginManifest
+    // Drop the extra props
+    const { essential, enabledByDefault, api, build, ...rest } = manifest
+    return rest as PluginManifest
 }

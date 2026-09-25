@@ -3,5 +3,6 @@
   "name": "Settings",
   "description": "Settings UI for Revenge.",
   "author": "Revenge",
-  "icon": "SettingsIcon"
+  "icon": "SettingsIcon",
+  "essential": true
 }

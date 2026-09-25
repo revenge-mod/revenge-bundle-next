@@ -47,8 +47,6 @@ export const BootSlot = slotInfo.oneShot ?? slotInfo.active
 /** Whether boot ignores the chosen slot to load default plugins only. */
 export const isDefaultsOnlyBoot = BootSlot === defaultsOnlySlot
 
-export const BootStates = slotStates[BootSlot]
-
 /// HYDRATION
 
 const hydrated: Record<string, Record<string, number>> = {}
@@ -68,11 +66,6 @@ export function isPluginEnabledInActiveSlot(plugin: AnyPlugin): boolean {
     return Boolean(
         store.getFlags(ActiveSlot, plugin.manifest.id) & Flag.Enabled,
     )
-}
-
-/** Removes a snapshotted boot state, allowing reinstalled plugin to register with default state. */
-export function forgetBootPluginState(id: PluginManifest['id']) {
-    delete BootStates[id]
 }
 
 export function pluginStateToFlags(state: PluginStateObject): number {

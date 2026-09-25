@@ -12,13 +12,12 @@ import {
     handlePluginError,
     stopPlugin,
 } from './lifecycles'
-import { completeInternalManifest } from './manifest'
+import { completeInternalManifest, isEnabledByDefault } from './manifest'
 import { callPluginSystemMethodSync } from './native'
 import { isPluginEnabled, isPluginStartedLate } from './predicates'
 import {
     applySlotFlags,
     BootSlot,
-    BootStates,
     flagsToPluginState,
     pluginStateToFlags,
 } from './state'
@@ -64,13 +63,14 @@ export function registerPlugin<O extends PluginApiExtensionsOptions>(
  * @see {@link registerPlugin}
  *
  * @param manifest Partial or complete plugin manifest.
- * @param iflags Internal plugin flags.
+ * @param defflags Defaults to what the manifest declares.
+ * @param iflags Defaults to what the manifest declares.
  */
 export function registerInternalPlugin<O extends PluginApiExtensionsOptions>(
     manifest: InternalPluginManifest,
     options: PluginOptions<O> | PluginOptionsFactory<O>,
-    defflags: number,
-    iflags = 0,
+    defflags = defaultFlagsOf(manifest),
+    iflags = internalFlagsOf(manifest),
 ) {
     return register(
         completeInternalManifest(manifest, InternalPluginVersion),
@@ -80,20 +80,34 @@ export function registerInternalPlugin<O extends PluginApiExtensionsOptions>(
     )
 }
 
+function defaultFlagsOf(manifest: InternalPluginManifest): number {
+    return isEnabledByDefault(manifest) ? PluginFlags.Enabled : 0
+}
+
+function internalFlagsOf(manifest: InternalPluginManifest): number {
+    return (
+        InternalPluginFlags.Internal |
+        (manifest.essential ? InternalPluginFlags.Essential : 0) |
+        (manifest.api ? InternalPluginFlags.API : 0)
+    )
+}
+
 /**
  * Registers an internal plugin's manifest without its implementation.
  *
  * The plugin cannot run until its implementation is registered via {@link registerInternalPlugin}.
  */
 export function registerInternalManifest(manifest: InternalPluginManifest) {
+    const defflags = defaultFlagsOf(manifest)
+    const iflags = internalFlagsOf(manifest)
     const completed = completeInternalManifest(manifest, InternalPluginVersion)
     const { id } = completed
 
     if (pList.has(id))
         throw new Error(`Plugin with ID "${id}" already registered`)
 
-    // Disabled until the implementation is attached.
-    return create(completed, undefined, 0, 0, false)
+    // Cannot run until the implementation is attached.
+    return create(completed, undefined, defflags, iflags, false)
 }
 
 function register<O extends PluginApiExtensionsOptions>(
@@ -108,7 +122,12 @@ function register<O extends PluginApiExtensionsOptions>(
         if (meta.attached)
             throw new Error(`Plugin "${manifest.id}" already attached`)
 
-        return attach(existing, meta, options, defflags, iflags)
+        if (!(iflags & InternalPluginFlags.Internal))
+            throw new Error(
+                `Plugin "${manifest.id}" is already registered as an internal plugin`,
+            )
+
+        return attach(existing, meta, options)
     }
 
     return create(manifest, options, defflags, iflags, true)
@@ -118,8 +137,6 @@ function attach<O extends PluginApiExtensionsOptions>(
     plugin: AnyPlugin,
     meta: InternalPluginMeta,
     options: PluginOptions<O> | PluginOptionsFactory<O>,
-    defflags: number,
-    iflags: number,
 ) {
     const { id } = plugin.manifest
     const resolved = typeof options === 'function' ? undefined : options
@@ -132,11 +149,7 @@ function attach<O extends PluginApiExtensionsOptions>(
 
     meta.options = resolved ?? {}
     meta.optionsFactory = typeof options === 'function' ? options : undefined
-    meta.iflags = iflags
     meta.attached = true
-
-    // Sync the actual default flags to native
-    if (!BootStates[id]) meta.flags = defflags
 
     index(plugin, meta)
 
@@ -155,10 +168,7 @@ function create<O extends PluginApiExtensionsOptions>(
     const { id } = manifest
 
     // Store entry must exist before the accessors below are read
-    store.addPlugin(
-        id,
-        BootStates[id] ? pluginStateToFlags(BootStates[id]) : defflags,
-    )
+    store.addPlugin(id, defflags)
 
     const plugin = {
         errors: [],

@@ -1,7 +1,7 @@
 import { createStore } from 'zustand/vanilla'
 
 /**
- * Reactive and observable source of truth for the boot slot: {@link InternalPluginMeta.flags} and {@link Plugin.status}.
+ * Reactive and observable source of truth for plugin flags and {@link Plugin.status}.
  *
  * @see {@link file://./react.ts} for React bindings
  *
@@ -11,8 +11,13 @@ import { createStore } from 'zustand/vanilla'
 export interface PluginStoreState {
     /** Registered plugin IDs, in registration order. */
     ids: string[]
-    /** Flags of every known slot, keyed by slot ID then plugin ID. */
-    slots: Record<string, Record<string, number>>
+    /**
+     * Flags of every plugin in every slot, keyed by slot ID then plugin ID.
+     * Default to {@link PluginStoreState.defaultFlags} if no value.
+     */
+    slots: Record<string, Record<string, number | undefined>>
+    /** Default flags of plugins keyed by plugin ID. */
+    defaultFlags: Record<string, number>
     /** Slot the user chose. The UI reads and edits it. */
     activeSlot: string
     /** Slot this boot runs on. Same as {@link PluginStoreState.activeSlot} on a normal boot. */
@@ -24,24 +29,25 @@ export interface PluginStoreState {
 export const pluginStore = createStore<PluginStoreState>(() => ({
     ids: [],
     slots: {},
+    defaultFlags: {},
     activeSlot: '',
     bootSlot: '',
     status: {},
 }))
 
 export function hydrateSlots(
-    slots: Record<string, Record<string, number>>,
+    slots: Record<string, Record<string, number | undefined>>,
     activeSlot: string,
     bootSlot: string,
 ) {
     pluginStore.setState({ slots, activeSlot, bootSlot })
 }
 
-/** Tracks plugin, resetting status. Re-registration overwrites the previous entry. */
-export function addPlugin(id: string, flags: number) {
+/** Tracks a plugin, resetting status. Re-registration overwrites the previous entry. */
+export function addPlugin(id: string, defaultFlags: number) {
     pluginStore.setState(state => ({
         ids: state.ids.includes(id) ? state.ids : [...state.ids, id],
-        slots: withFlags(state, state.bootSlot, id, flags),
+        defaultFlags: { ...state.defaultFlags, [id]: defaultFlags },
         status: { ...state.status, [id]: 0 },
     }))
 }
@@ -59,16 +65,29 @@ export function removePlugin(id: string) {
         const status = { ...state.status }
         delete status[id]
 
+        const defaultFlags = { ...state.defaultFlags }
+        delete defaultFlags[id]
+
         return {
             ids: state.ids.filter(other => other !== id),
             slots,
+            defaultFlags,
             status,
         }
     })
 }
 
+/** Flags of a plugin in a slot, with fallback to the default flags. */
+export function resolveFlags(
+    state: PluginStoreState,
+    slot: string,
+    id: string,
+): number {
+    return state.slots[slot]?.[id] ?? state.defaultFlags[id] ?? 0
+}
+
 export function getFlags(slot: string, id: string): number {
-    return pluginStore.getState().slots[slot]?.[id] ?? 0
+    return resolveFlags(pluginStore.getState(), slot, id)
 }
 
 export function setFlags(slot: string, id: string, flags: number) {

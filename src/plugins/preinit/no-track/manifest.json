@@ -3,5 +3,6 @@
   "name": "No Track",
   "description": "Disables Discord and Sentry analytics.",
   "author": "Revenge",
-  "icon": "AnalyticsIcon"
+  "icon": "AnalyticsIcon",
+  "enabledByDefault": true
 }

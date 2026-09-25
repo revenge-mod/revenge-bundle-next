@@ -13,7 +13,23 @@ export type InternalPluginManifest = Omit<
     PluginManifest,
     'version' | 'format' | 'dependencies'
 > &
-    Partial<Pick<PluginManifest, 'version' | 'format' | 'dependencies'>>
+    Partial<Pick<PluginManifest, 'version' | 'format' | 'dependencies'>> &
+    InternalPluginManifestExtras
+
+/** Extra keys from an internal plugin's `manifest.json` for the build and registration system. */
+export interface InternalPluginManifestExtras {
+    /** The plugin cannot be stopped, disabled, or uninstalled. Implies {@link enabledByDefault}. */
+    essential?: boolean
+    /**
+     * Enabled unless the user explicitly disables the plugin.
+     * Set to `'dev'` to apply to development builds only.
+     */
+    enabledByDefault?: boolean | 'dev' | (string & {})
+    /** The plugin decorates every other plugin's API. */
+    api?: boolean
+    /** Build system configuration. */
+    build?: { devOnly?: boolean }
+}
 
 export interface InternalPluginMeta {
     /**
