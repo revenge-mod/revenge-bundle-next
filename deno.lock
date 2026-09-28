@@ -25,6 +25,7 @@
     "npm:rolldown-plugin-dts@~0.27.14": "0.27.14_rolldown@1.2.1_typescript@7.0.2",
     "npm:rolldown@1.2.1": "1.2.1",
     "npm:typescript@^7.0.2": "7.0.2",
+    "npm:use-debounce@^10.1.1": "10.1.1_react@19.2.3",
     "npm:vitest@^4.1.11": "4.1.11_@types+node@25.9.6_vite@8.3.0",
     "npm:zustand@^5.0.15": "5.0.15_@types+react@19.3.0_react@19.2.3"
   },
@@ -2860,6 +2861,12 @@
       ],
       "bin": true
     },
+    "use-debounce@10.1.1_react@19.2.3": {
+      "integrity": "sha512-kvds8BHR2k28cFsxW8k3nc/tRga2rs1RHYCqmmGqb90MEeE++oALwzh2COiuBLO1/QXiOuShXoSN2ZpWnMmvuQ==",
+      "dependencies": [
+        "react"
+      ]
+    },
     "use-latest-callback@0.2.6_react@19.2.3": {
       "integrity": "sha512-FvRG9i1HSo0wagmX63Vrm8SnlUU3LMM3WyZkQ76RnslpBrX694AdG4A0zQBx2B3ZifFA0yv/BaEHGBnEax5rZg==",
       "dependencies": [
@@ -3064,6 +3071,7 @@
         "npm:rolldown-plugin-dts@~0.27.14",
         "npm:rolldown@1.2.1",
         "npm:typescript@^7.0.2",
+        "npm:use-debounce@^10.1.1",
         "npm:vitest@^4.1.11",
         "npm:zustand@^5.0.15"
       ],

@@ -29,6 +29,7 @@ import {
 import {
     usePluginEnabled,
     usePluginEnabledInActiveSlot,
+    usePluginFlags,
     usePluginStatus,
 } from '@revenge-mod/plugins/_/react'
 import {
@@ -47,7 +48,11 @@ import {
     showPluginUninstallConfirmation,
 } from '../utils/alerts'
 import { messageOf, runInstallFlow, showErrorToast } from '../utils/repos'
-import { InstalledPluginSwitch, PluginInfo } from './PluginCard'
+import {
+    InstalledPluginSwitch,
+    PluginInfo,
+    PluginInfoStatusIcon,
+} from './PluginCard'
 import PluginTooltipsProvider, {
     PluginTooltip,
     usePluginTooltip,
@@ -110,6 +115,7 @@ function PluginOptions({ plugin, sheetKey }: PluginOptionsActionSheetProps) {
                 version={formatVersion(version)}
                 description={description}
                 icon={icon}
+                extraInfo={<PluginInfoStatusIcon plugin={plugin} />}
                 actions={
                     !essential && (
                         <Pressable
