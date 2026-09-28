@@ -139,7 +139,7 @@ function PluginOptions({ plugin, sheetKey }: PluginOptionsActionSheetProps) {
                     ActionSheetActionCreators.hideActionSheet(sheetKey)
                 }}
             />
-            <StatusSection plugin={plugin} />
+            <ErrorsSection plugin={plugin} />
             {meta.source && (
                 <ChannelSection plugin={plugin} source={meta.source} />
             )}
@@ -149,19 +149,13 @@ function PluginOptions({ plugin, sheetKey }: PluginOptionsActionSheetProps) {
     )
 }
 
-function StatusSection({ plugin }: { plugin: AnyPlugin }) {
-    const status = usePluginStatus(plugin)
+function ErrorsSection({ plugin }: { plugin: AnyPlugin }) {
     const meta = getInternalPluginMeta(plugin)
     const errors = [...plugin.errors, ...meta.nativeErrors]
 
     return (
-        <TableRowGroup title="Status">
-            <TableRow
-                icon={<TableRowAssetIcon name="CircleInformationIcon" />}
-                label="Status"
-                subLabel={bitFieldToString(PluginStatus, status)}
-            />
-            {errors.length > 0 && (
+        errors.length > 0 && (
+            <TableRowGroup>
                 <TableRow
                     variant="danger"
                     label="Errors"
@@ -181,8 +175,8 @@ function StatusSection({ plugin }: { plugin: AnyPlugin }) {
                         showCopiedToClipboardToast()
                     }}
                 />
-            )}
-        </TableRowGroup>
+            </TableRowGroup>
+        )
     )
 }
 
@@ -265,6 +259,8 @@ function ChannelSection({
 
 function AdvancedSection({ plugin }: { plugin: AnyPlugin }) {
     const meta = getInternalPluginMeta(plugin)
+    const flags = usePluginFlags(plugin)
+    const status = usePluginStatus(plugin)
     const dependents = getPluginDependents(plugin, true)
     const dependencies = getPluginDependencies(plugin, false)
     const repositoryText = usePluginRepositoryText(plugin)
@@ -278,9 +274,14 @@ function AdvancedSection({ plugin }: { plugin: AnyPlugin }) {
                 copyable={!!meta.source?.repo}
             />
             <TableRow
+                icon={<TableRowAssetIcon name="CircleInformationIcon" />}
+                label="Status"
+                subLabel={bitFieldToString(PluginStatus, status)}
+            />
+            <TableRow
                 icon={<TableRowAssetIcon name="FlagIcon" />}
                 label="Flags"
-                subLabel={bitFieldToString(PluginFlags, meta.flags)}
+                subLabel={bitFieldToString(PluginFlags, flags)}
             />
             {meta.iflags > 0 && (
                 <TableRow
