@@ -11,13 +11,8 @@
 import { registerJSMethod } from '@revenge-mod/modules/native'
 import { exists, rm } from '@revenge-mod/modules/native/fs'
 import { pluginStorageDirFor } from '../constants'
-import {
-    defaultsOnlySlot,
-    PluginFlags,
-    PluginStatus as Status,
-} from './constants'
+import { defaultsOnlySlot, PluginFlags } from './constants'
 import { pEmitter } from './emitter'
-import { stopPlugin } from './lifecycles'
 import { callPluginSystemMethod, callPluginSystemMethodSync } from './native'
 import { getInternalPluginMeta, pList } from './registry'
 import * as store from './store'
@@ -93,7 +88,8 @@ export function flagsToPluginState(flags: number): PluginStateObject {
 registerJSMethod(StateUpdateMethod, (slot, id, state) => {
     const flags = pluginStateToFlags(state as PluginStateObject)
 
-    if (slot === BootSlot) applyFlagsFromNative(id as PluginManifest['id'], flags)
+    if (slot === BootSlot)
+        applyFlagsFromNative(id as PluginManifest['id'], flags)
     else adoptSlotFlags(slot as string, id as PluginManifest['id'], flags)
 })
 
@@ -108,26 +104,16 @@ registerJSMethod(
     },
 )
 
-/**
- * Applies flags from native to a plugin. If the plugin is running, it may be stopped if it is being disabled.
- * Flags that are not persisted in native (JS-only flags) are preserved.
- */
-async function applyFlagsFromNative(id: PluginManifest['id'], flags: number) {
+/** Applies flags from native to a plugin. Flags native cannot send are preserved. */
+function applyFlagsFromNative(id: PluginManifest['id'], flags: number) {
     const plugin = pList.get(id)
     if (!plugin) return
 
-    const meta = getInternalPluginMeta(plugin)
-    flags = (meta.flags & ~PersistedFlags) | flags
-    if (meta.flags === flags) return
-
-    const wasEnabled = meta.flags & Flag.Enabled
-    const nowEnabled = flags & Flag.Enabled
-
-    if (wasEnabled && !nowEnabled)
-        if (meta.status && !(meta.status & Status.Stopping))
-            await stopPlugin(plugin)
-
-    adoptSlotFlags(BootSlot, id, flags)
+    adoptSlotFlags(
+        BootSlot,
+        id,
+        (getInternalPluginMeta(plugin).flags & ~PersistedFlags) | flags,
+    )
 }
 
 /** Applies flags to a plugin in a specific slot. */
