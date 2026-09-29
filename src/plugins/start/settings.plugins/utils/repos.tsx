@@ -149,6 +149,7 @@ export async function confirmPlan(
                 </>
             }
         />,
+        () => resolve(false),
     )
 
     return await promise
