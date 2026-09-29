@@ -11,6 +11,7 @@ import {
     isPluginPendingReload,
     isPluginPendingUpdate,
     isPluginStarted,
+    isPluginStartedLate,
     isPluginStopped,
 } from '@revenge-mod/plugins/_'
 import {
@@ -21,7 +22,6 @@ import {
 import { formatVersion } from '@revenge-mod/plugins/utils'
 import { memo, useCallback, useState } from 'react'
 import { Image, Pressable } from 'react-native'
-import { useDebounce } from 'use-debounce'
 import { handleDisablePlugin, handleEnablePlugin } from '../utils/actions'
 import { openPluginSettings } from '../utils/alerts'
 import { messageOf, showErrorToast } from '../utils/repos'
@@ -89,12 +89,6 @@ export const PluginInfoStatusIcon = memo(function PluginInfoStatusIcon({
     usePluginFlags(plugin)
     usePluginStatus(plugin)
 
-    // Enablement takes a moment to propagate
-    const [isStoppedAndEnabled] = useDebounce(
-        isPluginStopped(plugin) && isPluginEnabled(plugin),
-        0,
-    )
-
     const icons = [
         {
             key: 'reload',
@@ -120,7 +114,10 @@ export const PluginInfoStatusIcon = memo(function PluginInfoStatusIcon({
         {
             key: 'stopped',
             text: 'This plugin is stopped.',
-            condition: isStoppedAndEnabled,
+            condition:
+                isPluginEnabled(plugin) &&
+                !isPluginStartedLate(plugin) &&
+                isPluginStopped(plugin),
             source: getAssetIdByName('PauseIcon')!,
             extraStyles: [styles_.iconWarning],
         },
