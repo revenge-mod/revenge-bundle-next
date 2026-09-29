@@ -58,6 +58,7 @@ import PluginTooltipsProvider, {
     usePluginTooltip,
 } from './TooltipProvider'
 import type { AnyPlugin, PluginSource } from '@revenge-mod/plugins/_'
+import { noop } from '@revenge-mod/utils/callback'
 
 export interface PluginOptionsActionSheetProps {
     plugin: AnyPlugin
@@ -207,8 +208,7 @@ function ChannelSection({
                             l => l.id === plugin.manifest.id,
                         )
                         if (listing) setChannels(listing.channels)
-                    })
-                    .catch(() => {}),
+                    }, noop),
             )
     }, [source, plugin.manifest.id])
 
@@ -431,7 +431,7 @@ function usePluginRepositoryText(plugin: AnyPlugin) {
                 const repo = repos.find(r => r.url === repoUrl)
                 if (repo?.name) setRepoName(repo.name)
             },
-            () => {},
+            noop,
         )
     }, [repoUrl, hasUrl])
 

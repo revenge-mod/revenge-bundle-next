@@ -33,6 +33,7 @@ import type {
     RepoStateEvent,
     RepoUpdate,
 } from '@revenge-mod/plugins/_/repositories'
+import { noop } from '@revenge-mod/utils/callback'
 
 const {
     Button,
@@ -222,7 +223,7 @@ export default function RevengePluginsAdvancedSettingScreen() {
             await commit(toConfig(userRepos.filter(r => r.url !== repo.url)))
 
             // Plugins installed from the removed repository turn Sideloaded
-            resyncPluginSources().catch(() => {})
+            resyncPluginSources().catch(noop)
         },
         [commit, userRepos],
     )

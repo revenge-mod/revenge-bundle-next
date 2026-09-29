@@ -10,7 +10,7 @@ import {
     listRepos,
     refreshAllRepos,
 } from '@revenge-mod/plugins/_/repositories'
-import { debounce } from '@revenge-mod/utils/callback'
+import { debounce, noop } from '@revenge-mod/utils/callback'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { View } from 'react-native'
 import { BrowsePluginMasonryFlashList } from '../components/PluginList'
@@ -131,7 +131,7 @@ function Screen() {
                             }
                         },
                         // No cached index yet is normal, ignore
-                        () => {},
+                        noop,
                     ),
                 ),
         )
@@ -142,7 +142,7 @@ function Screen() {
     useEffect(() => {
         // Show cached indexes right away, then refresh everything
         load()
-        refreshAllRepos().then(load, () => {})
+        refreshAllRepos().then(load, noop)
     }, [load])
 
     // Fresh installs register live, re-mark entries as installed when they do

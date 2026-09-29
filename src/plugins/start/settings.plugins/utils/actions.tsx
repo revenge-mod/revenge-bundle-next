@@ -86,9 +86,10 @@ export async function handleEnablePlugin(plugin: AnyPlugin) {
                     relinkable
                         .filter(dep => restart.has(dep.manifest.id))
                         .map(dep =>
-                            stopPlugin(dep)
-                                .then(() => runPluginLate(dep))
-                                .catch(noop),
+                            stopPlugin(dep).then(
+                                () => runPluginLate(dep),
+                                noop,
+                            ),
                         ),
                 )
             })
