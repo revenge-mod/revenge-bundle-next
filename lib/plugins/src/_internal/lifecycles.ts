@@ -1,4 +1,5 @@
 import { registerJSMethod } from '@revenge-mod/modules/native'
+import { isPluginStarted } from '@revenge-mod/plugins/_'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import { sleepReject } from '@revenge-mod/utils/promise'
 import { pUnscopedApi as uapi } from '../apis'
@@ -357,8 +358,8 @@ export async function startPlugin(plugin: AnyPlugin) {
  * @param stopNative Pass `false` when native asked for the stop and will end its own half.
  */
 export async function stopPlugin(plugin: AnyPlugin, stopNative = true) {
-    if (!isPluginEnabled(plugin))
-        throw new Error(`Plugin "${plugin.manifest.id}" is not enabled`)
+    if (!isPluginStarted(plugin))
+        throw new Error(`Plugin "${plugin.manifest.id}" is not started`)
 
     const {
         manifest: { id },
