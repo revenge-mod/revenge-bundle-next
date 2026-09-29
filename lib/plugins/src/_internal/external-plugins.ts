@@ -2,6 +2,7 @@ import { registerJSMethod } from '@revenge-mod/modules/native'
 import { noop } from '@revenge-mod/utils/callback'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import {
+    addPluginFlags,
     disablePluginInActiveSlot,
     getInternalPluginMeta,
     getLinkedOptionalDependents,
@@ -94,10 +95,7 @@ export function registerExternalPlugins() {
         }) {
             // New version exists on disk only; running plugin continues until reload
             const plugin = pList.get(id)
-            if (plugin) {
-                const meta = getInternalPluginMeta(plugin)
-                meta.flags |= PluginFlags.PendingUpdate
-            }
+            if (plugin) addPluginFlags(plugin, PluginFlags.PendingUpdate)
 
             pEmitter.emit('install', {
                 error: false,
@@ -178,7 +176,7 @@ function applyNativeDescriptor(plugin: AnyPlugin, external: ExternalPlugin) {
 
     /** @see {@link PluginFlags.Failed} */
     if (external.failed) {
-        meta.flags |= PluginFlags.Failed
+        addPluginFlags(plugin, PluginFlags.Failed)
         pPending.delete(plugin)
     }
 

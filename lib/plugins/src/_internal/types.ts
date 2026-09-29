@@ -6,6 +6,7 @@ import type {
     PluginOptionsFactory,
 } from '../types'
 import type { PluginSystemErrorPayload } from './errors'
+import type { addPluginFlags, adoptPluginFlags } from './state'
 
 export type AnyPlugin = Plugin<any, any>
 
@@ -52,7 +53,8 @@ export interface InternalPluginMeta {
     options: PluginOptions<any>
     optionsFactory?: PluginOptionsFactory<any>
     status: number
-    flags: number
+    /** @see {@link addPluginFlags} and {@link adoptPluginFlags} for different methods of applying flags. */
+    readonly flags: number
     nativeErrors: readonly PluginSystemErrorPayload[]
     /** Plugin provenance. `repo: null` or missing indicates sideloaded plugin. Internal plugins don't have this field. */
     source?: PluginSource | null

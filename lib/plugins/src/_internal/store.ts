@@ -90,10 +90,19 @@ export function getFlags(slot: string, id: string): number {
     return resolveFlags(pluginStore.getState(), slot, id)
 }
 
-export function setFlags(slot: string, id: string, flags: number) {
+export function getBootFlags(id: string): number {
+    const state = pluginStore.getState()
+    return resolveFlags(state, state.bootSlot, id)
+}
+
+export function setFlags(slot: string, id: string, flags: number): boolean {
+    if (pluginStore.getState().slots[slot]?.[id] === flags) return false
+
     pluginStore.setState(state => ({
         slots: withFlags(state, slot, id, flags),
     }))
+
+    return true
 }
 
 function withFlags(

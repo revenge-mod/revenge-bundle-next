@@ -26,8 +26,10 @@ import type { PluginSystemErrorPayload } from './errors'
 import type { AnyPlugin, PluginSlotStates, PluginStateObject } from './types'
 
 const Flag = PluginFlags
-/** Flags native persists, so a push from it is the whole answer for them. */
+/** Flags native persists. */
 const PersistedFlags = Flag.Enabled | Flag.RequiredByUser
+/** Flags {@link PluginStateObject} can send over. */
+const WireFlags = PersistedFlags | Flag.PendingReload | Flag.StartedLate
 
 const StateUpdateMethod = 'revenge.plugins.states.update'
 
@@ -91,8 +93,8 @@ export function flagsToPluginState(flags: number): PluginStateObject {
 registerJSMethod(StateUpdateMethod, (slot, id, state) => {
     const flags = pluginStateToFlags(state as PluginStateObject)
 
-    if (slot === BootSlot) applyBootFlags(id as PluginManifest['id'], flags)
-    else applySlotFlags(slot as string, id as PluginManifest['id'], flags)
+    if (slot === BootSlot) applyFlagsFromNative(id as PluginManifest['id'], flags)
+    else adoptSlotFlags(slot as string, id as PluginManifest['id'], flags)
 })
 
 registerJSMethod(
@@ -107,10 +109,10 @@ registerJSMethod(
 )
 
 /**
- * Applies boot flags to a plugin. If the plugin is running, it may be stopped if it is being disabled.
+ * Applies flags from native to a plugin. If the plugin is running, it may be stopped if it is being disabled.
  * Flags that are not persisted in native (JS-only flags) are preserved.
  */
-export async function applyBootFlags(id: PluginManifest['id'], flags: number) {
+async function applyFlagsFromNative(id: PluginManifest['id'], flags: number) {
     const plugin = pList.get(id)
     if (!plugin) return
 
@@ -125,22 +127,52 @@ export async function applyBootFlags(id: PluginManifest['id'], flags: number) {
         if (meta.status && !(meta.status & Status.Stopping))
             await stopPlugin(plugin)
 
-    // State update is handled in the meta.flags setter
-    meta.flags = flags
+    adoptSlotFlags(BootSlot, id, flags)
 }
 
 /** Applies flags to a plugin in a specific slot. */
-export function applySlotFlags(
+export function adoptSlotFlags(
     slot: string,
     id: PluginManifest['id'],
     flags: number,
 ) {
     const plugin = pList.get(id)
     if (!plugin) return
-    if (store.getFlags(slot, id) === flags) return
+    if (!store.setFlags(slot, id, flags)) return
 
-    store.setFlags(slot, id, flags)
     pEmitter.emit('stateUpdate', plugin)
+}
+
+/** Adds flags and reports them to native. */
+export function addPluginFlags(plugin: AnyPlugin, flags: number) {
+    const { id } = plugin.manifest
+    const current = getInternalPluginMeta(plugin).flags
+    const next = current | flags
+
+    if (next === current) return
+
+    if ((next & WireFlags) === (current & WireFlags)) {
+        adoptSlotFlags(BootSlot, id, next)
+        return
+    }
+
+    const answer = callPluginSystemMethodSync(StateUpdateMethod, [
+        BootSlot,
+        id,
+        flagsToPluginState(next),
+    ])
+
+    adoptSlotFlags(
+        BootSlot,
+        id,
+        (next & ~WireFlags) | pluginStateToFlags(answer),
+    )
+}
+
+/** Adds flags native has already set, or is setting as part of a call in-flight. */
+export function adoptPluginFlags(plugin: AnyPlugin, flags: number) {
+    const { id } = plugin.manifest
+    adoptSlotFlags(BootSlot, id, getInternalPluginMeta(plugin).flags | flags)
 }
 
 /**

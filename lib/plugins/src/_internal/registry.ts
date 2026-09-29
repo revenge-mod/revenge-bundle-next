@@ -13,14 +13,8 @@ import {
     stopPlugin,
 } from './lifecycles'
 import { completeInternalManifest, isEnabledByDefault } from './manifest'
-import { callPluginSystemMethodSync } from './native'
 import { isPluginEnabled, isPluginStartedLate } from './predicates'
-import {
-    applySlotFlags,
-    BootSlot,
-    flagsToPluginState,
-    pluginStateToFlags,
-} from './state'
+import { addPluginFlags } from './state'
 import * as store from './store'
 import type {
     PluginApiExtensionsOptions,
@@ -187,7 +181,7 @@ function create<O extends PluginApiExtensionsOptions>(
         stop: (): Promise<void> => stopPlugin(plugin),
         reportError: (e: unknown) => handlePluginError(e, plugin, false),
         requireReload: () => {
-            meta.flags |= PluginFlags.PendingReload
+            addPluginFlags(plugin, PluginFlags.PendingReload)
         },
         api: undefined,
     } satisfies AnyPlugin
@@ -211,18 +205,8 @@ function create<O extends PluginApiExtensionsOptions>(
             store.setStatus(id, status)
             pEmitter.emit('statusUpdate', plugin)
         },
-        set flags(flags: number) {
-            if (flags === store.getFlags(BootSlot, id)) return
-
-            const newState = callPluginSystemMethodSync(
-                'revenge.plugins.states.update',
-                [BootSlot, id, flagsToPluginState(flags)],
-            )
-
-            applySlotFlags(BootSlot, id, pluginStateToFlags(newState))
-        },
         get flags() {
-            return store.getFlags(BootSlot, id)
+            return store.getBootFlags(id)
         },
     }
 

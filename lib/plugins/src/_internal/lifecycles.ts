@@ -35,6 +35,8 @@ import {
 } from './predicates'
 import { getInternalPluginMeta, pList } from './registry'
 import {
+    addPluginFlags,
+    adoptPluginFlags,
     isDefaultsOnlyBoot,
     isPluginEnabledInActiveSlot,
     writePluginEnabledState,
@@ -164,7 +166,8 @@ export async function disablePluginInActiveSlot(plugin: AnyPlugin) {
 
     await writePluginEnabledState(plugin, false, false)
 
-    meta.flags &= ~PluginFlags.Enabled
+    // Native already disabled, so we just adopt it here.
+    adoptPluginFlags(plugin, meta.flags & ~PluginFlags.Enabled)
 }
 
 /** Enables plugin in active slot after ensuring required dependencies are enabled. */
@@ -184,7 +187,8 @@ export async function enablePluginInActiveSlot(
 
     await writePluginEnabledState(plugin, true, requiredByUser)
 
-    getInternalPluginMeta(plugin).flags |= PluginFlags.Enabled
+    // Native already enabled, so we just adopt it here.
+    adoptPluginFlags(plugin, PluginFlags.Enabled)
 }
 
 /** Starts plugin and unresolved dependencies after initial boot sequence. */
@@ -208,7 +212,8 @@ export async function runPluginLate(plugin: AnyPlugin) {
         pListOrdered
             .filter(plugin => isPluginStopped(plugin))
             .map(async function runLate(plugin) {
-                getInternalPluginMeta(plugin).flags |= PluginFlags.StartedLate
+                // Native would write this after revenge.plugins.restart
+                adoptPluginFlags(plugin, PluginFlags.StartedLate)
 
                 await callPluginSystemMethod('revenge.plugins.restart', [
                     plugin.manifest.id,
@@ -378,7 +383,7 @@ export async function stopPlugin(plugin: AnyPlugin, stopNative = true) {
                 'Plugin lifecycles timed out, force stopping',
             ),
         ]).catch(e => {
-            meta.flags |= PluginFlags.PendingReload
+            addPluginFlags(plugin, PluginFlags.PendingReload)
             return handleError(e)
         })
     else if (
@@ -402,7 +407,7 @@ export async function stopPlugin(plugin: AnyPlugin, stopNative = true) {
     } catch (e) {
         await handleError(e)
     } finally {
-        await cleanupPlugin(meta)
+        await cleanupPlugin(plugin)
 
         plugin.api = undefined
         meta.apiLevel = PluginApiLevel.None
@@ -424,9 +429,11 @@ registerJSMethod('revenge.plugins.stopping', async (id: string) => {
     await stopPlugin(plugin, false)
 })
 
-async function cleanupPlugin(meta: InternalPluginMeta) {
+async function cleanupPlugin(plugin: AnyPlugin) {
+    const meta = getInternalPluginMeta(plugin)
+
     async function handleStopError(e: unknown) {
-        meta.flags |= PluginFlags.PendingReload
+        addPluginFlags(plugin, PluginFlags.PendingReload)
         return meta.handleError(e)
     }
 
