@@ -43,6 +43,8 @@ interface ExternalPlugin {
     failed?: boolean
     /** Plugin provenance. Missing or `repo: null` means sideloaded. */
     source?: PluginSource | null
+    /** Uninstalling restores an internal plugin with the same ID. */
+    hasStub?: boolean
     /** Declared optional dependencies native sees installed at an incompatible version. */
     unsatisfiedOptionalDependencies?: string[]
     /** Native boot and validation errors. */
@@ -52,6 +54,25 @@ interface ExternalPlugin {
 type PluginInstallResult =
     | { error: false; plugin: ExternalPlugin }
     | { error: PluginSystemErrorPayload }
+
+/** Registers a freshly installed plugin and reports it as installed. */
+function registerInstalledPlugin(plugin: ExternalPlugin) {
+    try {
+        registerExternalPlugin(plugin)
+    } catch (e) {
+        pEmitter.emit('install', {
+            error: toPluginSystemErrorPayload(e),
+        })
+        return
+    }
+
+    pEmitter.emit('install', {
+        error: false,
+        manifest: plugin.manifest,
+        updated: false,
+        pending: false,
+    })
+}
 
 /** Registers native event listeners and imports native-discovered plugins. */
 export function registerExternalPlugins() {
@@ -64,23 +85,7 @@ export function registerExternalPlugins() {
             }
 
             // Native dispatches fresh installs for new IDs only
-            const { plugin } = result
-
-            try {
-                registerExternalPlugin(plugin)
-            } catch (e) {
-                pEmitter.emit('install', {
-                    error: toPluginSystemErrorPayload(e),
-                })
-                return
-            }
-
-            pEmitter.emit('install', {
-                error: false,
-                manifest: plugin.manifest,
-                updated: false,
-                pending: false,
-            })
+            registerInstalledPlugin(result.plugin)
         },
     )
 
@@ -169,6 +174,7 @@ function applyNativeDescriptor(plugin: AnyPlugin, external: ExternalPlugin) {
     const meta = getInternalPluginMeta(plugin)
 
     meta.source = external.source
+    meta.hasStub = external.hasStub
     if (external.unsatisfiedOptionalDependencies)
         meta.unsatisfiedOptionalDependencies = new Set(
             external.unsatisfiedOptionalDependencies,
@@ -224,6 +230,7 @@ export async function setUpdatesPaused(plugin: AnyPlugin, paused: boolean) {
 
 /**
  * Uninstalls an external plugin, removing files, state, and runtime registration.
+ * Uninstalling updates of a stub registers the restored stub like a fresh install.
  *
  * Optional dependents stopped by the disable cascade are restarted. Required dependents stay disabled.
  */
@@ -234,11 +241,13 @@ export async function uninstallExternalPlugin(plugin: AnyPlugin) {
     if (isPluginEnabledInActiveSlot(plugin))
         await disablePluginInActiveSlot(plugin)
 
-    await callPluginSystemMethod('revenge.plugins.uninstall', [
-        plugin.manifest.id,
-    ])
+    const { restored } = await callPluginSystemMethod(
+        'revenge.plugins.uninstall',
+        [plugin.manifest.id],
+    )
 
     unregisterPlugin(plugin)
+    if (restored) registerInstalledPlugin(restored)
 
     // Restart optional dependents that were stopped by cascade.
     await Promise.all(optionals.map(dep => runPluginLate(dep).catch(noop)))
@@ -273,7 +282,13 @@ export function confirmInstallFile(
 declare module '@revenge-mod/modules/native' {
     interface NativeMethods {
         'revenge.plugins.list': [[], ExternalPlugin[] | null]
-        'revenge.plugins.uninstall': [[string], null]
+        'revenge.plugins.uninstall': [
+            [string],
+            {
+                /** Set if a stub has to be restored. */
+                restored: ExternalPlugin | null
+            },
+        ]
         'revenge.plugins.installFile': [[], null]
         'revenge.plugins.confirmInstallFile': [
             [token: string, accepted: boolean],

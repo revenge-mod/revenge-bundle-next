@@ -58,6 +58,8 @@ export interface InternalPluginMeta {
     nativeErrors: readonly PluginSystemErrorPayload[]
     /** Plugin provenance. `repo: null` or missing indicates sideloaded plugin. Internal plugins don't have this field. */
     source?: PluginSource | null
+    /** Uninstalling restores an internal plugin with the same ID, reported by native. */
+    hasStub?: boolean
 }
 
 export interface PluginSource {

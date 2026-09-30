@@ -12,6 +12,7 @@ import {
     getPluginDependencies,
     getPluginDependents,
     getUnsatisfiedPluginDependencies,
+    hasPluginStub,
     InternalPluginFlags,
     isDefaultsOnlyBoot,
     isPluginEssential,
@@ -511,7 +512,9 @@ function PluginActions({
                     variant="destructive"
                     size="lg"
                     icon={TrashIcon}
-                    label="Uninstall"
+                    label={
+                        hasPluginStub(meta) ? 'Uninstall updates' : 'Uninstall'
+                    }
                     onPress={() => {
                         showPluginUninstallConfirmation(plugin, closeSheet)
                     }}

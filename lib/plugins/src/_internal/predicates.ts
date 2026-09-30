@@ -22,6 +22,11 @@ export function isPluginInternal({ iflags }: InternalPluginMeta): boolean {
     return Boolean(iflags & InternalPluginFlags.Internal)
 }
 
+/** Whether uninstalling restores an internal plugin with the same ID. */
+export function hasPluginStub({ hasStub }: InternalPluginMeta): boolean {
+    return Boolean(hasStub)
+}
+
 export function isPluginErrored(plugin: AnyPlugin): boolean {
     return plugin.errors.length > 0
 }
