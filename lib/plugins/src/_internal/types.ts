@@ -19,6 +19,15 @@ export type InternalPluginManifest = Omit<
 
 /** Extra keys from an internal plugin's `manifest.json` for the build and registration system. */
 export interface InternalPluginManifestExtras {
+    /**
+     * Default source for the plugin.
+     * @see {@link PluginSource}
+     */
+    defaultSource?: {
+        repo: string
+        channel?: string
+        held?: boolean
+    }
     /** The plugin cannot be stopped, disabled, or uninstalled. Implies {@link enabledByDefault}. */
     essential?: boolean
     /**

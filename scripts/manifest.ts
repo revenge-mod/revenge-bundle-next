@@ -3,6 +3,7 @@ import { dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { ReservedDependencyIds } from '../lib/plugins/src/_internal/manifest'
 import { exists } from './_shared'
+import type { InternalPluginManifest } from '@revenge-mod/plugins/_'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 export const PluginsDir = `${__dirname}/../src/plugins`
@@ -14,11 +15,16 @@ interface BundleManifestPlugin {
     /** On until the user says otherwise. */
     enabledByDefault?: true
     dependencies?: Record<string, { version?: string }>
+    defaultSource?: {
+        repo: string
+        channel?: string
+        held?: boolean
+    }
 }
 
 interface RawBundleManifestPlugin
-    extends Omit<BundleManifestPlugin, 'enabledByDefault'> {
-    enabledByDefault?: boolean | 'dev'
+    extends Omit<BundleManifestPlugin, 'enabledByDefault' | 'defaultSource'>,
+        Pick<InternalPluginManifest, 'defaultSource' | 'enabledByDefault'> {
     build?: {
         devOnly?: boolean
     }
@@ -60,7 +66,7 @@ export async function getInternalPluginManifests(
 
             seen.set(manifest.id, where)
 
-            const { enabledByDefault } = manifest
+            const { enabledByDefault, defaultSource } = manifest
             if (
                 enabledByDefault !== undefined &&
                 typeof enabledByDefault !== 'boolean' &&
@@ -79,6 +85,11 @@ export async function getInternalPluginManifests(
                 ...(manifest.dependencies && {
                     dependencies: manifest.dependencies,
                 }),
+                defaultSource: defaultSource && {
+                    repo: defaultSource.repo!,
+                    channel: defaultSource.channel,
+                    held: defaultSource.held,
+                },
             })
         }
     }
