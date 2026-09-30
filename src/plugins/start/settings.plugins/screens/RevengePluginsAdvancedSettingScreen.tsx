@@ -8,6 +8,8 @@ import { Design } from '@revenge-mod/discord/design'
 import { Clipboard } from '@revenge-mod/externals/react-native-clipboard'
 import {
     callPluginSystemMethod,
+    getInternalPluginMeta,
+    pList,
     resyncPluginSources,
 } from '@revenge-mod/plugins/_'
 import {
@@ -19,6 +21,7 @@ import {
     setRepos,
     updateAllPlugins,
 } from '@revenge-mod/plugins/_/repositories'
+import { noop } from '@revenge-mod/utils/callback'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import { useCallback, useEffect, useReducer, useState } from 'react'
 import { ScrollView, View } from 'react-native'
@@ -33,7 +36,6 @@ import type {
     RepoStateEvent,
     RepoUpdate,
 } from '@revenge-mod/plugins/_/repositories'
-import { noop } from '@revenge-mod/utils/callback'
 
 const {
     Button,
@@ -117,7 +119,11 @@ function UserRepoRow({
             label={repo.name ?? repo.url}
             subLabel={repoSubLabel(repo, state)}
             trailing={
-                <Stack direction="horizontal" spacing={8}>
+                <Stack
+                    direction="horizontal"
+                    spacing={8}
+                    style={{ alignItems: 'center' }}
+                >
                     <ContextMenu
                         items={menuItems}
                         title={repo.name ?? repo.url}
@@ -279,6 +285,8 @@ export default function RevengePluginsAdvancedSettingScreen() {
             : settings?.lastUpdateCheck !== undefined &&
               `Last checked: ${new Date(settings.lastUpdateCheck).toLocaleString()}`
 
+    const pausedAmount = getPausedAmount()
+
     return (
         <Page spacing={0}>
             <ScrollView keyboardShouldPersistTaps="handled" style={styles.flex}>
@@ -321,7 +329,14 @@ export default function RevengePluginsAdvancedSettingScreen() {
                             ),
                         )}
                     </TableRowGroup>
-                    <TableRowGroup title="Updates">
+                    <TableRowGroup
+                        title="Updates"
+                        description={
+                            pausedAmount
+                                ? `Updates are paused for ${pausedAmount} plugin${pausedAmount > 1 ? 's' : ''}.`
+                                : undefined
+                        }
+                    >
                         <TableSwitchRow
                             label="Update plugins automatically"
                             subLabel="Check repositories and apply plugin updates after startup."
@@ -404,4 +419,10 @@ export default function RevengePluginsAdvancedSettingScreen() {
             </ScrollView>
         </Page>
     )
+}
+
+function getPausedAmount() {
+    return [...pList.values()].filter(
+        p => getInternalPluginMeta(p).source?.held,
+    ).length
 }
