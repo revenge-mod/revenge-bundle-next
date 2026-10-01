@@ -21,7 +21,7 @@ const RevengeDeveloperModeSetting: SettingsItem = {
     useDescription: () =>
         isDefaultsOnlyBoot
             ? 'Unavailable in Recovery Mode. Reload to exit.'
-            : 'Exposes internal Revenge APIs for development purposes. Use with caution.',
+            : 'Exposes internal Revenge APIs for development purposes. Makes client mod detection easier. Use with caution.',
     useIsDisabled: () => isDefaultsOnlyBoot,
     useValue: () => usePluginEnabledById(pluginHiddenApi),
     onValueChange: enabled => {

@@ -32,5 +32,10 @@
     // Build artifacts required to emit types
     "dist/types/tmp"
   ],
-  "exclude": ["**/*.test.ts"]
+  "exclude": [
+    "**/*.test.ts",
+    // They're only meant to be included by specific files
+    "types/globals.consumers.ts",
+    "types/globals.hidden.ts"
+  ]
 }

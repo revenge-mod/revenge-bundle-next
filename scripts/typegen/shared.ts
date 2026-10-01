@@ -35,7 +35,7 @@ export const Paths = {
     consumerGlobals: join('types', 'globals.consumers.ts'),
     output: join('dist', 'types'),
     outputTemp: join('dist', 'types', 'tmp'),
-    tsconfig: 'tsconfig.json',
+    tsconfig: 'tsconfig.typegen.json',
     verify: join(tmpdir(), 'revenge-types-verify'),
 } as const
 
