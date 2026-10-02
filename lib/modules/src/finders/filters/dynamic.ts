@@ -1,6 +1,5 @@
 import { getCurrentStack } from '@revenge-mod/utils/error'
 import { getModuleDependencies } from '../../metro/utils'
-import { lookupModule } from '../lookup'
 import { FilterScopes } from './constants'
 import { createFilterGenerator } from './utils'
 import type { Metro } from '../../types'
@@ -9,14 +8,7 @@ import type { Filter, FilterGenerator } from './utils'
 /** @internal This structure is not stable, and should only be referenced internally. */
 export interface ComparableDependencyMap
     extends Array<
-        | Metro.ModuleID
-        | number
-        | null
-        | undefined
-        | ComparableDependencyMap
-        // TODO: (2026-08-29) Remove in a month's time.
-        /** @deprecated Resolve the module ID with `lookupModule` and pass the ID. */
-        | Filter
+        Metro.ModuleID | number | null | undefined | ComparableDependencyMap
     > {
     // partial
     p?: boolean
@@ -105,38 +97,12 @@ const withDependencies_ = createFilterGenerator<Parameters<WithDependencies>>(
 
 export const withDependencies = Object.assign(
     (deps: ComparableDependencyMap) => {
-        // TODO: (2026-08-29) Remove in a month's time, along with filter entries.
-        depResolveFilterEntries(deps)
-
         if (__DEV__) DEBUG_validateWithDependenciesFilter(deps)
 
         return withDependencies_(deps)
     },
     withDependencies_,
 ) as WithDependencies
-
-/**
- * Resolves deprecated filter entries to module IDs before comparisons run.
- *
- * @param deps The dependency map to resolve.
- */
-// TODO: (2026-08-29) Remove in a month's time.
-function depResolveFilterEntries(deps: ComparableDependencyMap) {
-    for (let i = 0; i < deps.length; i++) {
-        const dep = deps[i]
-        if (dep == null) continue
-
-        if (typeof dep === 'function') {
-            const [, id] = lookupModule(dep)
-
-            if (id === undefined) warnUnresolvedFilterDependency(deps, i, dep)
-            else if (__DEV__) DEBUG_warnFilterDependency(deps, i, dep, id)
-
-            // Unresolved entries must never match, and NaN equals no module ID
-            deps[i] = id ?? NaN
-        } else if (typeof dep === 'object') depResolveFilterEntries(dep)
-    }
-}
 
 withDependencies.partial = partial
 withDependencies.relative = relative
@@ -146,9 +112,6 @@ withDependencies.atLeast = atLeast
 withDependencies.atMost = atMost
 withDependencies.unordered = unordered
 withDependencies.ordered = ordered
-
-withDependencies.loose = partial
-withDependencies.includes = unordered
 
 type WithDependencies = FilterGenerator<
     <T>(deps: ComparableDependencyMap) => Filter<{
@@ -167,11 +130,6 @@ type WithDependencies = FilterGenerator<
     atMost: typeof atMost
     unordered: typeof unordered
     ordered: typeof ordered
-    // TODO: (2026-08-29) Remove this in a month's time.
-    /** @deprecated Use {@link withDependencies.partial} instead. */
-    loose: typeof partial
-    /** @deprecated Use {@link withDependencies.unordered} instead. */
-    includes: typeof unordered
 }
 
 /**
@@ -483,37 +441,6 @@ function DEBUG_warnBadUnorderedDependency(
 }
 
 /**
- * Warns the developer about a deprecated filter entry, and reports the module ID it resolved to.
- */
-// TODO: (2026-08-29) Remove in a month's time.
-function DEBUG_warnFilterDependency(
-    deps: ComparableDependencyMap,
-    index: number,
-    filter: Filter,
-    id: Metro.ModuleID,
-) {
-    nativeLoggingHook(
-        `\u001b[33mDeprecated withDependencies filter entry at index ${index}, resolved ${filter.key} to module ${id}. Pass the module ID instead: [${depGenFilterKey(deps)}]\n${getCurrentStack()}\u001b[0m`,
-        2,
-    )
-}
-
-/**
- * Warns the developer about a filter entry matching no module, leaving a map that can never match.
- */
-// TODO: (2026-08-29) Remove in a month's time.
-function warnUnresolvedFilterDependency(
-    deps: ComparableDependencyMap,
-    index: number,
-    filter: Filter,
-) {
-    nativeLoggingHook(
-        `\u001b[33mwithDependencies filter entry at index ${index} matched no module, so this filter can never match. Resolve ${filter.key} yourself and pass the module ID: [${depGenFilterKey(deps)}]\n${getCurrentStack()}\u001b[0m`,
-        2,
-    )
-}
-
-/**
  * Warns the developer about a relative comparison that can never match.
  */
 function DEBUG_warnBadRelativeRange(reason: string) {
@@ -737,8 +664,7 @@ function depMatches(
         return depCompare(getModuleDependencies(id)!, compare, root, id)
     }
 
-    // TODO: (2026-08-29) Remove typecast in a month's time.
-    return depShallowCompare(compare as number, id, root, parent)
+    return depShallowCompare(compare, id, root, parent)
 }
 
 function depShallowCompare(

@@ -6,6 +6,9 @@
     ".": {
       "default": "./src/index.ts"
     },
+    "./Checkbox": {
+      "default": "./src/Checkbox.tsx"
+    },
     "./FormSwitch": {
       "default": "./src/FormSwitch.tsx"
     },

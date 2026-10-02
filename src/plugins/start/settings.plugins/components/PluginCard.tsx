@@ -1,28 +1,43 @@
 import { getAssetIdByName } from '@revenge-mod/assets'
 import { styles } from '@revenge-mod/components/_'
 import FormSwitch from '@revenge-mod/components/FormSwitch'
+import { Tokens } from '@revenge-mod/discord/common/tokens'
 import { Design } from '@revenge-mod/discord/design'
 import {
-    isDefaultsOnlyBoot,
-    isPluginEnabledInSavedStates,
+    isPluginEnabled,
+    isPluginErrored,
     isPluginEssential,
+    isPluginFailed,
+    isPluginPendingReload,
     isPluginPendingUpdate,
-    isPluginStartable,
+    isPluginStarted,
+    isPluginStartedLate,
+    isPluginStopped,
 } from '@revenge-mod/plugins/_'
-import { formatVersion } from '@revenge-mod/plugins/utils'
-import { memo } from 'react'
-import { Pressable } from 'react-native'
+import {
+    usePluginEnabledInActiveSlot,
+    usePluginFlags,
+    usePluginStatus,
+} from '@revenge-mod/plugins/_/react'
+import {
+    formatVersion,
+    parsePluginContributor,
+} from '@revenge-mod/plugins/utils'
+import { memo, useCallback, useState } from 'react'
+import { Image, Pressable } from 'react-native'
 import { handleDisablePlugin, handleEnablePlugin } from '../utils/actions'
 import { openPluginSettings } from '../utils/alerts'
 import { messageOf, showErrorToast } from '../utils/repos'
 import {
     showBrowsePluginActionSheet,
+    showPluginContributorsActionSheet,
     showPluginOptionsActionSheet,
 } from '../utils/sheets'
 import { PluginIcon } from './PluginIcon'
-import { usePluginEnabled } from './PluginStateProvider'
 import { PluginTooltip, usePluginTooltip } from './TooltipProvider'
 import type { AnyPlugin, InternalPluginMeta } from '@revenge-mod/plugins/_'
+import type { RepoPluginListing } from '@revenge-mod/plugins/_/repositories'
+import type { ReactNode } from 'react'
 
 const { Card, Text, Stack, IconButton, Button, createStyles } = Design
 
@@ -39,14 +54,18 @@ export const PluginCard = memo(function PluginCard({
     description,
     version,
     author,
+    contributors,
     icon,
+    extraInfo,
     actions,
 }: {
     name: string
     description: string
     version: string
     author: string
+    contributors?: string[]
     icon?: string
+    extraInfo?: React.ReactNode
     actions?: React.ReactNode
 }) {
     const styles_ = usePluginCardStyles()
@@ -56,13 +75,129 @@ export const PluginCard = memo(function PluginCard({
             <PluginInfo
                 name={name}
                 description={description}
-                author={author}
+                author={
+                    <PluginAuthor
+                        pluginName={name}
+                        author={author}
+                        contributors={contributors}
+                    />
+                }
                 icon={icon}
+                extraInfo={extraInfo}
                 actions={actions}
                 version={version}
                 aligned
             />
         </Card>
+    )
+})
+
+export const PluginInfoStatusIcon = memo(function PluginInfoStatusIcon({
+    plugin,
+}: {
+    plugin: AnyPlugin
+}) {
+    const styles_ = usePluginCardStyles()
+
+    usePluginFlags(plugin)
+    usePluginStatus(plugin)
+
+    const icons = [
+        {
+            key: 'reload',
+            text: 'This plugin requires a reload to apply changes.',
+            condition: isPluginPendingReload(plugin),
+            source: getAssetIdByName('RetryIcon')!,
+            extraStyles: [],
+        },
+        {
+            key: 'update',
+            text: 'This plugin requires a reload to apply an update.',
+            condition: isPluginPendingUpdate(plugin),
+            source: getAssetIdByName('RefreshIcon')!,
+            extraStyles: [],
+        },
+        {
+            key: 'error',
+            text: 'This plugin has an error.',
+            condition: isPluginErrored(plugin) || isPluginFailed(plugin),
+            source: getAssetIdByName('CircleErrorIcon')!,
+            extraStyles: [styles_.iconError],
+        },
+        {
+            key: 'stopped',
+            text: 'This plugin is stopped.',
+            condition:
+                isPluginEnabled(plugin) &&
+                !isPluginStartedLate(plugin) &&
+                isPluginStopped(plugin),
+            source: getAssetIdByName('PauseIcon')!,
+            extraStyles: [styles_.iconWarning],
+        },
+    ].filter(it => it.condition)
+
+    return icons.map(icon => (
+        <Image
+            key={icon.key}
+            source={icon.source}
+            style={[styles_.icon, ...icon.extraStyles]}
+        />
+    ))
+})
+
+const AuthorRipple = { borderless: false }
+
+export const PluginAuthor = memo(function PluginAuthor({
+    pluginName,
+    author,
+    contributors = [],
+}: {
+    pluginName: string
+    author: string
+    contributors?: string[]
+}) {
+    const styles_ = usePluginCardStyles()
+    const parsed = parsePluginContributor(author)
+
+    if (
+        !parsed ||
+        !(parsed.ids.length || parsed.links.length || contributors.length)
+    )
+        return (
+            <Text
+                color="text-muted"
+                style={styles_.author}
+                variant="heading-md/medium"
+            >
+                {parsed?.name ?? author}
+            </Text>
+        )
+
+    const count = contributors.length
+
+    return (
+        <Pressable
+            accessibilityRole="button"
+            accessibilityHint="Shows contacts of the author and contributors"
+            android_ripple={AuthorRipple}
+            style={styles_.author}
+            onPress={() =>
+                showPluginContributorsActionSheet({
+                    pluginName,
+                    author,
+                    contributors,
+                })
+            }
+        >
+            <Text
+                color="text-muted"
+                variant="heading-md/medium"
+                style={styles_.authorClickableText}
+            >
+                {parsed.name}
+                {count ? `, ${count} contributor${count === 1 ? '' : 's'}` : ''}
+            </Text>
+        </Pressable>
     )
 })
 
@@ -72,14 +207,16 @@ export const PluginInfo = memo(function PluginInfo({
     author,
     version,
     icon,
+    extraInfo,
     actions,
     aligned,
 }: {
     name: string
     description: string
-    author: string
+    author: ReactNode
     version: string
     icon?: string
+    extraInfo?: React.ReactNode
     actions?: React.ReactNode
     aligned?: boolean
 }) {
@@ -105,20 +242,29 @@ export const PluginInfo = memo(function PluginInfo({
                         {name}
                     </Text>
                 </Stack>
+                {extraInfo}
                 {actions}
             </Stack>
             <Stack
                 spacing={4}
                 style={[aligned && styles_.alignedContainer, styles.grow]}
             >
-                <Text
-                    color="text-muted"
-                    style={styles.grow}
-                    variant="heading-md/medium"
+                <Stack
+                    direction="horizontal"
+                    spacing={0}
+                    align="baseline"
+                    style={[styles_.byline, styles.grow]}
                 >
-                    by {author}
-                    {version ? ` \u2022 ${version}` : ''}
-                </Text>
+                    <Text color="text-muted" variant="heading-md/medium">
+                        by{' '}
+                    </Text>
+                    {author}
+                    {version ? (
+                        <Text color="text-muted" variant="heading-md/medium">
+                            {` \u2022 ${version}`}
+                        </Text>
+                    ) : null}
+                </Stack>
                 <Text style={styles.grow} variant="text-md/medium">
                     {description}
                 </Text>
@@ -134,21 +280,23 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
     plugin: AnyPlugin
     meta: InternalPluginMeta
 }) {
-    const enabled = usePluginEnabled(plugin)
-    const savedEnabled = isPluginEnabledInSavedStates(plugin)
+    const savedEnabled = usePluginEnabledInActiveSlot(plugin)
 
     const {
-        manifest: { name, description, version, author, icon },
+        manifest: { name, description, version, author, contributors, icon },
     } = plugin
 
+    usePluginFlags(plugin)
+    usePluginStatus(plugin)
+
     const essential = isPluginEssential(meta)
-    const startable = isPluginStartable(plugin)
+    const started = isPluginStarted(plugin)
     const pendingUpdate = isPluginPendingUpdate(plugin)
 
     const toggleDisabled = essential || pendingUpdate
 
-    const [settingsRef, showEnableTooltip] = usePluginTooltip(
-        PluginTooltip.Enable,
+    const [settingsRef, showStartTooltip] = usePluginTooltip(
+        PluginTooltip.Start,
     )
 
     const [switchRef, showToggleTooltip] = usePluginTooltip(
@@ -161,7 +309,9 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
             description={description}
             version={formatVersion(version)}
             author={author}
+            contributors={contributors}
             icon={icon}
+            extraInfo={<PluginInfoStatusIcon plugin={plugin} />}
             actions={
                 <>
                     <IconButton
@@ -175,7 +325,7 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
                     {plugin.SettingsComponent && (
                         <Pressable
                             onPress={() => {
-                                if (!startable) showEnableTooltip()
+                                if (!started) showStartTooltip()
                             }}
                         >
                             <IconButton
@@ -183,7 +333,7 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
                                 size="sm"
                                 variant="secondary"
                                 icon={SettingsIcon}
-                                disabled={!startable}
+                                disabled={!started}
                                 onPress={() => {
                                     openPluginSettings(plugin)
                                 }}
@@ -198,8 +348,7 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
                     >
                         <InstalledPluginSwitch
                             plugin={plugin}
-                            enabled={enabled}
-                            savedEnabled={savedEnabled}
+                            enabled={savedEnabled}
                             toggleDisabled={toggleDisabled}
                         />
                     </Pressable>
@@ -209,15 +358,14 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
     )
 })
 
+/** The switch answers for the slot the user chose, since that is what toggling it writes. */
 export const InstalledPluginSwitch = memo(function InstalledPluginSwitch({
     plugin,
     enabled,
-    savedEnabled,
     toggleDisabled,
 }: {
     plugin: AnyPlugin
     enabled: boolean
-    savedEnabled: boolean
     toggleDisabled: boolean
 }) {
     return (
@@ -230,7 +378,7 @@ export const InstalledPluginSwitch = memo(function InstalledPluginSwitch({
                     : handleDisablePlugin(plugin)
                 ).catch(e => showErrorToast(messageOf(e)))
             }}
-            value={isDefaultsOnlyBoot ? savedEnabled : enabled}
+            value={enabled}
         />
     )
 })
@@ -246,6 +394,8 @@ export const BrowsePluginCard = memo(function BrowsePluginCard({
     author,
     icon,
     id,
+    listing,
+    channel,
     repositoryText,
     onInstall,
 }: {
@@ -255,15 +405,26 @@ export const BrowsePluginCard = memo(function BrowsePluginCard({
     author: string
     icon?: string
     id: string
+    listing: RepoPluginListing
+    channel: string
     repositoryText: string
-    onInstall: () => void
+    onInstall: (channel?: string, version?: string) => Promise<unknown>
 }) {
+    const [installing, setInstalling] = useState(false)
+
+    const install = useCallback(() => {
+        const result = onInstall()
+        setInstalling(true)
+        result.finally(() => setInstalling(false))
+    }, [onInstall])
+
     return (
         <PluginCard
             name={name}
             description={description}
             version={version}
             author={author}
+            contributors={listing.contributors}
             icon={icon}
             actions={
                 <>
@@ -279,8 +440,10 @@ export const BrowsePluginCard = memo(function BrowsePluginCard({
                                 version,
                                 icon,
                                 id,
+                                listing,
+                                channel,
                                 repositoryText,
-                                onInstall,
+                                onInstall: install,
                             })
                         }}
                     />
@@ -288,7 +451,9 @@ export const BrowsePluginCard = memo(function BrowsePluginCard({
                         size="sm"
                         text="Install"
                         icon={DownloadIcon}
-                        onPress={onInstall}
+                        loading={installing}
+                        disabled={installing}
+                        onPress={install}
                     />
                 </>
             }
@@ -305,8 +470,30 @@ const usePluginCardStyles = createStyles({
     },
     topContainer: {
         alignItems: 'center',
+        minHeight: 32,
     },
     alignedContainer: {
         paddingLeft: 28,
+    },
+    byline: {
+        flexWrap: 'wrap',
+    },
+    author: {
+        flexShrink: 1,
+    },
+    authorClickableText: {
+        color: Tokens.default.colors.TEXT_BRAND,
+        fontWeight: 'bold',
+    },
+    icon: {
+        tintColor: Tokens.default.colors.TEXT_BRAND,
+        width: 20,
+        height: 20,
+    },
+    iconWarning: {
+        tintColor: Tokens.default.colors.TEXT_FEEDBACK_WARNING,
+    },
+    iconError: {
+        tintColor: Tokens.default.colors.TEXT_FEEDBACK_CRITICAL,
     },
 })

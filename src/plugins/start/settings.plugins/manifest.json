@@ -1,0 +1,11 @@
+{
+  "id": "revenge.settings.plugins",
+  "name": "Plugin Settings",
+  "description": "Plugin management UI for Revenge.",
+  "author": "Revenge",
+  "icon": "PuzzlePieceIcon",
+  "essential": true,
+  "dependencies": {
+    "revenge.settings": {}
+  }
+}

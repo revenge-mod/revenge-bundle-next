@@ -321,56 +321,6 @@ describe('withDependencies', () => {
         })
     })
 
-    describe('deprecated filter entries', () => {
-        function entry(key: string) {
-            const filter = (() => false) as any
-            filter.key = key
-            return filter
-        }
-
-        test('resolve to a module ID once, when the filter is built', () => {
-            define(5, [4])
-            mLookups.set('revenge.props(open)', 4)
-
-            const filter = withDependencies([entry('revenge.props(open)')])
-
-            expect(lookupCalls).toEqual(['revenge.props(open)'])
-            expect(filter(5)).toBe(true)
-            expect(filter(5)).toBe(true)
-            // Comparison is structural, so no further lookup can happen
-            expect(lookupCalls).toHaveLength(1)
-        })
-
-        test('resolve inside nested maps', () => {
-            define(5, [4])
-            define(4, [9])
-            mLookups.set('revenge.name(Inner)', 9)
-
-            expect(withDependencies([[entry('revenge.name(Inner)')]])(5)).toBe(
-                true,
-            )
-        })
-
-        test('an unresolved entry can never match', () => {
-            define(5, [4])
-
-            const filter = withDependencies([entry('revenge.props(gone)')])
-
-            expect(filter(5)).toBe(false)
-            expect(logs.join('\n')).toContain('matched no module')
-        })
-
-        test('warn about the deprecation, reporting the resolved ID', () => {
-            mLookups.set('revenge.props(open)', 4)
-            withDependencies([entry('revenge.props(open)')])
-
-            expect(logs.join('\n')).toContain(
-                'Deprecated withDependencies filter entry at index 0',
-            )
-            expect(logs.join('\n')).toContain('to module 4')
-        })
-    })
-
     describe('keys', () => {
         test('ordered sets carry the o prefix', () => {
             expect(
@@ -419,13 +369,6 @@ describe('withDependencies', () => {
                 'revenge.deps(p>3[4])',
             )
             expect(withDependencies([4]).key).toBe('revenge.deps([4])')
-        })
-    })
-
-    describe('deprecated aliases', () => {
-        test('point at their replacements', () => {
-            expect(withDependencies.loose).toBe(withDependencies.partial)
-            expect(withDependencies.includes).toBe(withDependencies.unordered)
         })
     })
 

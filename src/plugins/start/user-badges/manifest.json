@@ -1,0 +1,8 @@
+{
+  "id": "revenge.user-badges",
+  "name": "User Badges",
+  "description": "Badges for Revenge contributors and sponsors.",
+  "author": "Revenge",
+  "icon": "ShieldUserIcon",
+  "essential": true
+}

@@ -1,14 +1,9 @@
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
-    anyOf,
     withDependencies,
     withProps,
 } from '@revenge-mod/modules/finders/filters'
-import {
-    ReactJSXRuntimeModuleId,
-    ReactModuleId,
-    ReactNativeModuleId,
-} from '@revenge-mod/react'
+import { ReactModuleId, ReactNativeModuleId } from '@revenge-mod/react'
 import { proxify } from '@revenge-mod/utils/proxy'
 import { ImportTrackerModuleId } from '../../patches/import-tracker'
 import type { DiscordModules } from '../../types'
@@ -24,26 +19,13 @@ export let SettingListRenderer: SettingListRenderer = proxify(
         const [module] = lookupModule(
             withProps<SettingListRenderer>('SettingsList')
                 .and(
-                    anyOf(
-                        withDependencies(
-                            partial([
-                                ReactModuleId,
-                                ReactNativeModuleId,
-                                relative(1),
-                            ]),
-                        ).and(withDependencies(last([ImportTrackerModuleId]))),
-                        // TODO: Remove this once stable > 344205
-                        withDependencies(
-                            partial([
-                                ReactModuleId,
-                                ReactNativeModuleId,
-                                relative(1),
-                                relative(2),
-                                null,
-                                ReactJSXRuntimeModuleId,
-                            ]),
-                        ),
-                    ),
+                    withDependencies(
+                        partial([
+                            ReactModuleId,
+                            ReactNativeModuleId,
+                            relative(1),
+                        ]),
+                    ).and(withDependencies(last([ImportTrackerModuleId]))),
                 )
                 .keyAs(
                     'revenge.discord.modules.settings.renderer.SettingListRenderer',

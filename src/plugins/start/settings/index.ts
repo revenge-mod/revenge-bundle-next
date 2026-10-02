@@ -5,16 +5,13 @@ import { waitForModuleWithImportedPath } from '@revenge-mod/discord/utils/module
 import { waitForModules } from '@revenge-mod/modules/finders'
 import { withName, withProps } from '@revenge-mod/modules/finders/filters'
 import { instead } from '@revenge-mod/patcher'
-import {
-    InternalPluginFlags,
-    PluginFlags,
-    registerInternalPlugin,
-} from '@revenge-mod/plugins/_'
+import { registerInternalPlugin } from '@revenge-mod/plugins/_'
 import { React } from '@revenge-mod/react'
 import { asap, noop } from '@revenge-mod/utils/callback'
 import { getCurrentStack } from '@revenge-mod/utils/error'
 import { useReRender } from '@revenge-mod/utils/react'
 import { cloneElement, useEffect } from 'react'
+import manifest from './manifest.json'
 import type { SettingsSection } from '@revenge-mod/discord/modules/settings'
 import type { AnyFunction, KeyWithType } from '@revenge-mod/utils/types'
 import type {
@@ -51,69 +48,58 @@ let DEBUG_patchedNavigator = false
 /** @see {remountHookHarness} */
 let SettingHookHarness: MemoComponentModule['default'] | undefined
 
-const pluginSettings = registerInternalPlugin(
-    {
-        id: 'revenge.settings',
-        name: 'Settings',
-        description: 'Settings UI for Revenge.',
-        author: 'Revenge',
-        icon: 'SettingsIcon',
+const pluginSettings = registerInternalPlugin(manifest, {
+    start() {
+        onSettingsModulesLoaded(() => {
+            // @as-require
+            import('./register')
+
+            patchSearchableSettingsList()
+
+            asap(DEBUG_warnUnpatchedModules)
+        })
+
+        waitForModuleWithImportedPath<MemoComponentModule>(
+            'modules/settings/native/renderer/SettingHookHarness.tsx',
+            exports => {
+                SettingHookHarness = exports.default
+            },
+        )
+
+        waitForModuleWithImportedPath<MemoComponentModule>(
+            'modules/user_settings/core/native/SettingsNavigator.tsx',
+            patchSettingsNavigator,
+        )
+
+        const unsubSOS = waitForModules(
+            withName('SettingsOverviewScreen'),
+            exports => {
+                unsubSOS()
+                patchSettingsOverviewScreen(
+                    exports as SettingsOverviewScreenModule,
+                )
+            },
+            {
+                cached: true,
+                returnNamespace: true,
+            },
+        )
+
+        const unsubUSSR = waitForModules(
+            withProps('useSettingSearchResults'),
+            exports => {
+                unsubUSSR()
+                patchUseSettingSearchResults(
+                    exports as UseSettingSearchResultsModule,
+                )
+            },
+            {
+                cached: true,
+                returnNamespace: true,
+            },
+        )
     },
-    {
-        start() {
-            onSettingsModulesLoaded(() => {
-                // @as-require
-                import('./register')
-
-                patchSearchableSettingsList()
-
-                asap(DEBUG_warnUnpatchedModules)
-            })
-
-            waitForModuleWithImportedPath<MemoComponentModule>(
-                'modules/settings/native/renderer/SettingHookHarness.tsx',
-                exports => {
-                    SettingHookHarness = exports.default
-                },
-            )
-
-            waitForModuleWithImportedPath<MemoComponentModule>(
-                'modules/user_settings/core/native/SettingsNavigator.tsx',
-                patchSettingsNavigator,
-            )
-
-            const unsubSOS = waitForModules(
-                withName('SettingsOverviewScreen'),
-                exports => {
-                    unsubSOS()
-                    patchSettingsOverviewScreen(
-                        exports as SettingsOverviewScreenModule,
-                    )
-                },
-                {
-                    cached: true,
-                    returnNamespace: true,
-                },
-            )
-
-            const unsubUSSR = waitForModules(
-                withProps('useSettingSearchResults'),
-                exports => {
-                    unsubUSSR()
-                    patchUseSettingSearchResults(
-                        exports as UseSettingSearchResultsModule,
-                    )
-                },
-                {
-                    cached: true,
-                    returnNamespace: true,
-                },
-            )
-        },
-    },
-    PluginFlags.Enabled,
-    InternalPluginFlags.Internal | InternalPluginFlags.Essential,
-)
+})
 
 export default pluginSettings
 

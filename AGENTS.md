@@ -70,6 +70,7 @@ These take priority over every other style rule below.
    - Substitute leading articles ("a", "an", "the"), especially at the start of sentences, for plural nouns when possible.
    - Remove unnecessary relative pronouns ("whose", "which").
    - Prefer participial phrases over clause connectors. Write "with parsed manifest" instead of "whose manifest is parsed".
+   - Avoid using conjunctions in short nouns and adjectives. Write "loaded plugins" instead of "plugins that are loaded".
 2. **Precision and directness**
    - Use exact technical jargon over explanatory descriptions. Write "cascading to its dependents"
      instead of "and so is everything that depends on it".

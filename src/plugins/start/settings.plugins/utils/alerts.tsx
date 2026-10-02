@@ -1,19 +1,23 @@
 import { AlertActionCreators } from '@revenge-mod/discord/actions'
+import { Design } from '@revenge-mod/discord/design'
 import { RootNavigationRef } from '@revenge-mod/discord/modules/main_tabs_v2'
 import {
     deleteStorageForPlugin,
-    isPluginStartable,
+    isPluginStarted,
     uninstallExternalPlugin,
 } from '@revenge-mod/plugins/_'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import { deleteJsonStorageForPlugin } from '~plugins/preinit/api/json-storage'
 import PluginClearDataConfirmationAlert from '../components/PluginClearDataConfirmationAlert'
+import PluginDependentsChoiceAlert from '../components/PluginDependentsChoiceAlert'
 import PluginHasDependenciesAlert from '../components/PluginHasDependenciesAlert'
-import PluginHasDependentsAlert from '../components/PluginHasDependentsAlert'
 import PluginMissingDependenciesAlert from '../components/PluginMissingDependenciesAlert'
-import PluginStatesProvider from '../components/PluginStateProvider'
 import PluginUninstallConfirmationAlert from '../components/PluginUninstallConfirmationAlert'
+import RepoRemoveConfirmationAlert from '../components/RepoRemoveConfirmationAlert'
 import type { AnyPlugin } from '@revenge-mod/plugins/_'
+import type { Repo } from '@revenge-mod/plugins/_/repositories'
+
+const { Text } = Design
 
 export function showPluginClearDataConfirmation(
     plugin: AnyPlugin,
@@ -57,7 +61,7 @@ export function showPluginUninstallConfirmation(
 }
 
 export function openPluginSettings(plugin: AnyPlugin) {
-    if (!plugin.SettingsComponent || !isPluginStartable(plugin)) return
+    if (!plugin.SettingsComponent || !isPluginStarted(plugin)) return
 
     const navigation = RootNavigationRef.getRootNavigationRef()
     if (navigation.isReady()) navigation.navigate(plugin.manifest.id)
@@ -75,13 +79,11 @@ export function showPluginHasDependenciesAlert(
 ) {
     AlertActionCreators.openAlert(
         'plugin-has-dependencies',
-        <PluginStatesProvider>
-            <PluginHasDependenciesAlert
-                plugin={plugin}
-                dependencies={dependencies}
-                action={action}
-            />
-        </PluginStatesProvider>,
+        <PluginHasDependenciesAlert
+            plugin={plugin}
+            dependencies={dependencies}
+            action={action}
+        />,
     )
 }
 
@@ -100,19 +102,81 @@ export function showPluginMissingDependenciesAlert(
     )
 }
 
+export function showRemoveRepoConfirmation(
+    repo: Repo,
+    callback: () => Promise<void> | void,
+) {
+    const KEY = 'repo-remove-confirmation'
+
+    async function action() {
+        await callback()
+    }
+
+    AlertActionCreators.openAlert(
+        KEY,
+        <RepoRemoveConfirmationAlert repo={repo} action={action} />,
+    )
+}
+
 export function showPluginHasDependentsAlert(
     plugin: AnyPlugin,
-    dependents: AnyPlugin[],
-    action: () => Promise<void>,
+    required: AnyPlugin[],
+    optional: AnyPlugin[],
+    action: (keepRunning: Set<string>) => Promise<void>,
 ) {
     AlertActionCreators.openAlert(
         'plugin-has-dependents',
-        <PluginStatesProvider>
-            <PluginHasDependentsAlert
-                plugin={plugin}
-                dependents={dependents}
-                action={action}
-            />
-        </PluginStatesProvider>,
+        <PluginDependentsChoiceAlert
+            title="Plugin currently in use"
+            content={
+                <Text color="text-default">
+                    Other plugins are currently using{' '}
+                    <Text variant="text-md/semibold" color="text-default">
+                        {plugin.manifest.name}
+                    </Text>
+                    .{'\n'}
+                    {required.length > 0 &&
+                        'Plugins that need it will be disabled. '}
+                    {optional.length > 0 &&
+                        'Select which plugins to keep running. They will restart without this plugin.'}
+                </Text>
+            }
+            confirmText="Continue"
+            toggleLabel="Keep running"
+            locked={required}
+            selectable={optional}
+            action={action}
+        />,
+    )
+}
+
+/** Offers restarting the running plugins that could not link this one when they started. */
+export function showPluginRelinkAlert(
+    plugin: AnyPlugin,
+    dependents: AnyPlugin[],
+    action: (restart: Set<string>) => Promise<void>,
+) {
+    AlertActionCreators.openAlert(
+        'plugin-relink-dependents',
+        <PluginDependentsChoiceAlert
+            title="Restart plugins for features?"
+            content={
+                <Text color="text-default">
+                    These plugins started while{' '}
+                    <Text variant="text-md/semibold" color="text-default">
+                        {plugin.manifest.name}
+                    </Text>{' '}
+                    was unavailable. You may receive new features if you restart
+                    them now.
+                </Text>
+            }
+            confirmText="Restart"
+            cancelText="No thanks"
+            confirmVariant="primary"
+            toggleLabel="Restart"
+            locked={[]}
+            selectable={dependents}
+            action={action}
+        />,
     )
 }

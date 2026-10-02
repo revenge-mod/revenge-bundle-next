@@ -24,16 +24,16 @@ export default function PluginHasDependenciesAlert({
 
     return (
         <AlertModal
-            title="Plugin has dependencies"
+            title="Plugin needs other plugins"
             content={
                 <Text color="text-default">
                     Plugin{' '}
                     <Text variant="text-md/semibold" color="text-default">
                         {plugin.manifest.name}
                     </Text>{' '}
-                    depends on other plugins to function.
+                    depends on {dependencies.length} other plugins to function.
                     {'\n'}
-                    Enabling it will also enable the following plugins:
+                    Continuing will also enable these plugins:
                 </Text>
             }
             extraContent={

@@ -5,9 +5,7 @@ import { withName } from '@revenge-mod/modules/finders/filters'
 import { callNativeMethod } from '@revenge-mod/modules/native'
 import { instead } from '@revenge-mod/patcher'
 import {
-    InternalPluginFlags,
     isDefaultsOnlyBoot,
-    PluginFlags,
     registerInternalPlugin,
 } from '@revenge-mod/plugins/_'
 import { onRunApplicationFinished } from '@revenge-mod/react/native'
@@ -18,51 +16,38 @@ import { FullVersion } from '~constants'
 import { cache as assetsCache } from '../../../../lib/assets/src/caches'
 import { cache as modulesCache } from '../../../../lib/modules/src/caches'
 import { mErrorChain } from '../../../../lib/modules/src/metro/runtime'
-import pluginSettings from '../../start/settings'
 import defer * as Alerts from './components/alerts'
 import defer * as ErrorBoundaryScreen from './components/ErrorBoundaryScreen'
+import manifest from './manifest.json'
 import type { Component, ReactNode } from 'react'
 
-registerInternalPlugin(
-    {
-        id: 'revenge.recovery',
-        name: 'Recovery',
-        description:
-            'Handles errors and provides troubleshooting options for Revenge.',
-        author: 'Revenge',
-        icon: 'ShieldIcon',
-        dependencies: { [pluginSettings]: {} },
+registerInternalPlugin(manifest, {
+    preInit({ cleanup }) {
+        cleanup(freezeDetectionService())
     },
-    {
-        preInit({ cleanup }) {
-            cleanup(freezeDetectionService())
-        },
-        start({ cleanup }) {
-            // @as-require
-            import('./settings')
+    start({ cleanup }) {
+        // @as-require
+        import('./settings')
 
-            cleanup(errorBoundaryService())
+        cleanup(errorBoundaryService())
 
-            asap(() => {
-                if (isDefaultsOnlyBoot) {
-                    Actions.AlertActionCreators.openAlert(
-                        'revenge-recovery',
-                        <Alerts.RecoveryModal />,
-                    )
-                }
+        asap(() => {
+            if (isDefaultsOnlyBoot) {
+                Actions.AlertActionCreators.openAlert(
+                    'revenge-recovery',
+                    <Alerts.RecoveryModal />,
+                )
+            }
 
-                if (assetsCache.outdated || modulesCache.outdated) {
-                    Actions.AlertActionCreators.openAlert(
-                        'revenge-loader-outdated',
-                        <Alerts.LoaderOutdatedModal />,
-                    )
-                }
-            })
-        },
+            if (assetsCache.outdated || modulesCache.outdated) {
+                Actions.AlertActionCreators.openAlert(
+                    'revenge-loader-outdated',
+                    <Alerts.LoaderOutdatedModal />,
+                )
+            }
+        })
     },
-    PluginFlags.Enabled,
-    InternalPluginFlags.Internal | InternalPluginFlags.Essential,
-)
+})
 
 const FreezeDetectionTimeout = 5000
 

@@ -4,13 +4,19 @@ import {
 } from '@revenge-mod/discord/actions'
 import { Design } from '@revenge-mod/discord/design'
 import { Clipboard } from '@revenge-mod/externals/react-native-clipboard'
-import { isPluginError } from '@revenge-mod/plugins/_'
+import {
+    isPluginSystemErrorPayload,
+    pList,
+    setUpdatesPaused,
+} from '@revenge-mod/plugins/_'
 import {
     installFromRepo,
     listRepoPlugins,
     listRepos,
     planInstall,
+    setPluginHeld,
 } from '@revenge-mod/plugins/_/repositories'
+import { getPluginContributorName } from '@revenge-mod/plugins/utils'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import { PluginIcon } from '../components/PluginIcon'
 import type {
@@ -36,7 +42,7 @@ export function showErrorToast(message: string) {
 
 export function messageOf(e: unknown) {
     if (e instanceof Error) return e.message
-    if (isPluginError(e)) return e.message
+    if (isPluginSystemErrorPayload(e)) return e.message
     return String(e)
 }
 
@@ -52,7 +58,11 @@ const PlanConfirmAlertKey = 'repo-install-plan-confirm'
  * Shows the resolved plan and asks before anything downloads.
  * Resolves true only when the user presses Install.
  */
-export async function confirmPlan(plan: InstallPlan): Promise<boolean> {
+export async function confirmPlan(
+    plan: InstallPlan,
+    /** Extra line shown under the summary, for anything the plan itself doesn't say. */
+    note?: string,
+): Promise<boolean> {
     const repos = await listRepos()
 
     let resolve!: (value: boolean) => void
@@ -98,7 +108,7 @@ export async function confirmPlan(plan: InstallPlan): Promise<boolean> {
             return row(
                 plugin.name || action.id,
                 repo.name || action.repo,
-                plugin.author,
+                getPluginContributorName(plugin.author),
                 plugin.icon,
             )
         }),
@@ -113,9 +123,14 @@ export async function confirmPlan(plan: InstallPlan): Promise<boolean> {
                     : `Install ${plan.actions.length} plugins?`
             }
             content={
-                plan.actions.length > 1
-                    ? 'Some plugins require other plugins to be installed first. The following will be installed:'
-                    : undefined
+                [
+                    plan.actions.length > 1
+                        ? 'Some plugins require other plugins to be installed first. The following will be installed:'
+                        : undefined,
+                    note,
+                ]
+                    .filter(Boolean)
+                    .join('\n\n') || undefined
             }
             extraContent={
                 <Design.TableRowGroup>{summary}</Design.TableRowGroup>
@@ -135,6 +150,7 @@ export async function confirmPlan(plan: InstallPlan): Promise<boolean> {
                 </>
             }
         />,
+        () => resolve(false),
     )
 
     return await promise
@@ -154,19 +170,58 @@ export async function runInstallFlow(
     version?: string,
     channel?: string,
     filteredRepos?: string[],
+    /**
+     * Pause updates once it's installed. Only for a version the user actually picked, see
+     * {@link installExactVersion}.
+     */
+    hold = false,
 ): Promise<boolean> {
     try {
         const plan = await planInstall(id, version, channel, filteredRepos)
         if (plan.warnings.length) showErrorToast(plan.warnings.join('\n'))
 
-        const accepted = await confirmPlan(plan)
+        const accepted = await confirmPlan(
+            plan,
+            hold
+                ? `Updates will be paused so it stays on ${version}. Turn "Pause updates" off to follow updates again.`
+                : undefined,
+        )
         AlertActionCreators.dismissAlert(PlanConfirmAlertKey)
         if (!accepted) return false
 
         await installFromRepo(plan)
+        if (hold) await pauseUpdates(id, version!)
+
         return true
     } catch (e) {
         showErrorToast(messageOf(e))
         return false
+    }
+}
+
+/**
+ * Installs one specific version and holds it there.
+ *
+ * Resolves true only when the plan was confirmed and installed.
+ */
+export function installExactVersion(
+    id: string,
+    version: string,
+    channel?: string,
+    filteredRepos?: string[],
+): Promise<boolean> {
+    return runInstallFlow(id, version, channel, filteredRepos, true)
+}
+
+/** Holds a plugin at its installed version. */
+async function pauseUpdates(id: string, version: string) {
+    try {
+        const plugin = pList.get(id)
+        if (plugin) await setUpdatesPaused(plugin, true)
+        else await setPluginHeld(id, true)
+    } catch (e) {
+        showErrorToast(
+            `Installed ${version}, but updates could not be paused: ${messageOf(e)}`,
+        )
     }
 }

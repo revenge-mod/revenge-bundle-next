@@ -2,15 +2,12 @@ import { AlertActionCreators } from '@revenge-mod/discord/actions'
 import { Design } from '@revenge-mod/discord/design'
 import { getModules } from '@revenge-mod/modules/finders'
 import { withProps } from '@revenge-mod/modules/finders/filters'
-import {
-    InternalPluginFlags,
-    PluginFlags,
-    registerInternalPlugin,
-} from '@revenge-mod/plugins/_'
+import { registerInternalPlugin } from '@revenge-mod/plugins/_'
 import { insteadJSX } from '@revenge-mod/react/jsx-runtime'
 import { createElement, isValidElement } from 'react'
 import { Image } from 'react-native'
 import { Badges, UsersWithBadges } from './constants'
+import manifest from './manifest.json'
 import { styles, useBadgeStyles } from './styles'
 import { mapElementTree, patchRender } from './utils'
 import type { FC, ReactElement, ReactNode } from 'react'
@@ -47,55 +44,40 @@ const DummyBadges = [
     { id: DummyBadgeId },
 ] as unknown as ProfileBadgeRowsProps['badges']
 
-registerInternalPlugin(
-    {
-        id: 'revenge.user-badges',
-        name: 'User Badges',
-        description: 'Badges for Revenge contributors and sponsors.',
-        author: 'Revenge',
-        icon: 'ShieldUserIcon',
-    },
-    {
-        start({ cleanup }) {
-            const unsub = getModules(
-                withProps<{ ProfileBadgeRows: FC<ProfileBadgeRowsProps> }>(
-                    'ProfileBadgeRows',
-                ),
-                ({ ProfileBadgeRows }) => {
-                    cleanup(
-                        insteadJSX(
-                            ProfileBadgeRows,
-                            ([type, props, key], jsx) => {
-                                if (
-                                    !UsersWithBadges[props.userId] ||
-                                    typeof type !== 'function'
-                                )
-                                    return jsx(type, props, key)
+registerInternalPlugin(manifest, {
+    start({ cleanup }) {
+        const unsub = getModules(
+            withProps<{ ProfileBadgeRows: FC<ProfileBadgeRowsProps> }>(
+                'ProfileBadgeRows',
+            ),
+            ({ ProfileBadgeRows }) => {
+                cleanup(
+                    insteadJSX(ProfileBadgeRows, ([type, props, key], jsx) => {
+                        if (
+                            !UsersWithBadges[props.userId] ||
+                            typeof type !== 'function'
+                        )
+                            return jsx(type, props, key)
 
-                                // Inject dummy badge for users with custom badges to ensure ProfileBadge components exist
-                                return jsx(
-                                    patchRender(type, injectCustomBadges),
-                                    props.badges.length
-                                        ? props
-                                        : { ...props, badges: DummyBadges },
-                                    key,
-                                )
-                            },
-                        ),
-                    )
-                },
-            )
+                        // Inject dummy badge for users with custom badges to ensure ProfileBadge components exist
+                        return jsx(
+                            patchRender(type, injectCustomBadges),
+                            props.badges.length
+                                ? props
+                                : { ...props, badges: DummyBadges },
+                            key,
+                        )
+                    }),
+                )
+            },
+        )
 
-            cleanup(unsub)
-        },
-        stop({ plugin }) {
-            plugin.requireReload()
-        },
+        cleanup(unsub)
     },
-    PluginFlags.Enabled,
-    // Essential because this is a perk
-    InternalPluginFlags.Internal | InternalPluginFlags.Essential,
-)
+    stop({ plugin }) {
+        plugin.requireReload()
+    },
+})
 
 /** Matched structurally, as minified builds don't preserve `type.name`. */
 function isProfileBadgeElement(

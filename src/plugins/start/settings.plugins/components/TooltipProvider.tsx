@@ -16,21 +16,25 @@ import type { View } from 'react-native'
 const { useTooltip } = Design
 
 export const PluginTooltip = {
-    /** Shown when an action requires the plugin to be enabled first. */
-    Enable: 'enable',
+    /** Shown when an action requires the plugin to be started first. */
+    Start: 'start',
     /** Shown when an action is blocked because the plugin is essential. */
     Essential: 'essential',
     /** Shown when an action is blocked because the plugin has a pending update. */
     PendingUpdate: 'pendingUpdate',
+    /** Shown when an action is blocked because the plugin is in a state that prevents it. */
+    ControlBlocked: 'controlBlocked',
 } as const
 
 export type PluginTooltip = (typeof PluginTooltip)[keyof typeof PluginTooltip]
 
 const Labels: Record<PluginTooltip, string> = {
-    [PluginTooltip.Enable]: 'Plugin must be enabled first',
+    [PluginTooltip.Start]: 'Plugin must be started first',
     [PluginTooltip.Essential]: 'Plugin needed for Revenge to function properly',
     [PluginTooltip.PendingUpdate]:
         'Plugin has a pending update, reload to apply it',
+    [PluginTooltip.ControlBlocked]:
+        'Plugin is pending a reload, or is currently being started/stopped',
 }
 
 interface PluginTooltipsContextValue {
@@ -53,11 +57,12 @@ export default function PluginTooltipsProvider({
     const enableTarget = useRef<View | null>(null)
     const essentialTarget = useRef<View | null>(null)
     const pendingUpdateTarget = useRef<View | null>(null)
+    const controlBlocked = useRef<View | null>(null)
 
     useTooltip(enableTarget, {
-        label: Labels[PluginTooltip.Enable],
+        label: Labels[PluginTooltip.Start],
         position: 'top',
-        visible: visible === PluginTooltip.Enable,
+        visible: visible === PluginTooltip.Start,
     })
 
     useTooltip(essentialTarget, {
@@ -72,11 +77,18 @@ export default function PluginTooltipsProvider({
         visible: visible === PluginTooltip.PendingUpdate,
     })
 
+    useTooltip(controlBlocked, {
+        label: Labels[PluginTooltip.ControlBlocked],
+        position: 'top',
+        visible: visible === PluginTooltip.ControlBlocked,
+    })
+
     const value = useMemo<PluginTooltipsContextValue>(() => {
         const targets = {
-            [PluginTooltip.Enable]: enableTarget,
+            [PluginTooltip.Start]: enableTarget,
             [PluginTooltip.Essential]: essentialTarget,
             [PluginTooltip.PendingUpdate]: pendingUpdateTarget,
+            [PluginTooltip.ControlBlocked]: controlBlocked,
         }
 
         return {
