@@ -8,6 +8,7 @@ import {
 } from '@revenge-mod/modules/finders/filters'
 import { isModuleExportBad } from '@revenge-mod/modules/metro/utils'
 import { FilterScopes } from '../../modules/src/finders/filters/constants'
+import type { DiscordModules } from '@revenge-mod/discord/types'
 import type {
     Filter,
     FilterGenerator,
@@ -125,7 +126,9 @@ export function lookupGeneratedIconComponent<N extends string>(
 
     const [module] = lookupModule(withGeneratedIconComponent(...names))
 
-    return module?.[names[0]] as FC<any> | undefined
+    return module?.[names[0]] as
+        | DiscordModules.Components.BaseIconImage
+        | undefined
 }
 
 function warnUnregisteredAsset(name: string) {

@@ -13,6 +13,8 @@ import type {
     RefObject,
 } from 'react'
 import type {
+    ColorValue,
+    ImageProps,
     ImageSourcePropType,
     ImageStyle,
     LayoutRectangle,
@@ -177,12 +179,14 @@ export namespace DiscordModules {
                 key: string
                 content?: string
                 icon?: number | FC
-                IconComponent?: FC
+                IconComponent?: Components.BaseIconImage
                 /**
                  * The icon's color, same string format as `<Text>`'s color prop
                  */
                 iconColor?: string
                 containerStyle?: ViewStyle
+                /** How long the toast should be shown. */
+                toastDurationMs?: number
             }): void
             close(): void
         }
@@ -596,7 +600,8 @@ export namespace DiscordModules {
             | 'translucent'
 
         export interface TableRowIconProps {
-            source: ImageSourcePropType
+            source?: ImageSourcePropType
+            IconComponent?: BaseIconImage
             variant?: TableRowIconVariant
         }
 
@@ -631,7 +636,7 @@ export namespace DiscordModules {
 
         export interface ContextMenuItem {
             label: string
-            IconComponent?: FC
+            IconComponent?: BaseIconImage
             variant?: 'default' | 'destructive'
             action(): void
         }
@@ -839,6 +844,15 @@ export namespace DiscordModules {
         }
 
         export type SegmentedControl = FC<SegmentedControlProps>
+
+        export interface BaseIconImageProps extends ImageProps {
+            /** @default 'md' */
+            size?: 'xxs' | 'xs' | 'sm' | 'md' | 'lg'
+            /** Color value or Discord's color token. */
+            color?: ColorValue | any
+        }
+
+        export type BaseIconImage = FC<BaseIconImageProps>
     }
 
     export namespace Modules {
@@ -883,7 +897,7 @@ export namespace DiscordModules {
                 parent: string | null
                 unsearchable?: boolean
                 variant?: Components.TableRowProps['variant']
-                IconComponent?: () => ReactNode
+                IconComponent?: Components.BaseIconImage
                 usePredicate?: () => boolean
                 useTrailing?: () => ReactNode
                 useDescription?: () => string
