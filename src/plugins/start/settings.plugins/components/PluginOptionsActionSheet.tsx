@@ -39,6 +39,7 @@ import {
     refreshRepo,
 } from '@revenge-mod/plugins/_/repositories'
 import { formatVersion } from '@revenge-mod/plugins/utils'
+import { noop } from '@revenge-mod/utils/callback'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import { useEffect, useState } from 'react'
 import { Pressable } from 'react-native'
@@ -51,6 +52,7 @@ import {
 import { messageOf, runInstallFlow, showErrorToast } from '../utils/repos'
 import {
     InstalledPluginSwitch,
+    PluginAuthor,
     PluginInfo,
     PluginInfoStatusIcon,
 } from './PluginCard'
@@ -59,7 +61,6 @@ import PluginTooltipsProvider, {
     usePluginTooltip,
 } from './TooltipProvider'
 import type { AnyPlugin, PluginSource } from '@revenge-mod/plugins/_'
-import { noop } from '@revenge-mod/utils/callback'
 
 export interface PluginOptionsActionSheetProps {
     plugin: AnyPlugin
@@ -103,7 +104,8 @@ function PluginOptions({ plugin, sheetKey }: PluginOptionsActionSheetProps) {
     const meta = getInternalPluginMeta(plugin)
     const essential = isPluginEssential(meta)
     const pendingUpdate = isPluginPendingUpdate(plugin)
-    const { name, author, description, icon, version } = plugin.manifest
+    const { name, author, contributors, description, icon, version } =
+        plugin.manifest
 
     const [switchRef, showPendingUpdateTooltip] = usePluginTooltip(
         PluginTooltip.PendingUpdate,
@@ -113,7 +115,13 @@ function PluginOptions({ plugin, sheetKey }: PluginOptionsActionSheetProps) {
         <Stack spacing={24} style={{ paddingTop: 8 }}>
             <PluginInfo
                 name={name}
-                author={author}
+                author={
+                    <PluginAuthor
+                        pluginName={name}
+                        author={author}
+                        contributors={contributors}
+                    />
+                }
                 version={formatVersion(version)}
                 description={description}
                 icon={icon}
@@ -427,13 +435,10 @@ function usePluginRepositoryText(plugin: AnyPlugin) {
 
     useEffect(() => {
         if (!hasUrl) return
-        listRepos().then(
-            repos => {
-                const repo = repos.find(r => r.url === repoUrl)
-                if (repo?.name) setRepoName(repo.name)
-            },
-            noop,
-        )
+        listRepos().then(repos => {
+            const repo = repos.find(r => r.url === repoUrl)
+            if (repo?.name) setRepoName(repo.name)
+        }, noop)
     }, [repoUrl, hasUrl])
 
     return hasUrl

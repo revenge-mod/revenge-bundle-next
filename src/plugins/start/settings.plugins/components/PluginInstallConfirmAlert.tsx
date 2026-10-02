@@ -1,5 +1,6 @@
 import { Design } from '@revenge-mod/discord/design'
 import { confirmInstallFile } from '@revenge-mod/plugins/_'
+import { getPluginContributorName } from '@revenge-mod/plugins/utils'
 import type { PluginInstallReadyEvent } from '@revenge-mod/plugins/_'
 
 const { AlertModal, AlertActionButton, Text } = Design
@@ -14,7 +15,7 @@ export default function PluginInstallConfirmAlert({
     return (
         <AlertModal
             title={`Install ${manifest.name}?`}
-            content={`${manifest.id} v${manifest.version}${manifest.author ? ` by ${manifest.author}` : ''}`}
+            content={`${manifest.id} v${manifest.version}${manifest.author ? ` by ${getPluginContributorName(manifest.author)}` : ''}`}
             extraContent={
                 prompt.replaces != null ? (
                     <Text

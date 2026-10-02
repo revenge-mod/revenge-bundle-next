@@ -16,6 +16,7 @@ import {
     planInstall,
     setPluginHeld,
 } from '@revenge-mod/plugins/_/repositories'
+import { getPluginContributorName } from '@revenge-mod/plugins/utils'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import { PluginIcon } from '../components/PluginIcon'
 import type {
@@ -107,7 +108,7 @@ export async function confirmPlan(
             return row(
                 plugin.name || action.id,
                 repo.name || action.repo,
-                plugin.author,
+                getPluginContributorName(plugin.author),
                 plugin.icon,
             )
         }),

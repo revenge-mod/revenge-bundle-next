@@ -37,8 +37,14 @@ export function PluginFlashList({
             fadingEdgeLength={plugins.length === 1 ? 0 : 16}
             keyExtractor={plugin => plugin.manifest.id}
             renderItem={({ item: plugin }) => {
-                const { name, description, version, author, icon } =
-                    plugin.manifest
+                const {
+                    name,
+                    description,
+                    version,
+                    author,
+                    contributors,
+                    icon,
+                } = plugin.manifest
 
                 return (
                     <PluginCard
@@ -46,6 +52,7 @@ export function PluginFlashList({
                         description={description}
                         version={formatVersion(version)}
                         author={author}
+                        contributors={contributors}
                         icon={icon}
                         actions={actions?.(plugin)}
                     />

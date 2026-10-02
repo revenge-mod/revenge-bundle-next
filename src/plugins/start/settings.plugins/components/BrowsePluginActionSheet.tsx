@@ -2,7 +2,7 @@ import { getAssetIdByName } from '@revenge-mod/assets'
 import { ActionSheetActionCreators } from '@revenge-mod/discord/actions'
 import { Design } from '@revenge-mod/discord/design'
 import { useState } from 'react'
-import { PluginInfo } from './PluginCard'
+import { PluginAuthor, PluginInfo } from './PluginCard'
 import { IdRow, RepositoryRow } from './PluginOptionsActionSheet'
 import type { RepoPluginListing } from '@revenge-mod/plugins/_/repositories'
 
@@ -60,7 +60,13 @@ export default function BrowsePluginActionSheet({
             <Stack spacing={24} style={{ paddingTop: 8 }}>
                 <PluginInfo
                     name={name}
-                    author={author}
+                    author={
+                        <PluginAuthor
+                            pluginName={name}
+                            author={author}
+                            contributors={listing.contributors}
+                        />
+                    }
                     version={selectedVersion}
                     description={description}
                     icon={icon}

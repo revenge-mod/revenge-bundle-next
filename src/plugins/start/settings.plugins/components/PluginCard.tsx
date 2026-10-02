@@ -19,7 +19,10 @@ import {
     usePluginFlags,
     usePluginStatus,
 } from '@revenge-mod/plugins/_/react'
-import { formatVersion } from '@revenge-mod/plugins/utils'
+import {
+    formatVersion,
+    parsePluginContributor,
+} from '@revenge-mod/plugins/utils'
 import { memo, useCallback, useState } from 'react'
 import { Image, Pressable } from 'react-native'
 import { handleDisablePlugin, handleEnablePlugin } from '../utils/actions'
@@ -27,12 +30,14 @@ import { openPluginSettings } from '../utils/alerts'
 import { messageOf, showErrorToast } from '../utils/repos'
 import {
     showBrowsePluginActionSheet,
+    showPluginContributorsActionSheet,
     showPluginOptionsActionSheet,
 } from '../utils/sheets'
 import { PluginIcon } from './PluginIcon'
 import { PluginTooltip, usePluginTooltip } from './TooltipProvider'
 import type { AnyPlugin, InternalPluginMeta } from '@revenge-mod/plugins/_'
 import type { RepoPluginListing } from '@revenge-mod/plugins/_/repositories'
+import type { ReactNode } from 'react'
 
 const { Card, Text, Stack, IconButton, Button, createStyles } = Design
 
@@ -49,6 +54,7 @@ export const PluginCard = memo(function PluginCard({
     description,
     version,
     author,
+    contributors,
     icon,
     extraInfo,
     actions,
@@ -57,6 +63,7 @@ export const PluginCard = memo(function PluginCard({
     description: string
     version: string
     author: string
+    contributors?: string[]
     icon?: string
     extraInfo?: React.ReactNode
     actions?: React.ReactNode
@@ -68,7 +75,13 @@ export const PluginCard = memo(function PluginCard({
             <PluginInfo
                 name={name}
                 description={description}
-                author={author}
+                author={
+                    <PluginAuthor
+                        pluginName={name}
+                        author={author}
+                        contributors={contributors}
+                    />
+                }
                 icon={icon}
                 extraInfo={extraInfo}
                 actions={actions}
@@ -132,6 +145,62 @@ export const PluginInfoStatusIcon = memo(function PluginInfoStatusIcon({
     ))
 })
 
+const AuthorRipple = { borderless: false }
+
+export const PluginAuthor = memo(function PluginAuthor({
+    pluginName,
+    author,
+    contributors = [],
+}: {
+    pluginName: string
+    author: string
+    contributors?: string[]
+}) {
+    const styles_ = usePluginCardStyles()
+    const parsed = parsePluginContributor(author)
+
+    if (
+        !parsed ||
+        !(parsed.ids.length || parsed.links.length || contributors.length)
+    )
+        return (
+            <Text
+                color="text-muted"
+                style={styles_.author}
+                variant="heading-md/medium"
+            >
+                {parsed?.name ?? author}
+            </Text>
+        )
+
+    const count = contributors.length
+
+    return (
+        <Pressable
+            accessibilityRole="button"
+            accessibilityHint="Shows contacts of the author and contributors"
+            android_ripple={AuthorRipple}
+            style={styles_.author}
+            onPress={() =>
+                showPluginContributorsActionSheet({
+                    pluginName,
+                    author,
+                    contributors,
+                })
+            }
+        >
+            <Text
+                color="text-muted"
+                variant="heading-md/medium"
+                style={styles_.authorClickableText}
+            >
+                {parsed.name}
+                {count ? `, ${count} contributor${count === 1 ? '' : 's'}` : ''}
+            </Text>
+        </Pressable>
+    )
+})
+
 export const PluginInfo = memo(function PluginInfo({
     name,
     description,
@@ -144,7 +213,7 @@ export const PluginInfo = memo(function PluginInfo({
 }: {
     name: string
     description: string
-    author: string
+    author: ReactNode
     version: string
     icon?: string
     extraInfo?: React.ReactNode
@@ -180,14 +249,22 @@ export const PluginInfo = memo(function PluginInfo({
                 spacing={4}
                 style={[aligned && styles_.alignedContainer, styles.grow]}
             >
-                <Text
-                    color="text-muted"
-                    style={styles.grow}
-                    variant="heading-md/medium"
+                <Stack
+                    direction="horizontal"
+                    spacing={0}
+                    align="baseline"
+                    style={[styles_.byline, styles.grow]}
                 >
-                    by {author}
-                    {version ? ` \u2022 ${version}` : ''}
-                </Text>
+                    <Text color="text-muted" variant="heading-md/medium">
+                        by{' '}
+                    </Text>
+                    {author}
+                    {version ? (
+                        <Text color="text-muted" variant="heading-md/medium">
+                            {` \u2022 ${version}`}
+                        </Text>
+                    ) : null}
+                </Stack>
                 <Text style={styles.grow} variant="text-md/medium">
                     {description}
                 </Text>
@@ -206,7 +283,7 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
     const savedEnabled = usePluginEnabledInActiveSlot(plugin)
 
     const {
-        manifest: { name, description, version, author, icon },
+        manifest: { name, description, version, author, contributors, icon },
     } = plugin
 
     usePluginFlags(plugin)
@@ -232,6 +309,7 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
             description={description}
             version={formatVersion(version)}
             author={author}
+            contributors={contributors}
             icon={icon}
             extraInfo={<PluginInfoStatusIcon plugin={plugin} />}
             actions={
@@ -346,6 +424,7 @@ export const BrowsePluginCard = memo(function BrowsePluginCard({
             description={description}
             version={version}
             author={author}
+            contributors={listing.contributors}
             icon={icon}
             actions={
                 <>
@@ -395,6 +474,16 @@ const usePluginCardStyles = createStyles({
     },
     alignedContainer: {
         paddingLeft: 28,
+    },
+    byline: {
+        flexWrap: 'wrap',
+    },
+    author: {
+        flexShrink: 1,
+    },
+    authorClickableText: {
+        color: Tokens.default.colors.TEXT_BRAND,
+        fontWeight: 'bold',
     },
     icon: {
         tintColor: Tokens.default.colors.TEXT_BRAND,

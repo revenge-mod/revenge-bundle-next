@@ -106,6 +106,7 @@ export interface RepoPluginListing {
     name: string
     description: string
     author: string
+    contributors?: string[]
     /** Packaged asset name or `data:` URL. */
     icon: string | null
     /** Channel target pointers (e.g. `latest`) referencing keys of {@link versions}. */
