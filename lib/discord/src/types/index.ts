@@ -474,6 +474,9 @@ export namespace DiscordModules {
                 }>
         >
 
+        /** {@link ActionSheet} without the horizontal padding around its content. */
+        export type BottomSheet = ActionSheet
+
         export interface ActionSheetCloseButtonProps
             extends Pick<ComponentProps<IconButton>, 'variant' | 'onPress'> {}
 
