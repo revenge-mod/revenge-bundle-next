@@ -496,6 +496,7 @@ export namespace DiscordModules {
         export interface BottomSheetTitleHeaderProps {
             leading?: ReactNode
             title: string
+            subtitle?: string
             trailing?: ReactNode
         }
 
