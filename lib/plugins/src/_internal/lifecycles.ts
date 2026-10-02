@@ -1,5 +1,4 @@
 import { registerJSMethod } from '@revenge-mod/modules/native'
-import { isPluginStarted } from '@revenge-mod/plugins/_'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import { sleepReject } from '@revenge-mod/utils/promise'
 import { pUnscopedApi as uapi } from '../apis'
@@ -246,6 +245,9 @@ export async function preInitPlugin(plugin: AnyPlugin) {
     const { lifecycles } = plugin
     const { promises, handleError } = getInternalPluginMeta(plugin)
 
+    // Store our own boolean since a plugin can report its own non-critical errors
+    let failed = false
+
     try {
         if (!lifecycles.preInit) return
 
@@ -258,14 +260,13 @@ export async function preInitPlugin(plugin: AnyPlugin) {
             promises.push(prom)
             await prom
         } catch (e) {
+            failed = true
             await handleError(e)
         } finally {
             meta.status &= ~Status.PreIniting
         }
     } finally {
-        if (!isPluginErrored(plugin)) {
-            meta.status |= Status.PreInited
-        }
+        if (!failed) meta.status |= Status.PreInited
     }
 }
 
@@ -287,6 +288,9 @@ export async function initPlugin(plugin: AnyPlugin) {
     const { lifecycles } = plugin
     const { promises, handleError } = meta
 
+    // Store our own boolean since a plugin can report its own non-critical errors
+    let failed = false
+
     try {
         if (!lifecycles.init) return
 
@@ -299,14 +303,13 @@ export async function initPlugin(plugin: AnyPlugin) {
             promises.push(prom)
             await prom
         } catch (e) {
+            failed = true
             await handleError(e)
         } finally {
             meta.status &= ~Status.Initing
         }
     } finally {
-        if (!isPluginErrored(plugin)) {
-            meta.status |= Status.Inited
-        }
+        if (!failed) meta.status |= Status.Inited
     }
 }
 
@@ -329,6 +332,9 @@ export async function startPlugin(plugin: AnyPlugin) {
     const { lifecycles } = plugin
     const { promises, handleError } = getInternalPluginMeta(plugin)
 
+    // Store our own boolean since a plugin can report its own non-critical errors
+    let failed = false
+
     try {
         if (!lifecycles.start) return
 
@@ -341,31 +347,35 @@ export async function startPlugin(plugin: AnyPlugin) {
             promises.push(prom)
             await prom
         } catch (e) {
+            failed = true
             await handleError(e)
         } finally {
             meta.status &= ~Status.Starting
         }
     } finally {
-        if (!isPluginErrored(plugin)) {
-            meta.status |= Status.Started
-        }
+        if (!failed) meta.status |= Status.Started
     }
 }
 
 /**
  * Stops running plugin, cascading stop to linked dependents and executing cleanups.
  *
+ * Gated on the plugin *running*, which is neither "enabled" nor "started":
+ * - enabled is a setup fact, and a plugin that was just disabled is still running — that is exactly when native asks.
+ * - started is too narrow. A plugin that threw in `start` never gets {@link Status.Started}, yet it still holds
+ *   whatever `preInit` and `init` left behind, and is the plugin that most needs tearing down.
+ *
  * @param stopNative Pass `false` when native asked for the stop and will end its own half.
  */
 export async function stopPlugin(plugin: AnyPlugin, stopNative = true) {
-    if (!isPluginStarted(plugin))
-        throw new Error(`Plugin "${plugin.manifest.id}" is not started`)
-
     const {
         manifest: { id },
     } = plugin
 
     const meta = getInternalPluginMeta(plugin)
+
+    if (isPluginStopped(plugin))
+        throw new Error(`Plugin "${id}" is not running`)
 
     if (isPluginEssential(meta))
         throw new Error(`Plugin "${id}" is essential and cannot be stopped`)
@@ -387,10 +397,6 @@ export async function stopPlugin(plugin: AnyPlugin, stopNative = true) {
             addPluginFlags(plugin, PluginFlags.PendingReload)
             return handleError(e)
         })
-    else if (
-        !(meta.status & (Status.PreInited | Status.Inited | Status.Started))
-    )
-        throw new Error(`Plugin "${id}" is not running`)
 
     await Promise.all(getLinkedDependents(plugin).map(dep => stopPlugin(dep)))
 

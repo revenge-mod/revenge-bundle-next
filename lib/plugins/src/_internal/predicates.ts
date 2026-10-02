@@ -31,6 +31,10 @@ export function isPluginErrored(plugin: AnyPlugin): boolean {
     return plugin.errors.length > 0
 }
 
+/**
+ * Whether a plugin has started. Try to use in UI only.
+ * For control flows, you likely want to invert {@link isPluginStopped}.
+ */
 export function isPluginStarted(plugin: AnyPlugin): boolean {
     const meta = getInternalPluginMeta(plugin)
     return Boolean(meta.status & PluginStatus.Started)
