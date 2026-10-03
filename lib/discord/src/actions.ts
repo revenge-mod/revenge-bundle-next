@@ -1,5 +1,6 @@
 import { lookupModule, lookupModules } from '@revenge-mod/modules/finders'
 import {
+    anyOf,
     withDependencies,
     withoutProps,
     withProps,
@@ -24,18 +25,20 @@ export let ActionSheetActionCreators: DiscordModules.Actions.ActionSheetActionCr
                 withProps<DiscordModules.Actions.ActionSheetActionCreators>(
                     'hideActionSheet',
                     'openLazy',
-                ).and(
-                    withDependencies(
-                        ordered([
-                            ReactModuleId,
-                            ReactJSXRuntimeModuleId,
-                            DispatcherModuleId,
-                            relative(1),
-                            relative(2),
-                            ImportTrackerModuleId,
-                        ]),
-                    ),
-                ),
+                )
+                    .and(
+                        withDependencies(
+                            ordered([
+                                ReactModuleId,
+                                ReactJSXRuntimeModuleId,
+                                DispatcherModuleId,
+                                relative(1),
+                                relative(2),
+                                ImportTrackerModuleId,
+                            ]),
+                        ),
+                    )
+                    .keyAs('revenge.discord.actions.ActionSheetActionCreators'),
             )
 
             if (module) return (ActionSheetActionCreators = module)
@@ -52,16 +55,18 @@ export let AlertActionCreators: DiscordModules.Actions.AlertActionCreators =
             const [module] = lookupModule(
                 withProps<DiscordModules.Actions.AlertActionCreators>(
                     'openAlert',
-                ).and(
-                    withDependencies([
-                        null,
-                        null,
-                        [ReactNativeModuleId, ImportTrackerModuleId],
-                        relative(1),
-                        relative(3),
-                        ImportTrackerModuleId,
-                    ]),
-                ),
+                )
+                    .and(
+                        withDependencies([
+                            null,
+                            null,
+                            [ReactNativeModuleId, ImportTrackerModuleId],
+                            relative(1),
+                            relative(3),
+                            ImportTrackerModuleId,
+                        ]),
+                    )
+                    .keyAs('revenge.discord.actions.AlertActionCreators'),
             )
 
             if (module) return (AlertActionCreators = module)
@@ -73,21 +78,45 @@ export let AlertActionCreators: DiscordModules.Actions.AlertActionCreators =
 
 // modules/toast/native/ToastActionCreators.tsx
 export let ToastActionCreators: DiscordModules.Actions.ToastActionCreators =
-    proxify(() => {
-        // [Dispatcher, ImportTracker]
-        // Many other modules share the same dependencies, the second yielded should be the correct module.
+    proxify(
+        () => {
+            const generator = lookupModules(
+                withProps<DiscordModules.Actions.ToastActionCreators>(
+                    'open',
+                    'close',
+                )
+                    .and(
+                        anyOf(
+                            // [useToastStore (+1), DesignSystemsNotificationComponents, toManaToast, Dispatcher, ImportTracker]
+                            withDependencies(
+                                ordered([
+                                    // useToastStore: [ImportTracker, +1]
+                                    relative.withDependencies(
+                                        [ImportTrackerModuleId, relative(1)],
+                                        1,
+                                    ),
+                                    // toManaToast: [+1, ImportTracker]
+                                    [relative(1), ImportTrackerModuleId],
+                                    DispatcherModuleId,
+                                    ImportTrackerModuleId,
+                                ]),
+                            ),
+                            // TODO: Remove when stable > 349205
+                            // Many other modules share the same dependencies, the second yielded should be the correct module.
+                            withDependencies([
+                                DispatcherModuleId,
+                                ImportTrackerModuleId,
+                            ]).and(withoutProps('init')),
+                        ),
+                    )
+                    .keyAs('revenge.discord.actions.ToastActionCreators'),
+            )
 
-        const generator = lookupModules(
-            withProps<DiscordModules.Actions.ToastActionCreators>('open')
-                .and(withoutProps('init'))
-                .and(
-                    withDependencies([
-                        DispatcherModuleId,
-                        ImportTrackerModuleId,
-                    ]),
-                ),
-        )
-
-        for (const [module] of generator)
-            if (module.open.length === 1) return (ToastActionCreators = module)
-    })!
+            for (const [module] of generator)
+                if (module.open.length === 1)
+                    return (ToastActionCreators = module)
+        },
+        {
+            hint: {},
+        },
+    )!

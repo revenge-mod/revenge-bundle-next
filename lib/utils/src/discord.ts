@@ -3,6 +3,7 @@ import { ImportTrackerModuleId } from '@revenge-mod/discord/common/import-tracke
 import { TokensModuleId } from '@revenge-mod/discord/common/tokens'
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
+    anyOf,
     createFilterGenerator,
     withDependencies,
 } from '@revenge-mod/modules/finders/filters'
@@ -23,6 +24,12 @@ const depsFilters: Record<string, Filter> = {}
 /**
  * Builds a dependency filter for an icon component.
  *
+ * **349205+**:
+ * `[_objectWithoutProperties, React, (ReactNative), ReactJsxRuntime, ReactCompiler, c, Tokens, Asset, BaseIconImage, (...Assets), ImportTracker]`
+ *
+ * **Assets are sorted by module ID, with `BaseIconImage` after the first one.**
+ *
+ * **Before**:
  * `[React, (ReactNative), ReactJsxRuntime, Tokens, (BaseIconImage), (...Assets), ImportTracker]`
  *
  * `ReactNative` is only present on components with multiple assets, and it sits right after `React`,
@@ -48,8 +55,23 @@ function depsFilterFor(names: string[]) {
         mids.push(mid)
     }
 
-    return (depsFilters[key] = withDependencies(
-        last([TokensModuleId, null, ...mids, ImportTrackerModuleId]),
+    const [firstMid, ...restMids] = [...mids].sort((a, b) => a - b)
+
+    return (depsFilters[key] = anyOf(
+        withDependencies(
+            last([
+                TokensModuleId,
+                firstMid,
+                // BaseIconImage
+                null,
+                ...restMids,
+                ImportTrackerModuleId,
+            ]),
+        ),
+        // TODO: Remove when stable > 349205
+        withDependencies(
+            last([TokensModuleId, null, ...mids, ImportTrackerModuleId]),
+        ),
     ))
 }
 
