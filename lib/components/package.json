@@ -15,6 +15,9 @@
     "./Page": {
       "default": "./src/Page.tsx"
     },
+    "./SheetHeader": {
+      "default": "./src/SheetHeader.tsx"
+    },
     "./SearchInput": {
       "default": "./src/SearchInput.tsx"
     },
