@@ -197,6 +197,7 @@ Use it to check a claim against the running client. Every item below cost a wast
 - **`type.name` is missing for many fibers.** Context providers and memo wrappers stringify as `[object Object]`. Match on the fiber `tag` and on prop keys instead.
 - **Props on a live fiber only show what the caller passed.** An absent optional prop proves nothing about the component. To test one, inject it with a `before` hook and force a render.
 - **Look in the Design barrel before you hunt module IDs.** `lib/discord/src/design.ts` already exports most components, and the barrel is stable across app versions. Module IDs are not.
+- **Always look for the source.** Re-exports of a function or component are not the source. While re-exports may be frequently used, it's best if one patch covers the source and all re-exports. If you patch a re-export, the source may still be called elsewhere and your patch will not run.
 
 ### Build scripts and tooling
 
