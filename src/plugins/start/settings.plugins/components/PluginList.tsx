@@ -18,6 +18,9 @@ const { Text } = Design
 
 const gutterCompensation = { margin: -PLUGIN_CARD_HALF_GUTTER }
 
+// TODO: https://github.com/Shopify/flash-list/issues/2050
+const MaintainVisibleContentPosition = { disabled: true }
+
 export function PluginFlashList({
     plugins,
     onContentSizeChange,
@@ -29,6 +32,7 @@ export function PluginFlashList({
 
     return (
         <FlashList
+            maintainVisibleContentPosition={MaintainVisibleContentPosition}
             style={gutterCompensation}
             onContentSizeChange={onContentSizeChange}
             data={plugins}
@@ -64,6 +68,7 @@ export function InstalledPluginMasonryFlashList({
 
     return (
         <FlashList
+            maintainVisibleContentPosition={MaintainVisibleContentPosition}
             masonry
             style={gutterCompensation}
             // FAB is 56px tall, plus 16px spacing on top and bottom
@@ -128,6 +133,7 @@ export function BrowsePluginMasonryFlashList({
 
     return (
         <FlashList
+            maintainVisibleContentPosition={MaintainVisibleContentPosition}
             masonry
             style={gutterCompensation}
             contentContainerStyle={{ paddingBottom: 16 }}

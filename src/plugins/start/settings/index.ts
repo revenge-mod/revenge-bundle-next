@@ -2,15 +2,19 @@ import { sRefresher, sSections } from '@revenge-mod/discord/_/modules/settings'
 import { onSettingsModulesLoaded } from '@revenge-mod/discord/modules/settings'
 import defer * as Renderer from '@revenge-mod/discord/modules/settings/renderer'
 import { waitForModuleWithImportedPath } from '@revenge-mod/discord/utils/modules/finders'
-import { waitForModules } from '@revenge-mod/modules/finders'
-import { withName, withProps } from '@revenge-mod/modules/finders/filters'
+import { lookupModule, waitForModules } from '@revenge-mod/modules/finders'
+import {
+    withDependencies,
+    withProps,
+    withSingleProp,
+} from '@revenge-mod/modules/finders/filters'
 import { instead } from '@revenge-mod/patcher'
 import {
     InternalPluginFlags,
     PluginFlags,
     registerInternalPlugin,
 } from '@revenge-mod/plugins/_'
-import { React } from '@revenge-mod/react'
+import { React, ReactModuleId } from '@revenge-mod/react'
 import { asap, noop } from '@revenge-mod/utils/callback'
 import { getCurrentStack } from '@revenge-mod/utils/error'
 import { useReRender } from '@revenge-mod/utils/react'
@@ -42,6 +46,16 @@ interface OverviewSettingsNode {
 }
 
 type UseMemoHook = (args: any[], useMemo_: typeof useMemo) => any
+
+/** react/compiler-runtime, which React Compiler output memoizes with, instead of useMemo. */
+interface ReactCompilerRuntime {
+    c(size: number): unknown[]
+}
+
+type UseMemoCacheHook = (
+    args: [size: number],
+    c: ReactCompilerRuntime['c'],
+) => unknown[]
 
 type RefreshIdKey = KeyWithType<typeof sRefresher, number>
 type RefreshCallbackKey = KeyWithType<typeof sRefresher, () => void>
@@ -82,18 +96,9 @@ const pluginSettings = registerInternalPlugin(
                 patchSettingsNavigator,
             )
 
-            const unsubSOS = waitForModules(
-                withName('SettingsOverviewScreen'),
-                exports => {
-                    unsubSOS()
-                    patchSettingsOverviewScreen(
-                        exports as SettingsOverviewScreenModule,
-                    )
-                },
-                {
-                    cached: true,
-                    returnNamespace: true,
-                },
+            waitForModuleWithImportedPath(
+                'modules/user_settings/overview/native/SettingsOverviewScreen.tsx',
+                patchSettingsOverviewScreen,
             )
 
             const unsubUSSR = waitForModules(
@@ -163,51 +168,58 @@ function remountHookHarness(el: ReactElement<{ children?: ReactNode[] }>) {
 function patchSettingsOverviewScreen(exports: SettingsOverviewScreenModule) {
     const shouldRefresh = createRefreshTracker('overviewScreen')
 
-    // The sections array our sections were last added to.
-    let patchedSections: SettingsSection[] | undefined
-    let refreshing = false
-
-    /**
-     * In useOverviewSettings (called by SettingsOverviewScreen):
-     *
-     * const hasPremiumSubscriptionToDisplay = useHasPremiumSubscriptionToDisplay()
-     * const sections = useMemo(() =>
-     *   (...constructed sections array...),
-     * [hasPremiumSubscriptionToDisplay])
-     */
-    const useMemoHook: UseMemoHook = (args, useMemo) => {
-        // Reconstruct the sections, so newly registered ones are included
-        const node: OverviewSettingsNode | undefined = refreshing
-            ? refreshMemo(args, useMemo)
-            : Reflect.apply(useMemo, React, args)
-
-        const sections = node?.sections
-        if (!sections) return node
-
-        // Add our custom sections here, and only do this per instance
-        if (patchedSections !== sections) {
-            for (const section of Object.values(sSections))
-                if (section.index) sections.splice(section.index, 0, section)
-                else sections.unshift(section)
-
-            patchedSections = sections
-        }
-
-        // The screen only updates if the sections array changes identity
-        if (refreshing) {
-            node.sections = patchedSections = [...sections]
-            refreshing = false
-        }
-
-        return node
-    }
+    // The node our sections were last added to, and the node with them added.
+    let lastNode: OverviewSettingsNode | undefined
+    let patchedNode: OverviewSettingsNode | undefined
 
     instead(exports, 'default', (args, orig) => {
         useRefresherCallback('callOverviewScreen')
 
-        refreshing = shouldRefresh()
-        return applyWithUseMemoHook(useMemoHook, orig, args)
+        /**
+         * SettingsOverviewScreen renders <SettingsOverviewScreen node={node} />, where node is getOverviewSettings():
+         *
+         * const hasPremiumSubscriptionToDisplay = useHasPremiumSubscriptionToDisplay()
+         * const node = useMemo(() =>
+         *   (...constructed sections array...),
+         * [hasPremiumSubscriptionToDisplay])
+         */
+        const el = Reflect.apply(orig, undefined, args) as ReactElement<
+            Record<string, unknown>
+        > | null
+
+        const entry = el && findOverviewSettingsNode(el.props)
+        if (!entry) {
+            DEBUG_warnOnce('SettingsOverviewScreen did not render sections')
+            return el
+        }
+
+        const [prop, node] = entry
+
+        // Our sections are added to a copy, so refreshing doesn't need Discord to recompute node.
+        // The list only updates if node changes identity.
+        if (shouldRefresh() || lastNode !== node) {
+            const sections = [...node.sections]
+
+            for (const section of Object.values(sSections))
+                if (section.index) sections.splice(section.index, 0, section)
+                else sections.unshift(section)
+
+            lastNode = node
+            patchedNode = { ...node, sections }
+        }
+
+        return cloneElement(el, { [prop]: patchedNode })
     })
+}
+
+function findOverviewSettingsNode(
+    props: Record<string, unknown>,
+): [prop: string, node: Required<OverviewSettingsNode>] | undefined {
+    for (const prop in props) {
+        const value = props[prop] as OverviewSettingsNode | null | undefined
+        if (Array.isArray(value?.sections))
+            return [prop, value as Required<OverviewSettingsNode>]
+    }
 }
 
 function patchSearchableSettingsList() {
@@ -277,7 +289,39 @@ function useRefresherCallback(key: RefreshCallbackKey) {
 const refreshMemo: UseMemoHook = (args, useMemo) => {
     // Pass no dependency array
     args[1] = undefined
-    return Reflect.apply(useMemo, React, args)
+    return Reflect.apply(useMemo, undefined, args)
+}
+
+/**
+ * Compiled code checks slots against this exact symbol, so it can't change without breaking already compiled code.
+ *
+ * @see {@link https://github.com/react/react/blob/v19.2.3/packages/shared/ReactSymbols.js#L43}
+ */
+const MemoCacheSentinel = Symbol.for('react.memo_cache_sentinel')
+
+/** Recomputes every memo in a React Compiler cache. */
+const refreshMemoCache: UseMemoCacheHook = (args, c) => {
+    // Compiled code recomputes every slot holding the sentinel, and writes the result back to the cache
+    const cache = Reflect.apply(c, undefined, args)
+    cache.fill(MemoCacheSentinel)
+    return cache
+}
+
+let CompilerRuntime: ReactCompilerRuntime | null | undefined
+
+function getReactCompilerRuntime() {
+    if (CompilerRuntime === undefined) {
+        const [module] = lookupModule(
+            withSingleProp<ReactCompilerRuntime>('c').and(
+                withDependencies([ReactModuleId]),
+            ),
+            { initialize: false },
+        )
+
+        CompilerRuntime = module ?? null
+    }
+
+    return CompilerRuntime
 }
 
 /**
@@ -292,22 +336,19 @@ function applyWithMemoRefresh(
     args: unknown[],
     refresh: boolean,
 ) {
-    return refresh
-        ? applyWithUseMemoHook(refreshMemo, fn, args)
-        : Reflect.apply(fn, undefined, args)
-}
+    if (!refresh) return Reflect.apply(fn, undefined, args)
 
-function applyWithUseMemoHook(
-    hook: UseMemoHook,
-    fn: AnyFunction,
-    args: unknown[],
-) {
-    const unpatch = instead(React, 'useMemo', hook)
+    const unpatchUseMemo = instead(React, 'useMemo', refreshMemo)
+
+    // React Compiler output memoizes with c(size) instead of useMemo
+    const runtime = getReactCompilerRuntime()
+    const unpatchC = runtime ? instead(runtime, 'c', refreshMemoCache) : noop
 
     try {
         return Reflect.apply(fn, undefined, args)
     } finally {
-        unpatch()
+        unpatchC()
+        unpatchUseMemo()
     }
 }
 
@@ -319,6 +360,15 @@ function applyWithUseMemoHook(
 function DEBUG_warnUnpatchedModules() {
     if (!DEBUG_patchedNavigator) DEBUG_warn('SettingsNavigator was not patched')
     if (!SettingHookHarness) DEBUG_warn('SettingHookHarness was not found')
+}
+
+const DEBUG_warned = new Set<string>()
+
+function DEBUG_warnOnce(message: string) {
+    if (__DEV__ && !DEBUG_warned.has(message)) {
+        DEBUG_warned.add(message)
+        DEBUG_warn(message)
+    }
 }
 
 function DEBUG_warn(message: string) {
