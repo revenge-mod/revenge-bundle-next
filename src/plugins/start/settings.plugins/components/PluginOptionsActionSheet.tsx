@@ -361,7 +361,10 @@ function AllowUpdatesRow({
             label="Allow updates"
             subLabel={
                 allowUpdates ? undefined : (
-                    <Text color="text-feedback-critical">
+                    <Text
+                        color="text-feedback-critical"
+                        variant="text-xs/medium"
+                    >
                         Other plugins won't be able to update if they need a
                         newer version of {plugin.manifest.name}
                     </Text>

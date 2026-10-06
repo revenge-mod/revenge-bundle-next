@@ -105,7 +105,7 @@ export function installPluginRef(
         [id],
         { [id]: planTargetOf(repo, ref) },
         ref.type === 'version'
-            ? `Updates will be paused to stay on v${ref.version}. Pick a channel or turn on "Auto update" to receive updates again.`
+            ? `Updates will be paused to stay on v${ref.version}. Pick a channel or turn on "Allow updates" to receive updates again.`
             : undefined,
     )
 }
