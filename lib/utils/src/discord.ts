@@ -15,7 +15,6 @@ import type {
     FilterGenerator,
 } from '@revenge-mod/modules/finders/filters'
 import type { Metro } from '@revenge-mod/modules/types'
-import type { FC } from 'react'
 
 const { last } = withDependencies
 
@@ -80,7 +79,7 @@ export type WithGeneratedIconComponent = FilterGenerator<
         name: N,
         ...assets: string[]
     ) => Filter<{
-        Result: { [K in N]: FC<any> }
+        Result: { [K in N]: DiscordModules.Components.BaseIconImage }
         Scopes: [
             typeof FilterScopes.Uninitialized,
             typeof FilterScopes.Initialized,
