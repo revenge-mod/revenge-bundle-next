@@ -6,8 +6,14 @@
     "./browserify": {
       "default": "./src/browserify.ts"
     },
+    "./gorhom": {
+      "default": "./src/gorhom.ts"
+    },
     "./react-native-clipboard": {
       "default": "./src/react-native-clipboard.ts"
+    },
+    "./react-native-community": {
+      "default": "./src/react-native-community.ts"
     },
     "./react-native-safe-area-context": {
       "default": "./src/react-native-safe-area-context.ts"

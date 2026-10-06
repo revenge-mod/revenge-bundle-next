@@ -8,6 +8,7 @@ export const TypesPackageName = `@${TypesPackageScope}/types`
 export const TypesPackageDependencies = ['buffer']
 
 export const TypesPackagePeerDependencies = [
+    '@gorhom/bottom-sheet',
     '@react-navigation/core',
     '@react-navigation/native',
     '@react-navigation/stack',
@@ -21,6 +22,7 @@ export const TypesPackagePeerDependencies = [
 ]
 
 export const TypesPackageOptionalPeerDependencies = [
+    '@gorhom/bottom-sheet',
     '@react-navigation/core',
     '@react-navigation/native',
     '@react-navigation/stack',
