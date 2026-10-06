@@ -185,7 +185,10 @@ export namespace DiscordModules {
                  */
                 iconColor?: string
                 containerStyle?: ViewStyle
-                /** How long the toast should be shown. */
+                /**
+                 * How long the toast should be shown.
+                 * @deprecated This will no longer work after Mana toast components.
+                 */
                 toastDurationMs?: number
             }): void
             close(): void
@@ -253,6 +256,7 @@ export namespace DiscordModules {
                 | `display-${BasicTextSize}`
                 | `redesign/${RedesignTextCategory}/${TextWeight}`
                 | 'redesign/heading-18/bold'
+                | 'redesign/heading-18/semibold'
                 | 'eyebrow'
 
             export type TextStyleSheet = Record<TextVariant, TextStyle>
@@ -390,6 +394,8 @@ export namespace DiscordModules {
             secureTextEntry?: boolean
             returnKeyType?: RNTextInputProps['returnKeyType']
             isClearable?: boolean
+            clearable?: boolean
+            onClear?: () => void
 
             size?: TextFieldSize
             style?: StyleProp<ViewStyle>
@@ -400,7 +406,6 @@ export namespace DiscordModules {
         export type TextFieldStatus = 'default' | 'error'
 
         export interface TextInputProps extends TextFieldProps {
-            isRound?: boolean
             label?: string
         }
 
@@ -545,7 +550,7 @@ export namespace DiscordModules {
         ): ReactElement
 
         export interface TableRowProps {
-            label: string
+            label: ReactNode
             subLabel?: ReactNode
             icon?: ReactNode
             trailing?: ReactNode
