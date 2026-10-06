@@ -15,9 +15,11 @@ import {
     isPluginInternal,
     isPluginPendingReload,
     isPluginPendingUpdate,
+    PluginFlags,
     pEmitter,
     pList,
 } from '@revenge-mod/plugins/_'
+import { useHasFlagPluginCount } from '@revenge-mod/plugins/_/react'
 import { debounce } from '@revenge-mod/utils/callback'
 import {
     useCallback,
@@ -31,6 +33,7 @@ import RevengeIcon from '~assets/RevengeIcon'
 import { InstalledPluginMasonryFlashList } from '../components/PluginList'
 import PluginTooltipsProvider from '../components/TooltipProvider'
 import { RouteNames, Setting } from '../constants'
+import { pluralize } from '../utils/strings'
 import type { NavigationProp, RouteProp } from '@react-navigation/core'
 import type { ReactNavigationParamList } from '@revenge-mod/externals/react-navigation'
 import type { FilterAndSortActionSheetProps } from '../components/FilterAndSortActionSheet'
@@ -186,6 +189,66 @@ function RecoveryModeBanner() {
     )
 }
 
+const RetryIcon = getAssetByName('RetryIcon')!
+
+const usePendingReloadBannerStyles = Design.createStyles({
+    icon: {
+        tintColor: Tokens.default.colors.TEXT_DEFAULT,
+        height: Design.TextStyleSheet[RecoveryBannerTitleVariant].lineHeight,
+        width: undefined,
+        aspectRatio: (RetryIcon.width ?? 1) / (RetryIcon.height ?? 1),
+    },
+})
+
+function PendingReloadBanner() {
+    const styles = usePendingReloadBannerStyles()
+    const reloads = useHasFlagPluginCount(PluginFlags.PendingReload)
+    const updates = useHasFlagPluginCount(PluginFlags.PendingUpdate)
+
+    if (!reloads && !updates) return null
+
+    const parts: string[] = []
+    if (updates) parts.push(pluralize(updates, 'plugin update'))
+    if (reloads) parts.push(pluralize(reloads, 'plugin change'))
+
+    return (
+        <Card style={{ marginHorizontal: 6, marginVertical: 6, boxShadow: '' }}>
+            <Stack spacing={12}>
+                <Stack direction="horizontal" spacing={8} align="center">
+                    <Image
+                        source={RetryIcon.id}
+                        resizeMode="contain"
+                        style={styles.icon}
+                    />
+                    <Text variant={RecoveryBannerTitleVariant}>
+                        Reload to apply changes
+                    </Text>
+                </Stack>
+                <Text variant="text-sm/medium">
+                    {parts.join(' and ')} will apply after a reload.
+                </Text>
+                <Design.Button
+                    icon={RetryIcon.id}
+                    size="sm"
+                    text="Reload now"
+                    onPress={() => {
+                        reloadApp()
+                    }}
+                />
+            </Stack>
+        </Card>
+    )
+}
+
+function ListHeader() {
+    return (
+        <>
+            {isDefaultsOnlyBoot && <RecoveryModeBanner />}
+            <PendingReloadBanner />
+        </>
+    )
+}
+
 function snapshotPlugins() {
     return [...pList.values()].map(
         plugin => [plugin, getInternalPluginMeta(plugin)] as const,
@@ -275,7 +338,11 @@ function Screen() {
         <>
             <Stack direction="horizontal">
                 <View style={styles.grow}>
-                    <SearchInput onChange={debouncedSetSearch} size="md" />
+                    <SearchInput
+                        onChange={debouncedSetSearch}
+                        size="md"
+                        clearable
+                    />
                 </View>
                 <IconButton
                     icon={FiltersHorizontalIcon}
@@ -304,9 +371,7 @@ function Screen() {
                 />
             </Stack>
             <InstalledPluginMasonryFlashList
-                ListHeaderComponent={
-                    isDefaultsOnlyBoot ? RecoveryModeBanner : null
-                }
+                ListHeaderComponent={ListHeader}
                 plugins={plugins}
             />
             <BrowseFloatingActionButton disabled={isDefaultsOnlyBoot} />

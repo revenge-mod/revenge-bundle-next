@@ -69,6 +69,8 @@ export interface InternalPluginMeta {
     source?: PluginSource | null
     /** Uninstalling restores an internal plugin with the same ID, reported by native. */
     hasStub?: boolean
+    /** Version installed on disk that runs after a reload, set with {@link PluginFlags.PendingUpdate}. */
+    pendingVersion?: string
 }
 
 export interface PluginSource {

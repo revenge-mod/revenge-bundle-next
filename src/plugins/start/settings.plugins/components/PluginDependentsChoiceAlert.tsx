@@ -1,10 +1,12 @@
 import Checkbox from '@revenge-mod/components/Checkbox'
 import { Design } from '@revenge-mod/discord/design'
-import { useCallback, useState } from 'react'
-import { PixelRatio, useWindowDimensions, View } from 'react-native'
+import { useCallback, useMemo, useState } from 'react'
+import { View } from 'react-native'
+import { useAlertBodyHeight } from '../utils/dialogs'
 import { PLUGIN_CARD_ESTIMATED_SIZE } from './PluginCard'
-import { PluginFlashList } from './PluginList'
+import { PluginFlashList, pluginCardDataOf } from './PluginList'
 import type { AnyPlugin } from '@revenge-mod/plugins/_'
+import type { PluginCardData, PluginCardExtras } from './PluginList'
 
 const { AlertModal, AlertActionButton } = Design
 
@@ -36,10 +38,12 @@ export default function PluginDependentsChoiceAlert({
     defaultSelected?: boolean
     action: (selected: Set<string>) => Promise<void>
 }) {
-    const { height: windowHeight } = useWindowDimensions()
-    const maxHeight = PixelRatio.get() * windowHeight * 0.35 - 64
+    const { available, bodyRef, onLayout, actionsEnd } = useAlertBodyHeight()
 
-    const plugins = [...locked, ...selectable]
+    const plugins = useMemo(
+        () => [...locked, ...selectable].map(pluginCardDataOf),
+        [locked, selectable],
+    )
     const [height, setHeight] = useState(
         PLUGIN_CARD_ESTIMATED_SIZE * plugins.length,
     )
@@ -53,28 +57,36 @@ export default function PluginDependentsChoiceAlert({
             ),
     )
 
-    const actions = useCallback(
-        (plugin: AnyPlugin) => {
-            const { id } = plugin.manifest
-            const disabled = !selectable.includes(plugin)
+    const isSelectable = useCallback(
+        (id: string) => selectable.some(p => p.manifest.id === id),
+        [selectable],
+    )
 
-            return (
+    const toggle = useCallback((id: string, on: boolean) => {
+        setSelected(prev => {
+            const next = new Set(prev)
+            if (on) next.add(id)
+            else next.delete(id)
+            return next
+        })
+    }, [])
+
+    const extrasOf = useCallback(
+        ({ id }: PluginCardData): PluginCardExtras => ({
+            actions: (
                 <Checkbox
                     aria-label={toggleLabel}
-                    disabled={disabled}
+                    disabled={!isSelectable(id)}
                     checked={selected.has(id)}
-                    onToggle={on => {
-                        setSelected(prev => {
-                            const next = new Set(prev)
-                            if (on) next.add(id)
-                            else next.delete(id)
-                            return next
-                        })
-                    }}
+                    onToggle={on => toggle(id, on)}
                 />
-            )
-        },
-        [selectable, selected, toggleLabel],
+            ),
+            onPress: isSelectable(id)
+                ? () => toggle(id, !selected.has(id))
+                : undefined,
+            accessibilityHint: `Toggles "${toggleLabel}"`,
+        }),
+        [isSelectable, selected, toggleLabel, toggle],
     )
 
     return (
@@ -82,11 +94,15 @@ export default function PluginDependentsChoiceAlert({
             title={title}
             content={content}
             extraContent={
-                <View style={{ height, maxHeight }}>
+                <View
+                    ref={bodyRef}
+                    onLayout={onLayout}
+                    style={{ height: Math.min(height, available) }}
+                >
                     <PluginFlashList
                         plugins={plugins}
                         onContentSizeChange={(_, h) => setHeight(h)}
-                        actions={actions}
+                        extrasOf={extrasOf}
                     />
                 </View>
             }
@@ -98,6 +114,7 @@ export default function PluginDependentsChoiceAlert({
                         onPress={() => action(selected)}
                     />
                     <AlertActionButton text={cancelText} variant="secondary" />
+                    {actionsEnd}
                 </>
             }
         />

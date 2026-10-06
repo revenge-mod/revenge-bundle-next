@@ -20,6 +20,7 @@ export default function PluginInstallFailedAlert({
             }
             actions={
                 <>
+                    <AlertActionButton text="Got it" />
                     <AlertActionButton
                         text="Copy details"
                         variant="secondary"
@@ -29,7 +30,6 @@ export default function PluginInstallFailedAlert({
                             )
                         }}
                     />
-                    <AlertActionButton text="Got it" />
                 </>
             }
         />

@@ -1,6 +1,5 @@
 import { styles } from '@revenge-mod/components/_'
 import { Design } from '@revenge-mod/discord/design'
-import { formatVersion } from '@revenge-mod/plugins/utils'
 import { FlashList } from '@shopify/flash-list'
 import { useWindowDimensions } from 'react-native'
 import {
@@ -13,6 +12,8 @@ import { useHidePluginTooltips } from './TooltipProvider'
 import type { AnyPlugin, InternalPluginMeta } from '@revenge-mod/plugins/_'
 import type { RepoPluginListing } from '@revenge-mod/plugins/_/repositories'
 import type { FlashListProps } from '@shopify/flash-list'
+import type { PluginRef } from '../utils/repos'
+import type { PluginCardProps, PluginInfoData } from './PluginCard'
 
 const { Text } = Design
 
@@ -21,47 +22,43 @@ const gutterCompensation = { margin: -PLUGIN_CARD_HALF_GUTTER }
 // TODO: https://github.com/Shopify/flash-list/issues/2050
 const MaintainVisibleContentPosition = { disabled: true }
 
+export interface PluginCardData extends PluginInfoData {
+    id: string
+}
+
+export const pluginCardDataOf = ({ manifest }: AnyPlugin): PluginCardData => ({
+    id: manifest.id,
+    name: manifest.name,
+    description: manifest.description,
+    icon: manifest.icon,
+})
+
+/** Overrides for a {@link PluginCard}. */
+export type PluginCardExtras = Omit<PluginCardProps, 'info'>
+
 export function PluginFlashList({
     plugins,
     onContentSizeChange,
-    actions,
+    extrasOf,
 }: {
-    plugins: AnyPlugin[]
-    actions?: (plugin: AnyPlugin) => React.ReactNode
-} & Pick<FlashListProps<AnyPlugin>, 'onContentSizeChange'>) {
+    plugins: PluginCardData[]
+    extrasOf?: (plugin: PluginCardData) => PluginCardExtras
+} & Pick<FlashListProps<PluginCardData>, 'onContentSizeChange'>) {
     const hideTooltips = useHidePluginTooltips()
 
     return (
         <FlashList
             maintainVisibleContentPosition={MaintainVisibleContentPosition}
             style={gutterCompensation}
+            nestedScrollEnabled
             onContentSizeChange={onContentSizeChange}
             data={plugins}
             onScrollBeginDrag={hideTooltips}
             fadingEdgeLength={plugins.length === 1 ? 0 : 16}
-            keyExtractor={plugin => plugin.manifest.id}
-            renderItem={({ item: plugin }) => {
-                const {
-                    name,
-                    description,
-                    version,
-                    author,
-                    contributors,
-                    icon,
-                } = plugin.manifest
-
-                return (
-                    <PluginCard
-                        name={name}
-                        description={description}
-                        version={formatVersion(version)}
-                        author={author}
-                        contributors={contributors}
-                        icon={icon}
-                        actions={actions?.(plugin)}
-                    />
-                )
-            }}
+            keyExtractor={plugin => plugin.id}
+            renderItem={({ item: plugin }) => (
+                <PluginCard info={plugin} {...extrasOf?.(plugin)} />
+            )}
         />
     )
 }
@@ -112,21 +109,17 @@ function useNumColumns() {
 }
 
 /**
- * One plugin offered by one repository on the Browse screen.
- * The same ID can appear as separate entries from different repositories.
+ * One plugin on the Browse screen, shown from the highest priority repository serving it.
  */
 export interface BrowseEntry {
-    /** `repoUrl#id` */
+    /** Plugin ID. */
     key: string
     listing: RepoPluginListing
-    /** For repository filtering. */
     repoUrl: string
     repoName: string | null
-    /** Display text for the Repository row/sheet, eg. `Name (url)`. */
-    repositoryText: string
     version: string
-    /** The channel the displayed version comes from, if the listing has any. */
-    channel?: string
+    /** The channel the displayed version comes from. */
+    channel: string
     size: number
     installed?: readonly [AnyPlugin, InternalPluginMeta]
 }
@@ -136,11 +129,7 @@ export function BrowsePluginMasonryFlashList({
     onInstall,
 }: {
     entries: BrowseEntry[]
-    onInstall: (
-        entry: BrowseEntry,
-        channel?: string,
-        version?: string,
-    ) => Promise<unknown>
+    onInstall: (id: string, repo: string, ref: PluginRef) => Promise<unknown>
 }) {
     const numColumns = useNumColumns()
     const hideTooltips = useHidePluginTooltips()
@@ -163,23 +152,7 @@ export function BrowsePluginMasonryFlashList({
                     return <InstalledPluginCard plugin={plugin} meta={meta} />
                 }
 
-                const { listing } = entry
-                return (
-                    <BrowsePluginCard
-                        name={listing.name}
-                        description={listing.description}
-                        version={entry.version}
-                        author={listing.author}
-                        icon={listing.icon ?? undefined}
-                        id={listing.id}
-                        listing={listing}
-                        channel={entry.channel ?? ''}
-                        repositoryText={entry.repositoryText}
-                        onInstall={(channel, version) =>
-                            onInstall(entry, channel, version)
-                        }
-                    />
-                )
+                return <BrowsePluginCard entry={entry} onInstall={onInstall} />
             }}
         />
     )

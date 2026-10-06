@@ -112,7 +112,7 @@ function applyFlagsFromNative(id: PluginManifest['id'], flags: number) {
     adoptSlotFlags(
         BootSlot,
         id,
-        (getInternalPluginMeta(plugin).flags & ~PersistedFlags) | flags,
+        (getInternalPluginMeta(plugin).flags & ~WireFlags) | flags,
     )
 }
 

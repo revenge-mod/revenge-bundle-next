@@ -100,7 +100,11 @@ export function registerExternalPlugins() {
         }) {
             // New version exists on disk only; running plugin continues until reload
             const plugin = pList.get(id)
-            if (plugin) addPluginFlags(plugin, PluginFlags.PendingUpdate)
+            if (plugin) {
+                getInternalPluginMeta(plugin).pendingVersion = version
+                addPluginFlags(plugin, PluginFlags.PendingUpdate)
+                pEmitter.emit('metadataUpdate', plugin)
+            }
 
             pEmitter.emit('install', {
                 error: false,
@@ -226,6 +230,7 @@ export async function setUpdatesPaused(plugin: AnyPlugin, paused: boolean) {
     const meta = getInternalPluginMeta(plugin)
     const newSource = await setPluginHeld(plugin.manifest.id, paused)
     meta.source = newSource
+    pEmitter.emit('metadataUpdate', plugin)
 }
 
 /**

@@ -19,12 +19,9 @@ import {
     usePluginFlags,
     usePluginStatus,
 } from '@revenge-mod/plugins/_/react'
-import {
-    formatVersion,
-    parsePluginContributor,
-} from '@revenge-mod/plugins/utils'
-import { memo, useCallback, useState } from 'react'
-import { Image, Pressable } from 'react-native'
+import { parsePluginContributor } from '@revenge-mod/plugins/utils'
+import { memo, useCallback, useMemo, useState } from 'react'
+import { Image, Pressable, View } from 'react-native'
 import { handleDisablePlugin, handleEnablePlugin } from '../utils/actions'
 import { openPluginSettings } from '../utils/alerts'
 import { messageOf, showErrorToast } from '../utils/repos'
@@ -33,61 +30,80 @@ import {
     showPluginContributorsActionSheet,
     showPluginOptionsActionSheet,
 } from '../utils/sheets'
+import { pluralize } from '../utils/strings'
+import Pill from './Pill'
 import { PluginIcon } from './PluginIcon'
 import { PluginTooltip, usePluginTooltip } from './TooltipProvider'
 import type { AnyPlugin, InternalPluginMeta } from '@revenge-mod/plugins/_'
-import type { RepoPluginListing } from '@revenge-mod/plugins/_/repositories'
 import type { ReactNode } from 'react'
+import type { PluginRef } from '../utils/repos'
+import type { BrowseEntry } from './PluginList'
 
 const { Card, Text, Stack, IconButton, Button, createStyles } = Design
 
 const SettingsIcon = getAssetIdByName('SettingsIcon', 'png')!
-const MoreVerticalIcon = getAssetIdByName('MoreVerticalIcon', 'png')!
 const DownloadIcon = getAssetIdByName('DownloadIcon', 'png')!
 
 export const PLUGIN_CARD_ESTIMATED_SIZE = 116
 
 export const PLUGIN_CARD_HALF_GUTTER = 6
 
-export const PluginCard = memo(function PluginCard({
-    name,
-    description,
-    version,
-    author,
-    contributors,
-    icon,
-    extraInfo,
-    actions,
-}: {
+export interface PluginInfoData {
     name: string
     description: string
-    version: string
-    author: string
-    contributors?: string[]
-    icon?: string
-    extraInfo?: React.ReactNode
-    actions?: React.ReactNode
-}) {
+    icon?: string | null
+    /** Only for plugins about to be installed, installed ones are kept up to date. */
+    version?: string
+    /** Download size, shown on the title row along with {@link version}. */
+    size?: string
+    /** Repository it comes from, shown under the author. */
+    repository?: string
+    /** Turns {@link version} and {@link size} into a pill that changes the version. */
+    onPressVersion?: () => void
+    /** Turns {@link repository} into a pill that changes the repository. */
+    onPressRepository?: () => void
+}
+
+export interface PluginInfoProps {
+    info: PluginInfoData
+    author?: ReactNode
+    extraInfo?: ReactNode
+    actions?: ReactNode
+    aligned?: boolean
+}
+
+export interface PluginCardProps
+    extends Omit<PluginInfoProps, 'author' | 'aligned'> {
+    onPress?: () => void
+    accessibilityHint?: string
+}
+
+const CardRipple = { borderless: false }
+
+export const PluginCard = memo(function PluginCard({
+    onPress,
+    accessibilityHint,
+    ...props
+}: PluginCardProps) {
     const styles_ = usePluginCardStyles()
+    const info = <PluginInfo {...props} aligned />
 
     return (
         <Card style={[styles_.card, styles.grow]}>
-            <PluginInfo
-                name={name}
-                description={description}
-                author={
-                    <PluginAuthor
-                        pluginName={name}
-                        author={author}
-                        contributors={contributors}
-                    />
-                }
-                icon={icon}
-                extraInfo={extraInfo}
-                actions={actions}
-                version={version}
-                aligned
-            />
+            {onPress ? (
+                <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={props.info.name}
+                    accessibilityHint={accessibilityHint}
+                    android_ripple={CardRipple}
+                    style={[styles_.cardContent, styles.grow]}
+                    onPress={onPress}
+                >
+                    {info}
+                </Pressable>
+            ) : (
+                <View style={[styles_.cardContent, styles.grow]}>{info}</View>
+            )}
         </Card>
     )
 })
@@ -145,6 +161,8 @@ export const PluginInfoStatusIcon = memo(function PluginInfoStatusIcon({
     ))
 })
 
+const GlobeEarthIcon = getAssetIdByName('GlobeEarthIcon', 'png')!
+
 const AuthorRipple = { borderless: false }
 
 export const PluginAuthor = memo(function PluginAuthor({
@@ -165,7 +183,7 @@ export const PluginAuthor = memo(function PluginAuthor({
     )
         return (
             <Text
-                color="text-muted"
+                color="text-subtle"
                 style={styles_.author}
                 variant="heading-md/medium"
             >
@@ -190,40 +208,36 @@ export const PluginAuthor = memo(function PluginAuthor({
             }
         >
             <Text
-                color="text-muted"
                 variant="heading-md/medium"
                 style={styles_.authorClickableText}
             >
                 {parsed.name}
-                {count ? `, ${count} contributor${count === 1 ? '' : 's'}` : ''}
+                {count ? `, ${count} ${pluralize(count, 'contributor')}` : ''}
             </Text>
         </Pressable>
     )
 })
 
 export const PluginInfo = memo(function PluginInfo({
-    name,
-    description,
+    info: {
+        name,
+        description,
+        icon,
+        version,
+        size,
+        repository,
+        onPressVersion,
+        onPressRepository,
+    },
     author,
-    version,
-    icon,
     extraInfo,
     actions,
     aligned,
-}: {
-    name: string
-    description: string
-    author: ReactNode
-    version: string
-    icon?: string
-    extraInfo?: React.ReactNode
-    actions?: React.ReactNode
-    aligned?: boolean
-}) {
+}: PluginInfoProps) {
     const styles_ = usePluginCardStyles()
 
     return (
-        <Stack>
+        <Stack spacing={6}>
             <Stack
                 direction="horizontal"
                 style={[styles.grow, styles_.topContainer]}
@@ -233,9 +247,10 @@ export const PluginInfo = memo(function PluginInfo({
                     spacing={8}
                     style={[styles_.topContainer, styles.flex]}
                 >
-                    <PluginIcon icon={icon} />
+                    <PluginIcon icon={icon ?? undefined} />
                     <Text
                         variant="heading-lg/semibold"
+                        color="text-strong"
                         textBreakStrategy="balanced"
                         style={styles.flex}
                     >
@@ -243,28 +258,82 @@ export const PluginInfo = memo(function PluginInfo({
                     </Text>
                 </Stack>
                 {extraInfo}
+                {size &&
+                    (onPressVersion ? (
+                        <Pill
+                            label={version ? `${version} \u2022 ${size}` : size}
+                            accessibilityLabel={`Change version of ${name}`}
+                            onPress={onPressVersion}
+                        />
+                    ) : (
+                        <Text color="text-subtle" variant="text-sm/medium">
+                            {version ? `${version} \u2022 ${size}` : size}
+                        </Text>
+                    ))}
                 {actions}
             </Stack>
             <Stack
                 spacing={4}
                 style={[aligned && styles_.alignedContainer, styles.grow]}
             >
-                <Stack
-                    direction="horizontal"
-                    spacing={0}
-                    align="baseline"
-                    style={[styles_.byline, styles.grow]}
-                >
-                    <Text color="text-muted" variant="heading-md/medium">
-                        by{' '}
-                    </Text>
-                    {author}
-                    {version ? (
-                        <Text color="text-muted" variant="heading-md/medium">
-                            {` \u2022 ${version}`}
+                {author ? (
+                    <Stack
+                        direction="horizontal"
+                        spacing={0}
+                        align="baseline"
+                        style={[styles_.byline, styles.grow]}
+                    >
+                        <Text color="text-subtle" variant="heading-md/medium">
+                            by{' '}
                         </Text>
-                    ) : null}
-                </Stack>
+                        {author}
+                        {version && !size ? (
+                            <Text
+                                color="text-subtle"
+                                variant="heading-md/medium"
+                            >
+                                {` \u2022 ${version}`}
+                            </Text>
+                        ) : null}
+                    </Stack>
+                ) : (
+                    version &&
+                    !size && (
+                        <Text color="text-subtle" variant="heading-md/medium">
+                            {version}
+                        </Text>
+                    )
+                )}
+                {repository &&
+                    (onPressRepository ? (
+                        <View style={styles_.pillRow}>
+                            <Pill
+                                label={repository}
+                                icon={GlobeEarthIcon}
+                                accessibilityLabel={`Change repository of ${name}`}
+                                onPress={onPressRepository}
+                            />
+                        </View>
+                    ) : (
+                        <Stack
+                            direction="horizontal"
+                            spacing={4}
+                            align="center"
+                        >
+                            <Image
+                                source={GlobeEarthIcon}
+                                style={styles_.repositoryIcon}
+                            />
+                            <Text
+                                color="text-subtle"
+                                variant="text-sm/medium"
+                                lineClamp={1}
+                                style={styles.flex}
+                            >
+                                {repository}
+                            </Text>
+                        </Stack>
+                    ))}
                 <Text style={styles.grow} variant="text-md/medium">
                     {description}
                 </Text>
@@ -283,8 +352,14 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
     const savedEnabled = usePluginEnabledInActiveSlot(plugin)
 
     const {
-        manifest: { name, description, version, author, contributors, icon },
+        manifest: { name, description, icon },
     } = plugin
+
+    // So the memoized card skips re-rendering when only the slots change
+    const info = useMemo(
+        () => ({ name, description, icon }),
+        [name, description, icon],
+    )
 
     usePluginFlags(plugin)
     usePluginStatus(plugin)
@@ -305,23 +380,14 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
 
     return (
         <PluginCard
-            name={name}
-            description={description}
-            version={formatVersion(version)}
-            author={author}
-            contributors={contributors}
-            icon={icon}
+            info={info}
             extraInfo={<PluginInfoStatusIcon plugin={plugin} />}
+            accessibilityHint="Opens plugin options"
+            onPress={() => {
+                showPluginOptionsActionSheet(plugin)
+            }}
             actions={
                 <>
-                    <IconButton
-                        size="sm"
-                        variant="secondary"
-                        icon={MoreVerticalIcon}
-                        onPress={() => {
-                            showPluginOptionsActionSheet(plugin)
-                        }}
-                    />
                     {plugin.SettingsComponent && (
                         <Pressable
                             onPress={() => {
@@ -388,74 +454,48 @@ export const InstalledPluginSwitch = memo(function InstalledPluginSwitch({
  * No switch or settings button, just a more menu and a small Install button.
  */
 export const BrowsePluginCard = memo(function BrowsePluginCard({
-    name,
-    description,
-    version,
-    author,
-    icon,
-    id,
-    listing,
-    channel,
-    repositoryText,
+    entry,
     onInstall,
 }: {
-    name: string
-    description: string
-    version: string
-    author: string
-    icon?: string
-    id: string
-    listing: RepoPluginListing
-    channel: string
-    repositoryText: string
-    onInstall: (channel?: string, version?: string) => Promise<unknown>
+    entry: BrowseEntry
+    onInstall: (id: string, repo: string, ref: PluginRef) => Promise<unknown>
 }) {
     const [installing, setInstalling] = useState(false)
+    const { listing } = entry
 
-    const install = useCallback(() => {
-        const result = onInstall()
-        setInstalling(true)
-        result.finally(() => setInstalling(false))
-    }, [onInstall])
+    const install = useCallback(
+        (repo: string, ref: PluginRef) => {
+            setInstalling(true)
+            onInstall(listing.id, repo, ref).finally(() => setInstalling(false))
+        },
+        [onInstall, listing.id],
+    )
+
+    const showSheet = () => {
+        showBrowsePluginActionSheet({ entry, onInstall: install })
+    }
 
     return (
         <PluginCard
-            name={name}
-            description={description}
-            version={version}
-            author={author}
-            contributors={listing.contributors}
-            icon={icon}
+            info={listing}
+            accessibilityHint="Opens install options"
+            onPress={showSheet}
             actions={
-                <>
-                    <IconButton
-                        size="sm"
-                        variant="secondary"
-                        icon={MoreVerticalIcon}
-                        onPress={() => {
-                            showBrowsePluginActionSheet({
-                                name,
-                                author,
-                                description,
-                                version,
-                                icon,
-                                id,
-                                listing,
-                                channel,
-                                repositoryText,
-                                onInstall: install,
-                            })
-                        }}
-                    />
-                    <Button
-                        size="sm"
-                        text="Install"
-                        icon={DownloadIcon}
-                        loading={installing}
-                        disabled={installing}
-                        onPress={install}
-                    />
-                </>
+                <Button
+                    size="sm"
+                    text="Install"
+                    icon={DownloadIcon}
+                    loading={installing}
+                    disabled={installing}
+                    accessibilityHint="Long press for install options"
+                    onPress={() =>
+                        install(entry.repoUrl, {
+                            type: 'channel',
+                            channel: entry.channel,
+                        })
+                    }
+                    onLongPress={showSheet}
+                />
             }
         />
     )
@@ -463,14 +503,18 @@ export const BrowsePluginCard = memo(function BrowsePluginCard({
 
 const usePluginCardStyles = createStyles({
     card: {
+        padding: 0,
+        margin: PLUGIN_CARD_HALF_GUTTER,
+        // Clips the ripple
+        overflow: 'hidden',
+    },
+    cardContent: {
         paddingVertical: 12,
         paddingHorizontal: 12,
         gap: 4,
-        margin: PLUGIN_CARD_HALF_GUTTER,
     },
     topContainer: {
         alignItems: 'center',
-        minHeight: 32,
     },
     alignedContainer: {
         paddingLeft: 28,
@@ -495,5 +539,13 @@ const usePluginCardStyles = createStyles({
     },
     iconError: {
         tintColor: Tokens.default.colors.TEXT_FEEDBACK_CRITICAL,
+    },
+    repositoryIcon: {
+        tintColor: Tokens.default.colors.TEXT_MUTED,
+        width: 14,
+        height: 14,
+    },
+    pillRow: {
+        flexDirection: 'row',
     },
 })

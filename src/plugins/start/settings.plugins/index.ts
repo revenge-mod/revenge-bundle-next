@@ -1,5 +1,6 @@
 import { ToastActionCreators } from '@revenge-mod/discord/actions'
 import { onSettingsModulesLoaded } from '@revenge-mod/discord/modules/settings'
+import { NetInfo } from '@revenge-mod/externals/react-native-community'
 import { JsonStorageUpdateMode } from '@revenge-mod/json-storage'
 import { registerInternalPlugin } from '@revenge-mod/plugins/_'
 import {
@@ -14,6 +15,7 @@ import type { PluginApi } from '@revenge-mod/plugins/types'
 
 export interface Storage {
     autoUpdate: boolean
+    skipUpdatesOnExpensiveNetwork?: boolean
     lastUpdateCheck?: number
     defaultRepoRestored?: boolean
 }
@@ -61,6 +63,11 @@ function autoUpdateService(settings: Storage) {
 
     setTimeout(async () => {
         try {
+            if (settings.skipUpdatesOnExpensiveNetwork) {
+                const { details } = await NetInfo.fetch()
+                if (details?.isConnectionExpensive) return
+            }
+
             const { errors } = await refreshAllRepos()
             await updateAllPlugins()
 

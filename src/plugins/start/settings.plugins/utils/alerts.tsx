@@ -3,6 +3,8 @@ import { Design } from '@revenge-mod/discord/design'
 import { RootNavigationRef } from '@revenge-mod/discord/modules/main_tabs_v2'
 import {
     deleteStorageForPlugin,
+    getPluginDependents,
+    isPluginEnabledInActiveSlot,
     isPluginStarted,
     uninstallExternalPlugin,
 } from '@revenge-mod/plugins/_'
@@ -56,8 +58,29 @@ export function showPluginUninstallConfirmation(
 
     AlertActionCreators.openAlert(
         KEY,
-        <PluginUninstallConfirmationAlert plugin={plugin} action={action} />,
+        <PluginUninstallConfirmationAlert
+            plugin={plugin}
+            dependencies={getCascadeDisabledDependents(plugin)}
+            action={action}
+        />,
     )
+}
+
+/** Enabled required dependents that disabling this plugin cascades transitively. */
+function getCascadeDisabledDependents(plugin: AnyPlugin) {
+    const disabled = new Set<AnyPlugin>()
+    if (!isPluginEnabledInActiveSlot(plugin)) return []
+
+    const visit = (p: AnyPlugin) => {
+        for (const dep of getPluginDependents(p))
+            if (!disabled.has(dep) && isPluginEnabledInActiveSlot(dep)) {
+                disabled.add(dep)
+                visit(dep)
+            }
+    }
+
+    visit(plugin)
+    return [...disabled]
 }
 
 export function openPluginSettings(plugin: AnyPlugin) {

@@ -111,6 +111,8 @@ export interface RepoPluginListing {
     icon: string | null
     /** Channel target pointers (e.g. `latest`) referencing keys of {@link versions}. */
     channels: Record<string, string>
+    /** Keys of {@link versions}, newest first. */
+    order: string[]
     versions: Record<
         string,
         {
@@ -137,10 +139,27 @@ export interface InstallPlanAction {
     size: number
     /** Source repository recorded as installation provenance. */
     repo: string
-    /** Tracking update channel. */
+    /** Channel recorded for future updates. */
     channel: string
+    /** `true` pauses updates, `false` resumes, `null` uses the current. */
+    hold: boolean | null
     /** The installed version being replaced, or `null` for fresh installs. */
     replaces: string | null
+    /** Planned actions that pulled this plugin in. Empty for the requested plugin. */
+    dependents: {
+        id: string
+        optional: boolean
+        /** Version range it requires. */
+        range: string
+    }[]
+    /** Versions satisfying planned dependents, keyed by repository then version. */
+    candidates: Record<string, Record<string, VersionCandidate>>
+}
+
+/** A version a planned plugin could switch to. */
+export interface VersionCandidate {
+    /** Installed plugins outside the plan this version breaks. */
+    breaks: string[]
 }
 
 export interface InstallPlan {
@@ -161,18 +180,39 @@ export function listRepoPlugins(url: string): Promise<RepoPluginListing[]> {
     return callPluginSystemMethod('revenge.plugins.repos.listPlugins', [url])
 }
 
-/** Computes dependency installation plan against cached repository indexes. */
+/** Rules for resolving plugins. */
+export interface PlanTarget {
+    /** Resolve from this repository instead of its provenance or the priority order. */
+    repo?: string
+    /**
+     * Channel to follow.
+     * @default The installed plugin's current channel, or `latest`.
+     */
+    channel?: string
+    /** Install exactly this version and hold it. Overrides {@link channel}. */
+    version?: string
+}
+
+export interface PlanOptions {
+    /** Per-plugin targets keyed by ID. */
+    targets?: Record<string, PlanTarget>
+    /** Only consider these repositories, for every plugin. */
+    repos?: string[]
+    /** Skips untargeted optional dependencies that aren't installed, eg. for updates. */
+    skipMissingOptionals?: boolean
+}
+
+/**
+ * Computes dependency installation plan against cached repository indexes.
+ * A plugin already at the resolved version is reinstalled when its repository, channel, hold, or artifact would change.
+ */
 export function planInstall(
     id: string,
-    version?: string,
-    channel?: string,
-    filteredRepos?: string[],
+    options?: PlanOptions,
 ): Promise<InstallPlan> {
     return callPluginSystemMethod('revenge.plugins.planInstall', [
         id,
-        version ?? null,
-        channel ?? null,
-        filteredRepos ?? null,
+        options ?? null,
     ])
 }
 
@@ -241,11 +281,10 @@ export async function updateAllPlugins(): Promise<{
     await Promise.all(
         updates.map(async update => {
             try {
-                const plan = await planInstall(
-                    update.id,
-                    undefined,
-                    update.channel,
-                )
+                // Optional dependencies left out stay out
+                const plan = await planInstall(update.id, {
+                    skipMissingOptionals: true,
+                })
                 const result = await installFromRepo(plan)
                 installed.push(...result.installed)
                 pending.push(...result.pending)
@@ -269,12 +308,7 @@ declare module '@revenge-mod/modules/native' {
         ]
         'revenge.plugins.repos.listUpdates': [[url: string], RepoUpdate[]]
         'revenge.plugins.planInstall': [
-            [
-                id: string,
-                version: string | null,
-                channel: string | null,
-                filteredRepos: string[] | null,
-            ],
+            [id: string, options: PlanOptions | null],
             InstallPlan,
         ]
         'revenge.plugins.install': [

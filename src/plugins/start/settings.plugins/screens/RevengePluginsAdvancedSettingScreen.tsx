@@ -4,6 +4,7 @@ import { styles } from '@revenge-mod/components/_'
 import Page from '@revenge-mod/components/Page'
 import TableRowAssetIcon from '@revenge-mod/components/TableRowAssetIcon'
 import { ToastActionCreators } from '@revenge-mod/discord/actions'
+import { Tokens } from '@revenge-mod/discord/common/tokens'
 import { Design } from '@revenge-mod/discord/design'
 import { Clipboard } from '@revenge-mod/externals/react-native-clipboard'
 import {
@@ -24,11 +25,13 @@ import {
 import { noop } from '@revenge-mod/utils/callback'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import { useCallback, useEffect, useReducer, useState } from 'react'
-import { ScrollView, View } from 'react-native'
+import { Image, ScrollView, View } from 'react-native'
 import { api } from '..'
+import { PluginIcon } from '../components/PluginIcon'
 import { addDefaultRepoIfNeeded, toConfig } from '../repos'
 import { showRemoveRepoConfirmation } from '../utils/alerts'
 import { formatBytes, messageOf, showErrorToast } from '../utils/repos'
+import { pluralize } from '../utils/strings'
 import type {
     DownloadProgressEvent,
     Repo,
@@ -45,6 +48,7 @@ const {
     TableRow,
     TableRowGroup,
     TableSwitchRow,
+    Text,
     TextInput,
 } = Design
 
@@ -52,13 +56,6 @@ const MoreIcon = getAssetIdByName('MoreVerticalIcon')!
 const UpIconComponent = lookupGeneratedIconComponent('ArrowSmallUpIcon')!
 const DownIconComponent = lookupGeneratedIconComponent('ArrowSmallDownIcon')!
 const TrashIconComponent = lookupGeneratedIconComponent('TrashIcon')!
-
-function repoSubLabel(repo: Repo, state?: RepoStateEvent['state']) {
-    const start = repo.description || repo.url
-    if (state === 'refreshing') return `${start} (refreshing...)`
-    if (state === 'error') return `${start} (refresh failed)`
-    return start
-}
 
 interface UserRepoRowProps {
     repo: Repo
@@ -68,6 +65,20 @@ interface UserRepoRowProps {
     onToggle: (repo: Repo, enabled: boolean) => void
 }
 
+const useRepoRowStyles = Design.createStyles({
+    labelText: {
+        flexShrink: 1,
+    },
+    icon: {
+        width: 14,
+        height: 14,
+        tintColor: Tokens.default.colors.TEXT_SUBTLE,
+    },
+    iconError: {
+        tintColor: Tokens.default.colors.TEXT_FEEDBACK_CRITICAL,
+    },
+})
+
 function UserRepoRow({
     repo,
     state,
@@ -75,6 +86,8 @@ function UserRepoRow({
     onRemove,
     onToggle,
 }: UserRepoRowProps) {
+    const styles_ = useRepoRowStyles()
+
     const menuItems = [
         [
             {
@@ -105,7 +118,7 @@ function UserRepoRow({
                 },
             },
             {
-                label: 'Delete',
+                label: 'Remove',
                 IconComponent: TrashIconComponent,
                 variant: 'destructive' as const,
                 action: () =>
@@ -116,8 +129,40 @@ function UserRepoRow({
 
     return (
         <TableRow
-            label={repo.name ?? repo.url}
-            subLabel={repoSubLabel(repo, state)}
+            icon={
+                <PluginIcon
+                    size={24}
+                    icon={repo.icon || 'GlobeEarthIcon'}
+                    defaultIcon={getAssetIdByName('GlobeEarthIcon')}
+                />
+            }
+            label={
+                <Stack direction="horizontal" spacing={8}>
+                    <Text
+                        variant="text-md/medium"
+                        color="text-strong"
+                        style={styles_.labelText}
+                    >
+                        {repo.name ?? repo.url}
+                    </Text>
+                    {state !== 'ready' && state !== undefined && (
+                        <Image
+                            source={
+                                getAssetIdByName(
+                                    state === 'error'
+                                        ? 'CircleErrorIcon'
+                                        : 'RefreshIcon',
+                                )!
+                            }
+                            style={[
+                                styles_.icon,
+                                state === 'error' && styles_.iconError,
+                            ]}
+                        />
+                    )}
+                </Stack>
+            }
+            subLabel={repo.description || repo.url}
             trailing={
                 <Stack
                     direction="horizontal"
@@ -151,6 +196,7 @@ export default function RevengePluginsAdvancedSettingScreen() {
     // Internal repositories are native-managed and not part of the config.
     const [repos, setReposState] = useState<Repo[]>([])
     const [url, setUrl] = useState('')
+    const [error, setError] = useState<string | null>(null)
     const [busy, setBusy] = useState(false)
     const [updates, setUpdates] = useState<RepoUpdate[] | null>(null)
     const [repoStates, setRepoStates] = useState<
@@ -247,16 +293,23 @@ export default function RevengePluginsAdvancedSettingScreen() {
 
     const checkForUpdates = useCallback(async () => {
         setBusy(true)
+        setError(null)
         try {
             const { errors } = await refreshAllRepos()
-            if (errors.length)
+            if (errors.length) {
                 showErrorToast(
-                    errors.map(e => `${e.url}: ${e.error}`).join('\n'),
+                    errors
+                        .map(e => `${e.url}: ${messageOf(e.error)}`)
+                        .join('\n'),
                 )
-            else await api.jsonStorage.set({ lastUpdateCheck: Date.now() })
+
+                throw new Error('Failed to refresh some repositories')
+            } else await api.jsonStorage.set({ lastUpdateCheck: Date.now() })
 
             const result = await listAllUpdates()
             setUpdates(result.updates)
+        } catch {
+            setError('Failed to check for updates...')
         } finally {
             setBusy(false)
             refresh()
@@ -265,13 +318,21 @@ export default function RevengePluginsAdvancedSettingScreen() {
 
     const updateAll = useCallback(async () => {
         setBusy(true)
+        setError(null)
         try {
             const { errors } = await updateAllPlugins()
-            if (errors.length)
+            if (errors.length) {
                 showErrorToast(
-                    errors.map(e => `${e.id}: ${e.error}`).join('\n'),
+                    errors
+                        .map(e => `${e.id}: ${messageOf(e.error)}`)
+                        .join('\n'),
                 )
+
+                throw new Error('Failed to update some plugins')
+            }
             setUpdates(null)
+        } catch {
+            setError('Failed to update some plugins...')
         } finally {
             setBusy(false)
             setProgress(null)
@@ -280,10 +341,13 @@ export default function RevengePluginsAdvancedSettingScreen() {
     }, [refresh])
 
     const lastCheckedSubLabel =
-        updates !== null && !updates.length
-            ? 'All plugins up to date!'
-            : settings?.lastUpdateCheck !== undefined &&
-              `Last checked: ${new Date(settings.lastUpdateCheck).toLocaleString()}`
+        error ||
+        (busy
+            ? 'Checking for updates...'
+            : updates !== null && !updates.length
+              ? 'All plugins up to date!'
+              : settings?.lastUpdateCheck !== undefined &&
+                `Last checked: ${new Date(settings.lastUpdateCheck).toLocaleString()}`)
 
     const pausedAmount = getPausedAmount()
 
@@ -333,7 +397,7 @@ export default function RevengePluginsAdvancedSettingScreen() {
                         title="Updates"
                         description={
                             pausedAmount
-                                ? `Updates are paused for ${pausedAmount} plugin${pausedAmount > 1 ? 's' : ''}.`
+                                ? `Updates are paused for ${pluralize(pausedAmount, 'plugin')}.`
                                 : undefined
                         }
                     >
@@ -344,6 +408,19 @@ export default function RevengePluginsAdvancedSettingScreen() {
                                 api.jsonStorage.set({ autoUpdate })
                             }}
                             value={settings?.autoUpdate ?? true}
+                        />
+                        <TableSwitchRow
+                            label="Skip on metered networks"
+                            subLabel="Skip automatic updates on metered connections."
+                            disabled={!(settings?.autoUpdate ?? true)}
+                            onValueChange={skipUpdatesOnExpensiveNetwork => {
+                                api.jsonStorage.set({
+                                    skipUpdatesOnExpensiveNetwork,
+                                })
+                            }}
+                            value={
+                                settings?.skipUpdatesOnExpensiveNetwork ?? false
+                            }
                         />
                         <TableRow
                             icon={<TableRowAssetIcon name="RefreshIcon" />}

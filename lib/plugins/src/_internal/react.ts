@@ -1,9 +1,12 @@
 // This should only be imported after start! Zustand imports React eagerly, our shim uses waitForModules.
 
+import { useCallback, useSyncExternalStore } from 'react'
 import { useStore } from 'zustand/react'
 import { PluginFlags } from './constants'
+import { pEmitter } from './emitter'
+import { getInternalPluginMeta } from './registry'
 import { pluginStore, resolveFlags } from './store'
-import type { AnyPlugin } from '.'
+import type { AnyPlugin, PluginSource } from '.'
 
 export function usePluginEnabledById(id: string): boolean {
     return useStore(pluginStore, state =>
@@ -53,4 +56,38 @@ export function useEnabledPluginCountInActiveSlot(): number {
                 count++
         return count
     })
+}
+
+export function useHasFlagPluginCount(flag: number): number {
+    return useStore(pluginStore, state => {
+        let count = 0
+        for (const id of state.ids) {
+            if (resolveFlags(state, state.bootSlot, id) & flag) count++
+        }
+        return count
+    })
+}
+
+/** Subscribes to a plugin's install source, `undefined` for built-in plugins. */
+export function usePluginSource(
+    plugin: AnyPlugin,
+): PluginSource | null | undefined {
+    const subscribe = useCallback(
+        (onChange: () => void) => {
+            const handler = (updated: AnyPlugin) => {
+                if (updated === plugin) onChange()
+            }
+
+            pEmitter.on('metadataUpdate', handler)
+            return () => {
+                pEmitter.off('metadataUpdate', handler)
+            }
+        },
+        [plugin],
+    )
+
+    return useSyncExternalStore(
+        subscribe,
+        () => getInternalPluginMeta(plugin).source,
+    )
 }

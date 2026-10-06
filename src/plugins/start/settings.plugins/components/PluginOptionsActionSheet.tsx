@@ -31,17 +31,11 @@ import {
     usePluginEnabled,
     usePluginEnabledInActiveSlot,
     usePluginFlags,
+    usePluginSource,
     usePluginStatus,
 } from '@revenge-mod/plugins/_/react'
-import {
-    listRepoPlugins,
-    listRepos,
-    refreshRepo,
-} from '@revenge-mod/plugins/_/repositories'
 import { formatVersion } from '@revenge-mod/plugins/utils'
-import { noop } from '@revenge-mod/utils/callback'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
-import { useEffect, useState } from 'react'
 import { Pressable } from 'react-native'
 import { ClickOutsideProvider } from 'react-native-click-outside'
 import {
@@ -49,18 +43,28 @@ import {
     showPluginClearDataConfirmation,
     showPluginUninstallConfirmation,
 } from '../utils/alerts'
-import { messageOf, runInstallFlow, showErrorToast } from '../utils/repos'
+import {
+    installPluginRef,
+    messageOf,
+    pluginRefOf,
+    retargetPluginRef,
+    showErrorToast,
+} from '../utils/repos'
+import { useRepositoryText, versionTextOf } from '../utils/strings'
 import {
     InstalledPluginSwitch,
     PluginAuthor,
     PluginInfo,
     PluginInfoStatusIcon,
 } from './PluginCard'
+import { openPluginRefPickerActionSheet } from './PluginRefPickerActionSheet'
+import { openPluginRepositoryPickerActionSheet } from './PluginRepositoryPickerActionSheet'
+import { RefPickerRow, RepositoryPickerRow } from './PluginSourceRows'
 import PluginTooltipsProvider, {
     PluginTooltip,
     usePluginTooltip,
 } from './TooltipProvider'
-import type { AnyPlugin, PluginSource } from '@revenge-mod/plugins/_'
+import type { AnyPlugin, InternalPluginMeta } from '@revenge-mod/plugins/_'
 
 export interface PluginOptionsActionSheetProps {
     plugin: AnyPlugin
@@ -72,9 +76,8 @@ const {
     IconButton,
     TableRowGroup,
     TableRow,
-    TableRadioGroup,
-    TableRadioRow,
     TableSwitchRow,
+    Text,
     Stack,
 } = Design
 
@@ -114,7 +117,12 @@ function PluginOptions({ plugin, sheetKey }: PluginOptionsActionSheetProps) {
     return (
         <Stack spacing={24} style={{ paddingTop: 8 }}>
             <PluginInfo
-                name={name}
+                info={{
+                    name,
+                    description,
+                    icon,
+                    version: formatVersion(version),
+                }}
                 author={
                     <PluginAuthor
                         pluginName={name}
@@ -122,9 +130,6 @@ function PluginOptions({ plugin, sheetKey }: PluginOptionsActionSheetProps) {
                         contributors={contributors}
                     />
                 }
-                version={formatVersion(version)}
-                description={description}
-                icon={icon}
                 extraInfo={<PluginInfoStatusIcon plugin={plugin} />}
                 actions={
                     !essential && (
@@ -149,18 +154,20 @@ function PluginOptions({ plugin, sheetKey }: PluginOptionsActionSheetProps) {
                     ActionSheetActionCreators.hideActionSheet(sheetKey)
                 }}
             />
-            <ErrorsSection plugin={plugin} />
-            {meta.source && (
-                <ChannelSection plugin={plugin} source={meta.source} />
-            )}
-            <UpdatesSection plugin={plugin} />
-            <AdvancedSection plugin={plugin} />
+            <ErrorsSection plugin={plugin} meta={meta} />
+            <UpdatesSection plugin={plugin} meta={meta} />
+            <AdvancedSection plugin={plugin} meta={meta} />
         </Stack>
     )
 }
 
-function ErrorsSection({ plugin }: { plugin: AnyPlugin }) {
-    const meta = getInternalPluginMeta(plugin)
+function ErrorsSection({
+    plugin,
+    meta,
+}: {
+    plugin: AnyPlugin
+    meta: InternalPluginMeta
+}) {
     const errors = [...plugin.errors, ...meta.nativeErrors]
 
     return (
@@ -190,98 +197,22 @@ function ErrorsSection({ plugin }: { plugin: AnyPlugin }) {
     )
 }
 
-function ChannelSection({
+function AdvancedSection({
     plugin,
-    source,
+    meta,
 }: {
     plugin: AnyPlugin
-    source: PluginSource
+    meta: InternalPluginMeta
 }) {
-    const [channels, setChannels] = useState<Record<string, string>>({})
-    const [selected, setSelected] = useState(source.channel)
-
-    useEffect(() => {
-        const { repo } = source
-        if (!repo) return
-
-        listRepoPlugins(repo)
-            .then(listings => {
-                const listing = listings.find(l => l.id === plugin.manifest.id)
-                if (listing) setChannels(listing.channels)
-            })
-            .catch(() =>
-                refreshRepo(repo)
-                    .then(() => listRepoPlugins(repo))
-                    .then(listings => {
-                        const listing = listings.find(
-                            l => l.id === plugin.manifest.id,
-                        )
-                        if (listing) setChannels(listing.channels)
-                    }, noop),
-            )
-    }, [source, plugin.manifest.id])
-
-    if (Object.keys(channels).length === 0) return null
-
-    const handleChange = (value: string) => {
-        const { repo } = source
-        if (!repo) return
-
-        setSelected(value)
-
-        const targetVersion = channels[value]!
-        if (targetVersion === formatVersion(plugin.manifest.version)) {
-            ToastActionCreators.open({
-                key: 'REVENGE_PLUGIN_VERSION_ALREADY_INSTALLED',
-                content: 'This version is already installed',
-                IconComponent: () => (
-                    <TableRowAssetIcon name="CircleCheckIcon" />
-                ),
-            })
-            return
-        }
-
-        listRepos()
-            .then(it =>
-                it.filter(r => r.internal && r.enabled).map(it => it.url),
-            )
-            .then(repos => {
-                runInstallFlow(plugin.manifest.id, undefined, value, [
-                    repo,
-                    ...repos,
-                ])
-            })
-    }
-
-    return source.repo ? (
-        <TableRadioGroup
-            title="Channel"
-            value={selected}
-            onChange={v => handleChange(v as string)}
-        >
-            {Object.keys(channels).map(c => (
-                <TableRadioRow key={c} label={c} value={c} />
-            ))}
-        </TableRadioGroup>
-    ) : null
-}
-
-function AdvancedSection({ plugin }: { plugin: AnyPlugin }) {
-    const meta = getInternalPluginMeta(plugin)
     const flags = usePluginFlags(plugin)
     const status = usePluginStatus(plugin)
     const dependents = getPluginDependents(plugin, true)
     const dependencies = getPluginDependencies(plugin, false)
-    const repositoryText = usePluginRepositoryText(plugin)
     const { id, name } = plugin.manifest
 
     return (
         <TableRowGroup title="Advanced">
             <IdRow id={id} />
-            <RepositoryRow
-                text={repositoryText}
-                copyable={!!meta.source?.repo}
-            />
             <TableRow
                 icon={<TableRowAssetIcon name="CircleInformationIcon" />}
                 label="Status"
@@ -348,31 +279,99 @@ function AdvancedSection({ plugin }: { plugin: AnyPlugin }) {
     )
 }
 
-function UpdatesSection({ plugin }: { plugin: AnyPlugin }) {
+function UpdatesSection({
+    plugin,
+    meta,
+}: {
+    plugin: AnyPlugin
+    meta: InternalPluginMeta
+}) {
+    const source = usePluginSource(plugin)
+    // Built-in without stub updates
+    const builtIn = isPluginInternal(meta) && !source
+    const repo = source?.repo ?? null
+    const { id, name } = plugin.manifest
+
+    // Re-render on updates
+    usePluginFlags(plugin)
+
     return (
         <TableRowGroup title="Updates">
-            <PauseUpdatesRow plugin={plugin} />
-            {/* TODO: Check for updates for specific plugin */}
+            {!isPluginInternal(meta) && (
+                <AllowUpdatesRow plugin={plugin} held={source?.held ?? false} />
+            )}
+            <RepositoryPickerRow
+                text={useRepositoryText(repo, builtIn)}
+                onPress={
+                    builtIn
+                        ? undefined
+                        : () =>
+                              openPluginRepositoryPickerActionSheet({
+                                  id,
+                                  name,
+                                  repo,
+                                  onSelect: offer =>
+                                      installPluginRef(
+                                          id,
+                                          offer.url,
+                                          retargetPluginRef(
+                                              pluginRefOf(plugin),
+                                              offer.listing,
+                                          ),
+                                      ),
+                              })
+                }
+            />
+            <RefPickerRow
+                pluginRef={repo ? pluginRefOf(plugin) : undefined}
+                version={versionTextOf(plugin)}
+                onPress={
+                    repo
+                        ? () =>
+                              openPluginRefPickerActionSheet({
+                                  id,
+                                  repo,
+                                  pluginRef: pluginRefOf(plugin),
+                                  onSelect: ref =>
+                                      installPluginRef(id, repo, ref),
+                              })
+                        : undefined
+                }
+            />
         </TableRowGroup>
     )
 }
 
-function PauseUpdatesRow({ plugin }: { plugin: AnyPlugin }) {
-    const meta = getInternalPluginMeta(plugin)
-    const [held, setHeld] = useState(meta.source?.held ?? false)
+function AllowUpdatesRow({
+    plugin,
+    held,
+}: {
+    plugin: AnyPlugin
+    held: boolean
+}) {
+    const allowUpdates = !held
 
     return (
         <TableSwitchRow
-            icon={<TableRowAssetIcon name="HandRequestDenyIcon" />}
-            label="Pause updates"
-            subLabel={`Stay on this version. Other plugins won't be able to update if they need a newer version of ${plugin.manifest.name}.`}
-            value={held}
+            icon={
+                <TableRowAssetIcon
+                    IconComponent={lookupGeneratedIconComponent('RefreshIcon')!}
+                />
+            }
+            label="Allow updates"
+            subLabel={
+                allowUpdates ? undefined : (
+                    <Text color="text-feedback-critical">
+                        Other plugins won't be able to update if they need a
+                        newer version of {plugin.manifest.name}
+                    </Text>
+                )
+            }
+            value={allowUpdates}
             onValueChange={value => {
-                setHeld(value)
-                setUpdatesPaused(plugin, value).catch(e => {
-                    setHeld(!value)
-                    showErrorToast(messageOf(e))
-                })
+                setUpdatesPaused(plugin, !value).catch(e =>
+                    showErrorToast(messageOf(e)),
+                )
             }}
         />
     )
@@ -399,55 +398,6 @@ export function IdRow({ id }: { id: string }) {
             }}
         />
     )
-}
-
-export function RepositoryRow({
-    text,
-    copyable,
-}: {
-    text: string
-    copyable?: boolean
-}) {
-    return (
-        <TableRow
-            icon={<TableRowAssetIcon name="GlobeEarthIcon" />}
-            label="Repository"
-            subLabel={text}
-            onPress={
-                copyable
-                    ? () => {
-                          Clipboard.setString(text)
-                          showCopiedToClipboardToast()
-                      }
-                    : undefined
-            }
-        />
-    )
-}
-
-function usePluginRepositoryText(plugin: AnyPlugin) {
-    const meta = getInternalPluginMeta(plugin)
-    const internal = isPluginInternal(meta)
-    const repoUrl = meta.source?.repo ?? null
-    const hasUrl = !internal && repoUrl
-
-    const [repoName, setRepoName] = useState<string | null>(null)
-
-    useEffect(() => {
-        if (!hasUrl) return
-        listRepos().then(repos => {
-            const repo = repos.find(r => r.url === repoUrl)
-            if (repo?.name) setRepoName(repo.name)
-        }, noop)
-    }, [repoUrl, hasUrl])
-
-    return hasUrl
-        ? repoName
-            ? `${repoName} (${repoUrl})`
-            : repoUrl
-        : internal
-          ? 'Built-in'
-          : 'Sideloaded'
 }
 
 function PluginActions({
@@ -478,6 +428,26 @@ function PluginActions({
             justify="space-around"
             style={{ paddingHorizontal: 8, paddingVertical: 16 }}
         >
+            {plugin.SettingsComponent && (
+                <Pressable
+                    onPress={() => {
+                        if (!started) showStartTooltip()
+                    }}
+                >
+                    <IconButton
+                        ref={settingsRef}
+                        variant="secondary"
+                        size="lg"
+                        icon={SettingsIcon}
+                        label="Settings"
+                        disabled={!started}
+                        onPress={() => {
+                            openPluginSettings(plugin)
+                            closeSheet()
+                        }}
+                    />
+                </Pressable>
+            )}
             {enabled && !isPluginEssential(meta) && (
                 <Pressable
                     onPress={() => {
@@ -524,26 +494,6 @@ function PluginActions({
                         showPluginUninstallConfirmation(plugin, closeSheet)
                     }}
                 />
-            )}
-            {plugin.SettingsComponent && (
-                <Pressable
-                    onPress={() => {
-                        if (!started) showStartTooltip()
-                    }}
-                >
-                    <IconButton
-                        ref={settingsRef}
-                        variant="secondary"
-                        size="lg"
-                        icon={SettingsIcon}
-                        label="Settings"
-                        disabled={!started}
-                        onPress={() => {
-                            openPluginSettings(plugin)
-                            closeSheet()
-                        }}
-                    />
-                </Pressable>
             )}
         </Stack>
     )
