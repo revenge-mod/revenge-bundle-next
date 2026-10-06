@@ -150,7 +150,7 @@ function ContributorEntryRows({
     links: string[]
 }) {
     return (
-        <TableRowGroup title={`Contacts for ${name}`}>
+        <TableRowGroup hasIcons title={`Contacts for ${name}`}>
             {ids.map(id => (
                 <TableRow
                     key={id}

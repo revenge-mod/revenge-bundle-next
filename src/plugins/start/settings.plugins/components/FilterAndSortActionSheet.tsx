@@ -57,7 +57,7 @@ export default function FilterAndSortActionSheet({
     return (
         <ActionSheet>
             <BottomSheetTitleHeader title="Filter & Sort" />
-            <TableRowGroup title="Filter by">
+            <TableRowGroup hasIcons title="Filter by">
                 {Object.entries(filters).map(([label, { icon, desc }]) => {
                     const checked = filter_.includes(label)
 

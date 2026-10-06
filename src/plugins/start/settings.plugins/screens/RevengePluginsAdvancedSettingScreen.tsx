@@ -372,7 +372,7 @@ export default function RevengePluginsAdvancedSettingScreen() {
                         text="Add repository"
                         variant="primary"
                     />
-                    <TableRowGroup title="Repositories">
+                    <TableRowGroup hasIcons title="Repositories">
                         {repos.map(repo =>
                             repo.internal ? (
                                 <TableRow
@@ -458,7 +458,7 @@ export default function RevengePluginsAdvancedSettingScreen() {
                             </>
                         ) : null}
                     </TableRowGroup>
-                    <TableRowGroup title="Advanced">
+                    <TableRowGroup hasIcons title="Advanced">
                         <TableRow
                             icon={<TableRowAssetIcon name="DownloadIcon" />}
                             label="Install from file"

@@ -53,7 +53,7 @@ export default function BrowseFilterAndSortActionSheet({
     return (
         <ActionSheet>
             <BottomSheetTitleHeader title="Filter & Sort" />
-            <TableRowGroup title="Filter by Repositories">
+            <TableRowGroup hasIcons title="Filter by Repositories">
                 {repos.map(repo => {
                     const isChecked = checked_.includes(repo.url)
 

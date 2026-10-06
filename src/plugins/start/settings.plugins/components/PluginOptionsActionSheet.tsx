@@ -172,7 +172,7 @@ function ErrorsSection({
 
     return (
         errors.length > 0 && (
-            <TableRowGroup>
+            <TableRowGroup hasIcons>
                 <TableRow
                     variant="danger"
                     label="Errors"
@@ -211,7 +211,7 @@ function AdvancedSection({
     const { id, name } = plugin.manifest
 
     return (
-        <TableRowGroup title="Advanced">
+        <TableRowGroup hasIcons title="Advanced">
             <IdRow id={id} />
             <TableRow
                 icon={<TableRowAssetIcon name="CircleInformationIcon" />}

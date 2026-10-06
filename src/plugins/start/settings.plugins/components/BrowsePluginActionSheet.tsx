@@ -74,7 +74,7 @@ export default function BrowsePluginActionSheet({
                         />
                     }
                 />
-                <TableRowGroup title="Source">
+                <TableRowGroup hasIcons title="Source">
                     <RepositoryPickerRow
                         text={formatRepository(offer.url, offer.name)}
                         onPress={() =>
@@ -108,7 +108,7 @@ export default function BrowsePluginActionSheet({
                         }
                     />
                 </TableRowGroup>
-                <TableRowGroup title="Advanced">
+                <TableRowGroup hasIcons title="Advanced">
                     <IdRow id={id} />
                 </TableRowGroup>
             </Stack>

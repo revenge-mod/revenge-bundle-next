@@ -72,7 +72,7 @@ export default function PluginRelationsListActionSheet({
     return (
         <ActionSheet>
             <Stack spacing={24} style={{ paddingTop: 8 }}>
-                <TableRowGroup title={title}>
+                <TableRowGroup hasIcons title={title}>
                     {plugins.map(plugin => (
                         <PluginRow
                             key={plugin.manifest.id}
@@ -85,7 +85,7 @@ export default function PluginRelationsListActionSheet({
                 </TableRowGroup>
 
                 {Boolean(unsatisfiedPlugins?.length) && (
-                    <TableRowGroup title={unsatisfiedTitle}>
+                    <TableRowGroup hasIcons title={unsatisfiedTitle}>
                         {unsatisfiedPlugins?.map(plugin => {
                             if (typeof plugin === 'string') {
                                 // biome-ignore lint/suspicious/noNonNullAssertedOptionalChain: Can't be undefined
