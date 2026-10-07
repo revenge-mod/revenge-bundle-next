@@ -3,8 +3,7 @@ export type BitSet = Uint32Array
 export const createBitSet = (sizeInBits: number): BitSet =>
     new Uint32Array(Math.ceil(sizeInBits / 32))
 
-export const bitSetCapacity = (bs: BitSet) =>
-    bs.byteLength * bs.BYTES_PER_ELEMENT
+export const bitSetCapacity = (bs: BitSet) => bs.byteLength * 8
 
 export const bitSetAdd = (bs: BitSet, id: number): void => {
     bs[id >> 5] |= 1 << (id & 31)
