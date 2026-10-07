@@ -165,14 +165,82 @@ export interface VersionCandidate {
 export interface InstallPlan {
     actions: InstallPlanAction[]
     /** Non-blocking problems (dependency resolution). */
-    warnings: string[]
+    warnings: ResolveIssue[]
 }
 
-export interface RepoUpdate {
+export type ResolveIssue = { message: string } & (
+    | {
+          /** Root already at the resolved version. */
+          type: 'upToDate'
+          id: string
+          version: string
+      }
+    | { type: 'downgrade'; id: string; from: string; to: string }
+    | {
+          /** Planned version outside the range of an installed dependent outside the plan. */
+          type: 'breaks'
+          id: string
+          version: string
+          dependent: string
+          range: string
+          /** Update of {@link dependent} accepting {@link version}. Only from {@link listUpdates}. */
+          fixedBy: string | null
+      }
+    | {
+          /** Planned version outside the range of a planned dependent. */
+          type: 'conflict'
+          id: string
+          version: string
+          dependent: string
+          dependentVersion: string
+          range: string
+      }
+    | {
+          /** Dependency with no usable version. Skipped when optional, blocks otherwise. */
+          type: 'unresolved'
+          id: string
+          dependent: string
+          dependentVersion: string
+          range: string
+          optional: boolean
+          reason: 'unavailable' | 'held' | 'target'
+          installed: string | null
+          /** Explains a `target` reason. */
+          detail: string | null
+      }
+    | {
+          /** Paused updates, held at {@link version}. Only from {@link listUpdates}. */
+          type: 'held'
+          id: string
+          version: string
+      }
+    | {
+          /** Root not served, or not at the requested version. */
+          type: 'unavailable'
+          id: string
+          version: string | null
+      }
+)
+
+export interface PluginUpdate {
     id: string
+    /** Installed version, or the pending on-disk update. */
     installed: string
     available: string
     channel: string
+    repo: string
+    /** Artifact size of {@link available} in bytes. */
+    size: number
+    /** Other planned actions, such as dependency updates. Empty with a {@link blocker}. */
+    includes: {
+        id: string
+        version: string
+        replaces: string | null
+        size: number
+    }[]
+    warnings: ResolveIssue[]
+    /** Why the update can't install. */
+    blocker: ResolveIssue | null
 }
 
 /** Lists plugins for repository from cached index. */
@@ -233,68 +301,77 @@ export function installFromRepo(plan: InstallPlan): Promise<{
     return callPluginSystemMethod('revenge.plugins.install', [plan])
 }
 
-/** Lists updates for plugins pinned to repository from cached index. */
-export function listUpdates(url: string): Promise<RepoUpdate[]> {
-    return callPluginSystemMethod('revenge.plugins.repos.listUpdates', [url])
+/** Lists updates across enabled repositories from cached indexes. */
+export function listUpdates(): Promise<PluginUpdate[]> {
+    return callPluginSystemMethod('revenge.plugins.listUpdates', [])
 }
 
-/** Lists updates across enabled user repositories in parallel. */
-export async function listAllUpdates(): Promise<{
-    updates: RepoUpdate[]
-    errors: { url: string; error: unknown }[]
-}> {
-    const repos = await listRepos()
-    const updates: RepoUpdate[] = []
-    const errors: { url: string; error: unknown }[] = []
-
-    await Promise.all(
-        repos
-            .filter(repo => !repo.internal && repo.enabled)
-            .map(repo =>
-                listUpdates(repo.url).then(
-                    result => {
-                        updates.push(...result)
-                    },
-                    error => {
-                        errors.push({ url: repo.url, error })
-                    },
-                ),
-            ),
+/** Returns issues of {@link update} that break installed plugins, ignoring breaks fixed by {@link selected} updates. */
+export function breakingIssuesOf(
+    update: PluginUpdate,
+    selected: ReadonlySet<string>,
+): ResolveIssue[] {
+    return update.warnings.filter(
+        issue =>
+            issue.type === 'conflict' ||
+            (issue.type === 'breaks' &&
+                !(issue.fixedBy && selected.has(issue.fixedBy))),
     )
-
-    return { updates, errors }
 }
 
-/**
- * Resolves and installs pending updates across all repositories.
- */
-export async function updateAllPlugins(): Promise<{
+/** Picks updates safe to install that won't break existing plugins. */
+export function selectSafeUpdates(updates: PluginUpdate[]): Set<string> {
+    const selected = new Set(updates.filter(u => !u.blocker).map(u => u.id))
+
+    // Dropping one can unfix another's break
+    let changed = true
+    while (changed) {
+        changed = false
+        for (const update of updates)
+            if (
+                selected.has(update.id) &&
+                breakingIssuesOf(update, selected).length
+            ) {
+                selected.delete(update.id)
+                changed = true
+            }
+    }
+
+    return selected
+}
+
+/** Resolves and installs updates of {@link ids}. */
+export async function updatePlugins(ids: Iterable<string>): Promise<{
     installed: string[]
     pending: string[]
     errors: { id: string; error: unknown }[]
 }> {
-    const { updates } = await listAllUpdates()
     const installed: string[] = []
     const pending: string[] = []
     const errors: { id: string; error: unknown }[] = []
 
     await Promise.all(
-        updates.map(async update => {
+        [...ids].map(async id => {
             try {
                 // Optional dependencies left out stay out
-                const plan = await planInstall(update.id, {
+                const plan = await planInstall(id, {
                     skipMissingOptionals: true,
                 })
                 const result = await installFromRepo(plan)
                 installed.push(...result.installed)
                 pending.push(...result.pending)
             } catch (error) {
-                errors.push({ id: update.id, error })
+                errors.push({ id, error })
             }
         }),
     )
 
     return { installed, pending, errors }
+}
+
+/** Installs updates from {@link selectSafeUpdates}. */
+export async function updateAllPlugins() {
+    return updatePlugins(selectSafeUpdates(await listUpdates()))
 }
 
 declare module '@revenge-mod/modules/native' {
@@ -306,7 +383,7 @@ declare module '@revenge-mod/modules/native' {
             [url: string],
             RepoPluginListing[],
         ]
-        'revenge.plugins.repos.listUpdates': [[url: string], RepoUpdate[]]
+        'revenge.plugins.listUpdates': [[], PluginUpdate[]]
         'revenge.plugins.planInstall': [
             [id: string, options: PlanOptions | null],
             InstallPlan,

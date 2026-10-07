@@ -1,4 +1,7 @@
-import { AlertActionCreators } from '@revenge-mod/discord/actions'
+import {
+    AlertActionCreators,
+    ToastActionCreators,
+} from '@revenge-mod/discord/actions'
 import { Design } from '@revenge-mod/discord/design'
 import { RootNavigationRef } from '@revenge-mod/discord/modules/main_tabs_v2'
 import {
@@ -8,6 +11,7 @@ import {
     isPluginStarted,
     uninstallExternalPlugin,
 } from '@revenge-mod/plugins/_'
+import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import { deleteJsonStorageForPlugin } from '~plugins/preinit/api/json-storage'
 import PluginClearDataConfirmationAlert from '../components/PluginClearDataConfirmationAlert'
@@ -202,4 +206,18 @@ export function showPluginRelinkAlert(
             action={action}
         />,
     )
+}
+
+const CircleXIconComponent = lookupGeneratedIconComponent(
+    'CircleXIcon',
+    'CircleXIcon-primary',
+    'CircleXIcon-secondary',
+)!
+
+export function showErrorToast(message: string) {
+    ToastActionCreators.open({
+        key: 'REVENGE_REPOSITORIES_ERROR',
+        content: message,
+        IconComponent: CircleXIconComponent,
+    })
 }

@@ -1,6 +1,7 @@
 import {
     getInternalPluginMeta,
     isPluginPendingUpdate,
+    isPluginSystemErrorPayload,
 } from '@revenge-mod/plugins/_'
 import { listRepos } from '@revenge-mod/plugins/_/repositories'
 import { formatVersion } from '@revenge-mod/plugins/utils'
@@ -35,4 +36,16 @@ export function useRepositoryText(repo: string | null, builtIn: boolean) {
 
     if (repo) return formatRepository(repo, name)
     return builtIn ? 'Built-in' : 'Sideloaded'
+}
+
+export function messageOf(e: unknown) {
+    if (e instanceof Error) return e.message
+    if (isPluginSystemErrorPayload(e)) return e.message
+    return String(e)
+}
+
+export function formatBytes(bytes: number) {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }

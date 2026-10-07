@@ -39,11 +39,16 @@ export type PluginCardExtras = Omit<PluginCardProps, 'info'>
 export function PluginFlashList({
     plugins,
     onContentSizeChange,
+    contentContainerStyle,
+    ListEmptyComponent,
     extrasOf,
 }: {
     plugins: PluginCardData[]
     extrasOf?: (plugin: PluginCardData) => PluginCardExtras
-} & Pick<FlashListProps<PluginCardData>, 'onContentSizeChange'>) {
+} & Pick<
+    FlashListProps<PluginCardData>,
+    'onContentSizeChange' | 'contentContainerStyle' | 'ListEmptyComponent'
+>) {
     const hideTooltips = useHidePluginTooltips()
 
     return (
@@ -52,6 +57,8 @@ export function PluginFlashList({
             style={gutterCompensation}
             nestedScrollEnabled
             onContentSizeChange={onContentSizeChange}
+            contentContainerStyle={contentContainerStyle}
+            ListEmptyComponent={ListEmptyComponent}
             data={plugins}
             onScrollBeginDrag={hideTooltips}
             fadingEdgeLength={plugins.length === 1 ? 0 : 16}

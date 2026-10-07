@@ -1,3 +1,4 @@
+import { useNavigation } from '@react-navigation/native'
 import { getAssetIdByName } from '@revenge-mod/assets'
 import { FormSwitch } from '@revenge-mod/components'
 import { styles } from '@revenge-mod/components/_'
@@ -14,30 +15,29 @@ import {
     resyncPluginSources,
 } from '@revenge-mod/plugins/_'
 import {
-    listAllUpdates,
     listRepos,
-    refreshAllRepos,
     refreshRepo,
     repoEvents,
     setRepos,
-    updateAllPlugins,
 } from '@revenge-mod/plugins/_/repositories'
 import { noop } from '@revenge-mod/utils/callback'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import { useCallback, useEffect, useReducer, useState } from 'react'
 import { Image, ScrollView, View } from 'react-native'
+import { useStore } from 'zustand/react'
 import { api } from '..'
 import { PluginIcon } from '../components/PluginIcon'
+import { RouteNames, Setting } from '../constants'
 import { addDefaultRepoIfNeeded, toConfig } from '../repos'
-import { showRemoveRepoConfirmation } from '../utils/alerts'
-import { formatBytes, messageOf, showErrorToast } from '../utils/repos'
-import { pluralize } from '../utils/strings'
+import { showErrorToast, showRemoveRepoConfirmation } from '../utils/alerts'
+import { formatBytes, messageOf, pluralize } from '../utils/strings'
+import { loadUpdates, nameOf, updatesStore } from '../utils/updates'
+import type { NavigationProp } from '@react-navigation/core'
 import type {
     DownloadProgressEvent,
     Repo,
     RepoConfigEntry,
     RepoStateEvent,
-    RepoUpdate,
 } from '@revenge-mod/plugins/_/repositories'
 
 const {
@@ -193,12 +193,16 @@ function UserRepoRow({
 }
 
 export default function RevengePluginsAdvancedSettingScreen() {
+    const navigation = useNavigation<NavigationProp<any>>()
     // Internal repositories are native-managed and not part of the config.
     const [repos, setReposState] = useState<Repo[]>([])
     const [url, setUrl] = useState('')
     const [error, setError] = useState<string | null>(null)
-    const [busy, setBusy] = useState(false)
-    const [updates, setUpdates] = useState<RepoUpdate[] | null>(null)
+    const busy = useStore(
+        updatesStore,
+        state => state.checking || state.installing,
+    )
+    const updates = useStore(updatesStore, state => state.updates)
     const [repoStates, setRepoStates] = useState<
         Record<string, RepoStateEvent['state']>
     >({})
@@ -292,50 +296,13 @@ export default function RevengePluginsAdvancedSettingScreen() {
     )
 
     const checkForUpdates = useCallback(async () => {
-        setBusy(true)
         setError(null)
         try {
-            const { errors } = await refreshAllRepos()
-            if (errors.length) {
-                showErrorToast(
-                    errors
-                        .map(e => `${e.url}: ${messageOf(e.error)}`)
-                        .join('\n'),
-                )
-
-                throw new Error('Failed to refresh some repositories')
-            } else await api.jsonStorage.set({ lastUpdateCheck: Date.now() })
-
-            const result = await listAllUpdates()
-            setUpdates(result.updates)
+            if (!(await loadUpdates(true)))
+                setError('Failed to refresh some repositories...')
         } catch {
             setError('Failed to check for updates...')
         } finally {
-            setBusy(false)
-            refresh()
-        }
-    }, [refresh])
-
-    const updateAll = useCallback(async () => {
-        setBusy(true)
-        setError(null)
-        try {
-            const { errors } = await updateAllPlugins()
-            if (errors.length) {
-                showErrorToast(
-                    errors
-                        .map(e => `${e.id}: ${messageOf(e.error)}`)
-                        .join('\n'),
-                )
-
-                throw new Error('Failed to update some plugins')
-            }
-            setUpdates(null)
-        } catch {
-            setError('Failed to update some plugins...')
-        } finally {
-            setBusy(false)
-            setProgress(null)
             refresh()
         }
     }, [refresh])
@@ -432,30 +399,25 @@ export default function RevengePluginsAdvancedSettingScreen() {
                         {progress ? (
                             <TableRow
                                 icon={<TableRowAssetIcon name="<EMPTY>" />}
-                                label={`Downloading ${progress.id} ${progress.version}`}
+                                label={`Downloading ${nameOf(progress.id)} ${progress.version}`}
                                 subLabel={`${formatBytes(progress.received)} / ${formatBytes(progress.total)} (${progress.index} of ${progress.count})`}
                             />
                         ) : null}
                         {updates?.length ? (
-                            <>
-                                {updates.map(update => (
-                                    <TableRow
-                                        icon={
-                                            <TableRowAssetIcon name="DownloadIcon" />
-                                        }
-                                        key={update.id}
-                                        label={update.id}
-                                        subLabel={`${update.installed} → ${update.available} (${update.channel})`}
-                                    />
-                                ))}
-                                <TableRow
-                                    icon={
-                                        <TableRowAssetIcon name="DownloadIcon" />
-                                    }
-                                    label="Update all"
-                                    onPress={updateAll}
-                                />
-                            </>
+                            <TableRow
+                                icon={<TableRowAssetIcon name="DownloadIcon" />}
+                                label="View updates"
+                                subLabel={`${pluralize(updates.length, 'update')} available`}
+                                arrow
+                                disabled={busy}
+                                onPress={() =>
+                                    navigation.navigate(
+                                        RouteNames[
+                                            Setting.RevengePluginsUpdates
+                                        ],
+                                    )
+                                }
+                            />
                         ) : null}
                     </TableRowGroup>
                     <TableRowGroup hasIcons title="Advanced">

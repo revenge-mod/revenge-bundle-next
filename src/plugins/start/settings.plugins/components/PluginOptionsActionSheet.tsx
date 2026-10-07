@@ -40,17 +40,16 @@ import { Pressable } from 'react-native'
 import { ClickOutsideProvider } from 'react-native-click-outside'
 import {
     openPluginSettings,
+    showErrorToast,
     showPluginClearDataConfirmation,
     showPluginUninstallConfirmation,
 } from '../utils/alerts'
 import {
     installPluginRef,
-    messageOf,
     pluginRefOf,
     retargetPluginRef,
-    showErrorToast,
 } from '../utils/repos'
-import { useRepositoryText, versionTextOf } from '../utils/strings'
+import { messageOf, useRepositoryText, versionTextOf } from '../utils/strings'
 import {
     InstalledPluginSwitch,
     PluginAuthor,
@@ -84,7 +83,7 @@ const {
 const FileWarningIcon = getAssetIdByName('FileWarningIcon', 'png')!
 const PlayIcon = getAssetIdByName('PlayIcon', 'png')!
 const SettingsIcon = getAssetIdByName('SettingsIcon', 'png')!
-const StopIcon = getAssetIdByName('StopIcon', 'png')!
+const HandRequestSpeakIcon = getAssetIdByName('HandRequestSpeakIcon', 'png')!
 const TrashIcon = getAssetIdByName('TrashIcon', 'png')!
 
 export default function PluginOptionsActionSheet({
@@ -461,7 +460,7 @@ function PluginActions({
                         ref={controlRef}
                         variant="secondary"
                         size="lg"
-                        icon={running ? StopIcon : PlayIcon}
+                        icon={running ? HandRequestSpeakIcon : PlayIcon}
                         label={running ? 'Stop' : 'Start'}
                         // Nothing can start in a defaults-only boot, stopping a default plugin is still fine
                         disabled={notActionable}

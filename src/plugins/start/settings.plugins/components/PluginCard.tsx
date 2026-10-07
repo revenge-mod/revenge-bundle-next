@@ -4,6 +4,7 @@ import FormSwitch from '@revenge-mod/components/FormSwitch'
 import { Tokens } from '@revenge-mod/discord/common/tokens'
 import { Design } from '@revenge-mod/discord/design'
 import {
+    getInternalPluginMeta,
     isPluginEnabled,
     isPluginErrored,
     isPluginEssential,
@@ -17,20 +18,20 @@ import {
 import {
     usePluginEnabledInActiveSlot,
     usePluginFlags,
+    usePluginSource,
     usePluginStatus,
 } from '@revenge-mod/plugins/_/react'
 import { parsePluginContributor } from '@revenge-mod/plugins/utils'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Image, Pressable, View } from 'react-native'
 import { handleDisablePlugin, handleEnablePlugin } from '../utils/actions'
-import { openPluginSettings } from '../utils/alerts'
-import { messageOf, showErrorToast } from '../utils/repos'
+import { openPluginSettings, showErrorToast } from '../utils/alerts'
 import {
     showBrowsePluginActionSheet,
     showPluginContributorsActionSheet,
     showPluginOptionsActionSheet,
 } from '../utils/sheets'
-import { pluralize } from '../utils/strings'
+import { messageOf, pluralize } from '../utils/strings'
 import Pill from './Pill'
 import { PluginIcon } from './PluginIcon'
 import { PluginTooltip, usePluginTooltip } from './TooltipProvider'
@@ -69,6 +70,8 @@ export interface PluginInfoProps {
     author?: ReactNode
     extraInfo?: ReactNode
     actions?: ReactNode
+    /** Shown under the description. */
+    footer?: ReactNode
     aligned?: boolean
 }
 
@@ -114,9 +117,11 @@ export const PluginInfoStatusIcon = memo(function PluginInfoStatusIcon({
     plugin: AnyPlugin
 }) {
     const styles_ = usePluginCardStyles()
+    const meta = getInternalPluginMeta(plugin)
 
     usePluginFlags(plugin)
     usePluginStatus(plugin)
+    usePluginSource(plugin)
 
     const icons = [
         {
@@ -134,6 +139,13 @@ export const PluginInfoStatusIcon = memo(function PluginInfoStatusIcon({
             extraStyles: [],
         },
         {
+            key: 'updatePaused',
+            text: 'Updates are paused for this plugin.',
+            condition: meta.source?.held === true,
+            source: getAssetIdByName('PauseIcon')!,
+            extraStyles: [styles_.iconWarning],
+        },
+        {
             key: 'error',
             text: 'This plugin has an error.',
             condition: isPluginErrored(plugin) || isPluginFailed(plugin),
@@ -147,7 +159,7 @@ export const PluginInfoStatusIcon = memo(function PluginInfoStatusIcon({
                 isPluginEnabled(plugin) &&
                 !isPluginStartedLate(plugin) &&
                 isPluginStopped(plugin),
-            source: getAssetIdByName('PauseIcon')!,
+            source: getAssetIdByName('HandRequestDenyIcon')!,
             extraStyles: [styles_.iconWarning],
         },
     ].filter(it => it.condition)
@@ -232,6 +244,7 @@ export const PluginInfo = memo(function PluginInfo({
     author,
     extraInfo,
     actions,
+    footer,
     aligned,
 }: PluginInfoProps) {
     const styles_ = usePluginCardStyles()
@@ -328,7 +341,6 @@ export const PluginInfo = memo(function PluginInfo({
                                 color="text-subtle"
                                 variant="text-sm/medium"
                                 lineClamp={1}
-                                style={styles.flex}
                             >
                                 {repository}
                             </Text>
@@ -337,6 +349,7 @@ export const PluginInfo = memo(function PluginInfo({
                 <Text style={styles.grow} variant="text-md/medium">
                     {description}
                 </Text>
+                {footer}
             </Stack>
         </Stack>
     )

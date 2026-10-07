@@ -12,14 +12,10 @@ import {
     useState,
 } from 'react'
 import { ScrollView, View } from 'react-native'
-import {
-    findRepoListing,
-    formatBytes,
-    messageOf,
-    pickChannel,
-    planAll,
-    showErrorToast,
-} from '../utils/repos'
+import { showErrorToast } from '../utils/alerts'
+import { findRepoListing, pickChannel, planAll } from '../utils/repos'
+import { formatBytes, messageOf } from '../utils/strings'
+import { describeIssue } from '../utils/updates'
 import PluginInstallConfirmAlert from './PluginInstallConfirmAlert'
 import {
     ChannelRadioGroup,
@@ -136,7 +132,9 @@ function PluginPlanConfirmAlert({
             try {
                 const replanned = await planAll(ids, next)
                 if (replanned.warnings.length)
-                    showErrorToast(replanned.warnings.join('\n'))
+                    showErrorToast(
+                        replanned.warnings.map(describeIssue).join('\n'),
+                    )
 
                 setState({
                     plan: replanned,
@@ -407,7 +405,7 @@ async function describePlan(plan: InstallPlan): Promise<PlanItem[]> {
                 description: listing?.description ?? '',
                 icon: listing?.icon ?? undefined,
                 version: action.replaces
-                    ? `v${action.replaces} → v${action.version}`
+                    ? `v${action.replaces} \u2192 v${action.version}`
                     : `v${action.version}`,
                 size: formatBytes(action.size),
                 repository: repo?.name || action.repo,

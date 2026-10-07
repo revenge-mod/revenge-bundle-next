@@ -1,7 +1,5 @@
-import { ToastActionCreators } from '@revenge-mod/discord/actions'
 import {
     getInternalPluginMeta,
-    isPluginSystemErrorPayload,
     resyncPluginSources,
 } from '@revenge-mod/plugins/_'
 import {
@@ -11,7 +9,9 @@ import {
     refreshRepo,
 } from '@revenge-mod/plugins/_/repositories'
 import { formatVersion } from '@revenge-mod/plugins/utils'
-import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
+import { showErrorToast } from './alerts'
+import { messageOf } from './strings'
+import { describeIssue } from './updates'
 import type { AnyPlugin } from '@revenge-mod/plugins/_'
 import type {
     InstallPlan,
@@ -19,32 +19,6 @@ import type {
     PlanTarget,
     RepoPluginListing,
 } from '@revenge-mod/plugins/_/repositories'
-
-const CircleXIconComponent = lookupGeneratedIconComponent(
-    'CircleXIcon',
-    'CircleXIcon-primary',
-    'CircleXIcon-secondary',
-)!
-
-export function showErrorToast(message: string) {
-    ToastActionCreators.open({
-        key: 'REVENGE_REPOSITORIES_ERROR',
-        content: message,
-        IconComponent: CircleXIconComponent,
-    })
-}
-
-export function messageOf(e: unknown) {
-    if (e instanceof Error) return e.message
-    if (isPluginSystemErrorPayload(e)) return e.message
-    return String(e)
-}
-
-export function formatBytes(bytes: number) {
-    if (bytes < 1024) return `${bytes} B`
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
 
 /** Finds a plugin in a repository index. Refreshes it when `refresh` is set or nothing is cached. */
 export async function findRepoListing(
@@ -123,7 +97,8 @@ export async function installPlugins(
     try {
         const plan = await planAll(ids, targets)
         if (!plan.actions.length) return true
-        if (plan.warnings.length) showErrorToast(plan.warnings.join('\n'))
+        if (plan.warnings.length)
+            showErrorToast(plan.warnings.map(describeIssue).join('\n'))
 
         // Prevent circular imports
         const { showPluginPlanConfirmAlert } = await import(

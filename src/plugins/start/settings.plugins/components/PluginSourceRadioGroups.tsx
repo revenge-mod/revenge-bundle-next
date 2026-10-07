@@ -1,5 +1,5 @@
 import { Design } from '@revenge-mod/discord/design'
-import { formatBytes } from '../utils/repos'
+import { formatBytes } from '../utils/strings'
 import type {
     RepoPluginListing,
     VersionCandidate,

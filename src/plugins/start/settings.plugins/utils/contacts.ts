@@ -8,7 +8,7 @@ import {
     withProps,
 } from '@revenge-mod/modules/finders/filters'
 import { Linking } from 'react-native'
-import { showErrorToast } from './repos'
+import { showErrorToast } from './alerts'
 
 const { ordered, relative } = withDependencies
 

@@ -12,12 +12,14 @@ import {
 } from '@revenge-mod/plugins/_'
 import { noop } from '@revenge-mod/utils/callback'
 import {
+    showErrorToast,
     showPluginHasDependenciesAlert,
     showPluginHasDependentsAlert,
     showPluginMissingDependenciesAlert,
     showPluginRelinkAlert,
 } from './alerts'
-import { installPlugins, messageOf, showErrorToast } from './repos'
+import { installPlugins } from './repos'
+import { messageOf } from './strings'
 import type { AnyPlugin } from '@revenge-mod/plugins/_'
 
 export async function handleEnablePlugin(plugin: AnyPlugin) {
