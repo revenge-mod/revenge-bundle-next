@@ -177,6 +177,36 @@ export function showPluginHasDependentsAlert(
     )
 }
 
+/** Offers disabling dependencies nothing else uses after this plugin is disabled. */
+export function showPluginUnusedDependenciesAlert(
+    plugin: AnyPlugin,
+    dependencies: AnyPlugin[],
+    action: (disable: Set<string>) => Promise<void>,
+) {
+    AlertActionCreators.openAlert(
+        'plugin-unused-dependencies',
+        <PluginDependentsChoiceAlert
+            title="Disable unused plugins?"
+            content={
+                <Text color="text-default">
+                    These plugins were enabled for{' '}
+                    <Text variant="text-md/semibold" color="text-default">
+                        {plugin.manifest.name}
+                    </Text>
+                    , and no other plugin uses them now. Select which plugins to
+                    disable.
+                </Text>
+            }
+            confirmText="Disable"
+            cancelText="Keep all"
+            toggleLabel="Disable"
+            locked={[]}
+            selectable={dependencies}
+            action={action}
+        />,
+    )
+}
+
 /** Offers restarting the running plugins that could not link this one when they started. */
 export function showPluginRelinkAlert(
     plugin: AnyPlugin,

@@ -90,6 +90,10 @@ export function getFlags(slot: string, id: string): number {
     return resolveFlags(pluginStore.getState(), slot, id)
 }
 
+export function getDefaultFlags(id: string): number {
+    return pluginStore.getState().defaultFlags[id] ?? 0
+}
+
 export function getBootFlags(id: string): number {
     const state = pluginStore.getState()
     return resolveFlags(state, state.bootSlot, id)

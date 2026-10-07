@@ -6,6 +6,7 @@ import {
     getPluginDependencies,
     getPluginDependents,
     getRelinkableDependents,
+    getUnusedPluginDependencies,
     isPluginEnabledInActiveSlot,
     runPluginLate,
     stopPlugin,
@@ -17,6 +18,7 @@ import {
     showPluginHasDependentsAlert,
     showPluginMissingDependenciesAlert,
     showPluginRelinkAlert,
+    showPluginUnusedDependenciesAlert,
 } from './alerts'
 import { installPlugins } from './repos'
 import { messageOf } from './strings'
@@ -96,6 +98,21 @@ export async function handleDisablePlugin(plugin: AnyPlugin) {
                 return runPluginLate(dep).catch(noop)
             }),
         )
+
+        const unused = getUnusedPluginDependencies(plugin)
+        if (unused.length)
+            showPluginUnusedDependenciesAlert(plugin, unused, async disable => {
+                // Dependents first. A kept dependent keeps its dependencies enabled.
+                for (const dep of unused)
+                    if (
+                        disable.has(dep.manifest.id) &&
+                        isPluginEnabledInActiveSlot(dep) &&
+                        !getPluginDependents(dep, true).some(
+                            isPluginEnabledInActiveSlot,
+                        )
+                    )
+                        await disablePluginInActiveSlot(dep).catch(noop)
+            })
     }
 
     const enabledRequired = required.filter(isPluginEnabledInActiveSlot)

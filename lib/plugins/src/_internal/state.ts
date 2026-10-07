@@ -65,6 +65,17 @@ export function isPluginEnabledInActiveSlot(plugin: AnyPlugin): boolean {
     )
 }
 
+export function isPluginRequiredByUserInActiveSlot(plugin: AnyPlugin): boolean {
+    return Boolean(
+        store.getFlags(ActiveSlot, plugin.manifest.id) & Flag.RequiredByUser,
+    )
+}
+
+/** Whether plugin is enabled when no persisted state exists. */
+export function isPluginEnabledByDefault(plugin: AnyPlugin): boolean {
+    return Boolean(store.getDefaultFlags(plugin.manifest.id) & Flag.Enabled)
+}
+
 export function pluginStateToFlags(state: PluginStateObject): number {
     return (
         (state.enabled ? Flag.Enabled : 0) |

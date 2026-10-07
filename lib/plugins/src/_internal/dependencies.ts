@@ -1,6 +1,10 @@
 import { isPluginStopped } from './predicates'
 import { getInternalPluginMeta, pList } from './registry'
-import { isPluginEnabledInActiveSlot } from './state'
+import {
+    isPluginEnabledByDefault,
+    isPluginEnabledInActiveSlot,
+    isPluginRequiredByUserInActiveSlot,
+} from './state'
 import type { AnyPlugin } from './types'
 
 /**
@@ -119,6 +123,40 @@ export function getUnsatisfiedPluginDependencies(plugin: AnyPlugin): string[] {
         depId =>
             unsatisfiedOptionalDependencies.has(depId) || !pList.has(depId),
     )
+}
+
+/**
+ * Enabled dependencies left without enabled dependents once plugin is disabled, transitively.
+ * Skips dependencies required by user or enabled by default.
+ * Ordered dependents first, so disabling in order never cascades.
+ */
+export function getUnusedPluginDependencies(plugin: AnyPlugin): AnyPlugin[] {
+    const removed = new Set([plugin])
+    const unused: AnyPlugin[] = []
+
+    const isUnused = (dep: AnyPlugin) =>
+        !removed.has(dep) &&
+        isPluginEnabledInActiveSlot(dep) &&
+        !isPluginRequiredByUserInActiveSlot(dep) &&
+        !isPluginEnabledByDefault(dep) &&
+        getPluginDependents(dep, true).every(
+            p => removed.has(p) || !isPluginEnabledInActiveSlot(p),
+        )
+
+    // Dependency shared by two removed plugins only qualifies after both are visited
+    let changed = true
+    while (changed) {
+        changed = false
+        for (const p of removed)
+            for (const dep of getPluginDependencies(p, false))
+                if (isUnused(dep)) {
+                    removed.add(dep)
+                    unused.push(dep)
+                    changed = true
+                }
+    }
+
+    return unused
 }
 
 /** Running dependents that declare this plugin as an optional dependency but didn't link it. */
