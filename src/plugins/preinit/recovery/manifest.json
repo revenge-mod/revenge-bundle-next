@@ -1,0 +1,11 @@
+{
+  "id": "revenge.recovery",
+  "name": "Recovery",
+  "description": "Handles errors and provides troubleshooting options for Revenge.",
+  "author": "Revenge",
+  "icon": "ShieldIcon",
+  "essential": true,
+  "dependencies": {
+    "revenge.settings": {}
+  }
+}

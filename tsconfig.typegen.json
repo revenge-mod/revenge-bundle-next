@@ -1,0 +1,14 @@
+{
+  "extends": ["./tsconfig.json"],
+  "include": [
+    "lib",
+    "src",
+    "types",
+    "./types/*.d.ts",
+    "node_modules/@types/node/util.d.ts",
+    "node_modules/react-native/types/index.d.ts",
+    // Build artifacts required to emit types
+    "dist/types/tmp"
+  ],
+  "exclude": ["**/*.test.ts"]
+}

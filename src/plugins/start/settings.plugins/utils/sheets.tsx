@@ -1,20 +1,13 @@
 import { ActionSheetActionCreators } from '@revenge-mod/discord/actions'
-import PluginStatesProvider from '../components/PluginStateProvider'
 import type { AnyPlugin } from '@revenge-mod/plugins/_'
 import type { BrowsePluginActionSheetProps } from '../components/BrowsePluginActionSheet'
-import type { PluginOptionsActionSheetProps } from '../components/PluginOptionsActionSheet'
+import type { PluginContributorsActionSheetProps } from '../components/PluginContributorsActionSheet'
 
 export function showPluginOptionsActionSheet(plugin: AnyPlugin) {
     const KEY = 'plugin-options-action-sheet'
 
     ActionSheetActionCreators.openLazy(
-        import('../components/PluginOptionsActionSheet').then(m => ({
-            default: (props: PluginOptionsActionSheetProps) => (
-                <PluginStatesProvider>
-                    <m.default {...props} plugin={plugin} />
-                </PluginStatesProvider>
-            ),
-        })),
+        import('../components/PluginOptionsActionSheet'),
         KEY,
         { plugin, sheetKey: KEY },
     )
@@ -29,5 +22,18 @@ export function showBrowsePluginActionSheet(
         import('../components/BrowsePluginActionSheet'),
         KEY,
         { ...props, sheetKey: KEY },
+    )
+}
+
+export function showPluginContributorsActionSheet(
+    props: PluginContributorsActionSheetProps,
+) {
+    const KEY = 'plugin-contributors-action-sheet'
+
+    ActionSheetActionCreators.openLazy(
+        import('../components/PluginContributorsActionSheet'),
+        KEY,
+        props,
+        'stack',
     )
 }

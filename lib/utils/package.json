@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./patches/proxy": {
-      "default": "./src/patches/proxy.ts"
+    "./bitset": {
+      "default": "./src/bitset.ts"
     },
     "./callback": {
       "default": "./src/callback.ts"

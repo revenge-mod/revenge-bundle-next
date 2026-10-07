@@ -8,6 +8,7 @@ export const TypesPackageName = `@${TypesPackageScope}/types`
 export const TypesPackageDependencies = ['buffer']
 
 export const TypesPackagePeerDependencies = [
+    '@gorhom/bottom-sheet',
     '@react-navigation/core',
     '@react-navigation/native',
     '@react-navigation/stack',
@@ -21,6 +22,7 @@ export const TypesPackagePeerDependencies = [
 ]
 
 export const TypesPackageOptionalPeerDependencies = [
+    '@gorhom/bottom-sheet',
     '@react-navigation/core',
     '@react-navigation/native',
     '@react-navigation/stack',
@@ -35,7 +37,7 @@ export const Paths = {
     consumerGlobals: join('types', 'globals.consumers.ts'),
     output: join('dist', 'types'),
     outputTemp: join('dist', 'types', 'tmp'),
-    tsconfig: 'tsconfig.json',
+    tsconfig: 'tsconfig.typegen.json',
     verify: join(tmpdir(), 'revenge-types-verify'),
 } as const
 

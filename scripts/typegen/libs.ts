@@ -85,6 +85,7 @@ export function getLibraries(): LibraryModule[] {
         ),
         library(externals, [
             ['browserify', 'externals.Browserify'],
+            ['gorhom', 'externals.Gorhom'],
             ['react-native-clipboard', 'externals.ReactNativeClipboard'],
             [
                 'react-native-safe-area-context',

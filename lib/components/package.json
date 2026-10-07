@@ -6,11 +6,17 @@
     ".": {
       "default": "./src/index.ts"
     },
+    "./Checkbox": {
+      "default": "./src/Checkbox.tsx"
+    },
     "./FormSwitch": {
       "default": "./src/FormSwitch.tsx"
     },
     "./Page": {
       "default": "./src/Page.tsx"
+    },
+    "./SheetHeader": {
+      "default": "./src/SheetHeader.tsx"
     },
     "./SearchInput": {
       "default": "./src/SearchInput.tsx"

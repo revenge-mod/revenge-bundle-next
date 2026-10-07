@@ -1,0 +1,139 @@
+import type {
+    Plugin,
+    PluginCleanup,
+    PluginManifest,
+    PluginOptions,
+    PluginOptionsFactory,
+} from '../types'
+import type { PluginSystemErrorPayload } from './errors'
+import type { addPluginFlags, adoptPluginFlags } from './state'
+
+export type AnyPlugin = Plugin<any, any>
+
+export type InternalPluginManifest = Omit<
+    PluginManifest,
+    'version' | 'format' | 'dependencies'
+> &
+    Partial<Pick<PluginManifest, 'version' | 'format' | 'dependencies'>> &
+    InternalPluginManifestExtras
+
+/** Extra keys from an internal plugin's `manifest.json` for the build and registration system. */
+export interface InternalPluginManifestExtras {
+    /**
+     * Default source for the plugin.
+     * @see {@link PluginSource}
+     */
+    defaultSource?: {
+        repo: string
+        channel?: string
+        held?: boolean
+    }
+    /** The plugin cannot be stopped, disabled, or uninstalled. Implies {@link enabledByDefault}. */
+    essential?: boolean
+    /**
+     * Enabled unless the user explicitly disables the plugin.
+     * Set to `'dev'` to apply to development builds only.
+     */
+    enabledByDefault?: boolean | 'dev' | (string & {})
+    /** The plugin decorates every other plugin's API. */
+    api?: boolean
+    /** Build system configuration. */
+    build?: { devOnly?: boolean }
+}
+
+export interface InternalPluginMeta {
+    /**
+     * Whether the plugin has an implementation.
+     *
+     * Internal plugins register their manifests before pre-init, so the dependency graph is complete before dependency resolution.
+     * However, plugin options may only arrive after certain stages. This is `true` once the options have been set.
+     */
+    attached: boolean
+    /** Handles critical errors during plugin execution. */
+    handleError: (e: unknown) => Promise<void>
+    promises: Promise<void>[]
+    cleanups: PluginCleanup[]
+    iflags: number
+    apiLevel: number
+    /** Installed optional dependencies that are unsatisfied reported by native. */
+    unsatisfiedOptionalDependencies: ReadonlySet<string>
+    /** Dependency IDs this was linked to (JS side only) to track decorators. */
+    linkedDependencies: Set<string>
+    options: PluginOptions<any>
+    optionsFactory?: PluginOptionsFactory<any>
+    status: number
+    /** @see {@link addPluginFlags} and {@link adoptPluginFlags} for different methods of applying flags. */
+    readonly flags: number
+    nativeErrors: readonly PluginSystemErrorPayload[]
+    /** Plugin provenance. `repo: null` or missing indicates sideloaded plugin. Internal plugins don't have this field. */
+    source?: PluginSource | null
+    /** Uninstalling restores an internal plugin with the same ID, reported by native. */
+    hasStub?: boolean
+    /** Version installed on disk that runs after a reload, set with {@link PluginFlags.PendingUpdate}. */
+    pendingVersion?: string
+}
+
+export interface PluginSource {
+    repo: string | null
+    channel: string
+    /** Update hold flag. Affects dependency resolution. */
+    held: boolean
+}
+
+/** Staged and validated sideload plugin awaiting user confirmation. */
+export interface PluginInstallReadyEvent {
+    /** Single-use confirmation token. */
+    token: string
+    manifest: {
+        id: string
+        name: string
+        description: string
+        author: string
+        version: string
+        icon?: string | null
+    }
+    /** Installed version this replaces, or null for a fresh install. */
+    replaces: string | null
+}
+
+export type PluginInstallEvent =
+    | {
+          error: false
+          manifest: PluginManifest
+          updated: boolean
+          pending: false
+      }
+    | {
+          /**
+           * Plugin applied on disk only. Running version untouched until next reload.
+           */
+          error: false
+          pending: true
+          id: string
+          version: string
+      }
+    | { error: PluginSystemErrorPayload }
+
+/** Unsatisfied dependency reported by native when enabling is refused. */
+export interface DependencyProblem {
+    id: PluginManifest['id']
+    /** Declared range (`*` for any). */
+    required: string
+    /** Installed version, or `null` when missing. */
+    installed: string | null
+    enabled: boolean
+}
+
+export interface PluginStateObject {
+    enabled?: boolean
+    pendingReload?: boolean
+    startedLate?: boolean
+    requiredByUser?: boolean
+}
+
+/** Flags of every loaded slot, keyed by slot ID then plugin ID. */
+export interface PluginSlotStates {
+    [slot: string]: {
+        [id: PluginManifest['id']]: PluginStateObject
+    }
+}

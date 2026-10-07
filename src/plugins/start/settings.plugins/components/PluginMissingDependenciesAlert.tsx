@@ -40,7 +40,7 @@ export default function PluginMissingDependenciesAlert({
             actions={
                 <>
                     <AlertActionButton
-                        text="Install"
+                        text="Search for plugins"
                         variant="primary"
                         onPress={action}
                     />

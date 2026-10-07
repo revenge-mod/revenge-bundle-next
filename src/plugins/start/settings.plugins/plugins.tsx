@@ -10,7 +10,8 @@ import {
 import {
     isPluginErrored,
     isPluginPendingReload,
-    isPluginPendingUpdate,
+    isPluginStarted,
+    isPluginStopped,
     pEmitter,
     pList,
 } from '@revenge-mod/plugins/_'
@@ -18,7 +19,7 @@ import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import { useLayoutEffect } from 'react'
 import { Setting } from '../settings/constants'
 import defer * as NavigatorHeaderWithIcon from './components/NavigatorHeaderWithIcon'
-import PluginInstallConfirmAlert from './components/PluginInstallConfirmAlert'
+import { PluginFileInstallConfirmAlert } from './components/PluginInstallConfirmAlert'
 import PluginInstallFailedAlert from './components/PluginInstallFailedAlert'
 import PluginsFailedToStartAlert from './components/PluginsFailedToStartAlert'
 import PluginsRequireReloadAlert from './components/PluginsRequireReloadAlert'
@@ -31,7 +32,10 @@ const PluginsFailedToStartAlertKey = 'plugins-failed-to-start'
 
 /// SETTINGS ROUTES
 
-pEmitter.on('started', plugin => {
+pEmitter.on('statusUpdate', plugin => {
+    // statusUpdate covers every phase, and only a started plugin registers its route
+    if (!isPluginStarted(plugin)) return
+
     if (plugin.SettingsComponent) {
         const api = plugin.api as PluginApi<any>
         const Component = plugin.SettingsComponent!
@@ -82,9 +86,8 @@ pEmitter.on('started', plugin => {
 /// RELOAD REQUIRED ALERT
 
 function showPendingReloadAlertIfNeeded() {
-    const plugins = [...pList.values()].filter(
-        plugin =>
-            isPluginPendingReload(plugin) || isPluginPendingUpdate(plugin),
+    const plugins = [...pList.values()].filter(plugin =>
+        isPluginPendingReload(plugin),
     )
 
     if (!plugins.length) return
@@ -110,13 +113,13 @@ function showErrorAlertIfNeeded() {
     )
 }
 
-pEmitter.on('flagUpdate', plugin => {
-    if (isPluginPendingReload(plugin) || isPluginPendingUpdate(plugin))
-        showPendingReloadAlertIfNeeded()
+pEmitter.on('stateUpdate', plugin => {
+    if (isPluginPendingReload(plugin)) showPendingReloadAlertIfNeeded()
 })
 
-pEmitter.on('stopped', plugin => {
-    if (isPluginErrored(plugin)) showErrorAlertIfNeeded()
+pEmitter.on('statusUpdate', plugin => {
+    if (isPluginStopped(plugin) && isPluginErrored(plugin))
+        showErrorAlertIfNeeded()
 })
 
 /// PLUGIN INSTALL FEEDBACK
@@ -129,7 +132,7 @@ pEmitter.on('installReady', prompt => {
     AlertActionCreators.dismissAlert(PluginInstallConfirmAlertKey)
     AlertActionCreators.openAlert(
         PluginInstallConfirmAlertKey,
-        <PluginInstallConfirmAlert prompt={prompt} />,
+        <PluginFileInstallConfirmAlert prompt={prompt} />,
     )
 })
 
@@ -146,7 +149,7 @@ pEmitter.on('install', result => {
     if (result.pending) {
         // Applied on disk only, the new version loads at next reload
         showInstallToast(
-            `Downloaded ${pList.get(result.id)?.manifest.name || result.id} ${result.version}, reload to apply`,
+            `Updated ${pList.get(result.id)?.manifest.name || result.id} ${result.version}, reload to apply`,
             result.id,
         )
         return

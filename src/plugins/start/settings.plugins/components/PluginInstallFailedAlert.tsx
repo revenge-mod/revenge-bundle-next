@@ -1,14 +1,14 @@
 import { Design } from '@revenge-mod/discord/design'
 import { Clipboard } from '@revenge-mod/externals/react-native-clipboard'
-import { formatPluginError } from '@revenge-mod/plugins/_'
-import type { PluginError } from '@revenge-mod/plugins/_'
+import { formatPluginSystemErrorPayload } from '@revenge-mod/plugins/_'
+import type { PluginSystemErrorPayload } from '@revenge-mod/plugins/_'
 
 const { AlertModal, AlertActionButton, Text } = Design
 
 export default function PluginInstallFailedAlert({
     error,
 }: {
-    error: PluginError
+    error: PluginSystemErrorPayload
 }) {
     return (
         <AlertModal
@@ -20,14 +20,16 @@ export default function PluginInstallFailedAlert({
             }
             actions={
                 <>
+                    <AlertActionButton text="Got it" />
                     <AlertActionButton
                         text="Copy details"
                         variant="secondary"
                         onPress={() => {
-                            Clipboard.setString(formatPluginError(error))
+                            Clipboard.setString(
+                                formatPluginSystemErrorPayload(error),
+                            )
                         }}
                     />
-                    <AlertActionButton text="Got it" />
                 </>
             }
         />

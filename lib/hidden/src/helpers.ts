@@ -15,19 +15,19 @@ import {
     mErrorChain,
 } from '../../modules/src/metro/runtime'
 import { patchedFunctionProxyStates } from '../../patcher/src/_internal'
+import { PluginStatus } from '../../plugins/src/_internal/constants'
 import {
     getInternalPluginMeta,
     InternalPluginFlags,
     PluginFlags,
     pList,
 } from '../../plugins/src/_internal/index'
-import { PluginStatus } from '../../plugins/src/constants'
 import { formatVersion } from '../../plugins/src/utils'
 import type { FilterScopes } from '../../modules/src/finders/filters'
 import type { Metro } from '../../modules/src/types'
 import type { PatchedFunctionProxyState } from '../../patcher/src/_internal'
 import type { UnknownFunction } from '../../patcher/src/types'
-import type { PluginError } from '../../plugins/src/_internal/index'
+import type { PluginSystemErrorPayload } from '../../plugins/src/_internal/index'
 
 /** The module definition flag bits, so a raw `flags` number can be read. */
 export const ModuleFlags = {
@@ -107,7 +107,7 @@ export interface PluginDescription {
     dependencies: string[]
     errors: readonly unknown[]
     /** Errors reported by the plugin's native side. */
-    nativeErrors: readonly PluginError[]
+    nativeErrors: readonly PluginSystemErrorPayload[]
 }
 
 /** Describes a registered plugin with its flags and status decoded. */
@@ -123,7 +123,7 @@ export function describePlugin(id: string): PluginDescription | undefined {
         id: manifest.id,
         name: manifest.name,
         version: formatVersion(manifest.version),
-        status: bitFieldToString(PluginStatus, plugin.status),
+        status: bitFieldToString(PluginStatus, meta.status),
         flags: bitFieldToString(PluginFlags, flags),
         iflags: bitFieldToString(InternalPluginFlags, iflags),
         api: Boolean(iflags & InternalPluginFlags.API),

@@ -10,16 +10,16 @@ import {
     listRepos,
     refreshAllRepos,
 } from '@revenge-mod/plugins/_/repositories'
-import { debounce } from '@revenge-mod/utils/callback'
+import { debounce, noop } from '@revenge-mod/utils/callback'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { View } from 'react-native'
 import { BrowsePluginMasonryFlashList } from '../components/PluginList'
-import PluginStatesProvider from '../components/PluginStateProvider'
 import PluginTooltipsProvider from '../components/TooltipProvider'
-import { runInstallFlow } from '../utils/repos'
-import type { RepoPluginListing } from '@revenge-mod/plugins/_/repositories'
+import { installPluginRef, pickChannel, versionOfChannel } from '../utils/repos'
+import type { AnyPlugin, InternalPluginMeta } from '@revenge-mod/plugins/_'
 import type { BrowseSortKey } from '../components/BrowseFilterAndSortActionSheet'
 import type { BrowseEntry } from '../components/PluginList'
+import type { PluginRef, RepoOffer } from '../utils/repos'
 
 const { Stack, IconButton, LayerScope } = Design
 
@@ -30,22 +30,38 @@ const SearchDebounceTime = 100
 export default function RevengePluginsBrowseSettingScreen() {
     return (
         <LayerScope>
-            <PluginStatesProvider>
+            <PluginTooltipsProvider>
                 <Page spacing={16}>
-                    <PluginTooltipsProvider>
-                        <Screen />
-                    </PluginTooltipsProvider>
+                    <Screen />
                 </Page>
-            </PluginStatesProvider>
+            </PluginTooltipsProvider>
         </LayerScope>
     )
 }
 
-// TODO: Let the user pick a release channel
-/** The channel a listing displays: `latest`, else its first channel. */
-function displayChannelOf(listing: RepoPluginListing): string | undefined {
-    if (listing.channels.latest) return 'latest'
-    return Object.keys(listing.channels)[0]
+/** One plugin and every repository serving it, by priority. */
+interface BrowseGroup {
+    id: string
+    offers: RepoOffer[]
+    installed?: readonly [AnyPlugin, InternalPluginMeta]
+}
+
+/** Displays `offer`, showing what its default channel points to. */
+function toEntry(group: BrowseGroup, offer: RepoOffer): BrowseEntry {
+    const { listing } = offer
+    const channel = pickChannel(listing)
+    const version = versionOfChannel(listing, channel) ?? ''
+
+    return {
+        key: group.id,
+        listing,
+        repoUrl: offer.url,
+        repoName: offer.name,
+        version,
+        channel,
+        size: listing.versions[version]?.size ?? 0,
+        installed: group.installed,
+    }
 }
 
 function compareNames(a: BrowseEntry, b: BrowseEntry) {
@@ -61,8 +77,10 @@ const Sorts: Record<BrowseSortKey, (a: BrowseEntry, b: BrowseEntry) => number> =
     }
 
 function Screen() {
-    const [entries, setEntries] = useState<BrowseEntry[]>([])
-    const [internalRepos, setInternalRepos] = useState<string[]>([])
+    const [groups, setGroups] = useState<BrowseGroup[]>([])
+
+    // Plugins installed before opening the page, hidden. Fresh installs stay until exit
+    const [preinstalled] = useState(() => new Set(pList.keys()))
 
     const [search, setSearch] = useState('')
     const debouncedSetSearch = useCallback(
@@ -81,63 +99,47 @@ function Screen() {
     )
 
     const load = useCallback(async () => {
-        const repos = await listRepos()
-        const all: BrowseEntry[] = []
-
-        setInternalRepos(
-            repos.filter(repo => repo.internal).map(repo => repo.url),
+        const repos = (await listRepos()).filter(
+            repo => !repo.internal && repo.enabled,
         )
 
-        await Promise.all(
-            repos
-                .filter(repo => !repo.internal && repo.enabled)
-                .map(repo =>
-                    listRepoPlugins(repo.url).then(
-                        listings => {
-                            const repositoryText = repo.name
-                                ? `${repo.name} (${repo.url})`
-                                : repo.url
-
-                            for (const listing of listings) {
-                                const plugin = pList.get(listing.id)
-                                const displayChannel = displayChannelOf(listing)
-                                const displayVersion = displayChannel
-                                    ? (listing.channels[displayChannel] ?? '')
-                                    : ''
-                                all.push({
-                                    key: `${repo.url}#${listing.id}`,
-                                    listing,
-                                    repoUrl: repo.url,
-                                    repoName: repo.name ?? null,
-                                    repositoryText,
-                                    version: displayVersion,
-                                    // TODO: Let the user pick a release channel
-                                    channel: displayChannel,
-                                    size:
-                                        listing.versions[displayVersion]
-                                            ?.size ?? 0,
-                                    installed: plugin
-                                        ? ([
-                                              plugin,
-                                              getInternalPluginMeta(plugin),
-                                          ] as const)
-                                        : undefined,
-                                })
-                            }
-                        },
-                        // No cached index yet is normal, ignore
-                        () => {},
-                    ),
-                ),
+        const listings = await Promise.all(
+            repos.map(repo =>
+                // No cached index yet is normal, ignore
+                listRepoPlugins(repo.url).catch(() => []),
+            ),
         )
 
-        setEntries(all)
-    }, [])
+        // List offers by priority
+        const byId = new Map<string, BrowseGroup>()
+        repos.forEach((repo, i) => {
+            for (const listing of listings[i]!) {
+                if (preinstalled.has(listing.id)) continue
+
+                let group = byId.get(listing.id)
+                if (!group) {
+                    const plugin = pList.get(listing.id)
+                    group = {
+                        id: listing.id,
+                        offers: [],
+                        installed: plugin
+                            ? [plugin, getInternalPluginMeta(plugin)]
+                            : undefined,
+                    }
+                    byId.set(listing.id, group)
+                }
+
+                group.offers.push({ url: repo.url, name: repo.name, listing })
+            }
+        })
+
+        setGroups([...byId.values()])
+    }, [preinstalled])
 
     useEffect(() => {
         // Show cached indexes right away, then refresh everything
         load()
-        refreshAllRepos().then(load, () => {})
+        refreshAllRepos().then(load, noop)
     }, [load])
 
     // Fresh installs register live, re-mark entries as installed when they do
@@ -154,57 +156,58 @@ function Screen() {
     }, [load])
 
     const install = useCallback(
-        async (entry: BrowseEntry) => {
-            // Pin the displayed version, channel, and repository, so the plan matches the card
-            await runInstallFlow(
-                entry.listing.id,
-                entry.version || undefined,
-                entry.channel,
-                // Internal repos so external plugins can link against internal plugins as well
-                [...internalRepos, entry.repoUrl],
-            )
+        async (id: string, repo: string, ref: PluginRef) => {
+            await installPluginRef(id, repo, ref)
             load()
         },
-        [internalRepos, load],
+        [load],
     )
 
     // Repositories that currently have entries, for the filter sheet
     const repos = useMemo(() => {
         const seen = new Map<string, string | null>()
-        for (const entry of entries)
-            if (!seen.has(entry.repoUrl))
-                seen.set(entry.repoUrl, entry.repoName)
+        for (const group of groups)
+            for (const offer of group.offers)
+                if (!seen.has(offer.url)) seen.set(offer.url, offer.name)
 
         return [...seen].map(([url, name]) => ({ url, name }))
-    }, [entries])
+    }, [groups])
 
     const visible = useMemo(() => {
         const query = search.toLowerCase()
 
-        const result = entries.filter(entry => {
-            if (excluded.includes(entry.repoUrl)) return false
-            if (!query) return true
+        const result = groups.flatMap(group => {
+            // The highest priority repository passing the filter
+            const offer = group.offers.find(o => !excluded.includes(o.url))
+            if (!offer) return []
+
+            const entry = toEntry(group, offer)
+            if (!query) return [entry]
 
             const { name, description, author, id } = entry.listing
-            return (
-                name.toLowerCase().includes(query) ||
+            return name.toLowerCase().includes(query) ||
                 description.toLowerCase().includes(query) ||
                 author.toLowerCase().includes(query) ||
                 id.toLowerCase().includes(query)
-            )
+                ? [entry]
+                : []
         })
 
         result.sort(Sorts[sort])
         if (reverse) result.reverse()
 
         return result
-    }, [entries, excluded, search, sort, reverse])
+    }, [groups, excluded, search, sort, reverse])
 
     return (
         <>
             <Stack direction="horizontal">
                 <View style={styles.grow}>
-                    <SearchInput onChange={debouncedSetSearch} size="md" />
+                    <SearchInput
+                        onChange={debouncedSetSearch}
+                        size="md"
+                        clearable
+                    />
                 </View>
                 <IconButton
                     icon={FiltersHorizontalIcon}

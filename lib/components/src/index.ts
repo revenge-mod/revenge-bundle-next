@@ -1,4 +1,6 @@
+export { default as Checkbox } from './Checkbox'
 export { default as FormSwitch } from './FormSwitch'
 export { default as Page } from './Page'
 export { default as SearchInput } from './SearchInput'
+export { default as SheetHeader } from './SheetHeader'
 export { default as TableRowAssetIcon } from './TableRowAssetIcon'

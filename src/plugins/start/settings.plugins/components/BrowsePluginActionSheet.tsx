@@ -1,49 +1,65 @@
 import { getAssetIdByName } from '@revenge-mod/assets'
 import { ActionSheetActionCreators } from '@revenge-mod/discord/actions'
 import { Design } from '@revenge-mod/discord/design'
-import { PluginInfo } from './PluginCard'
-import { IdRow, RepositoryRow } from './PluginOptionsActionSheet'
+import { useState } from 'react'
+import { retargetPluginRef, versionOfChannel } from '../utils/repos'
+import { formatRepository } from '../utils/strings'
+import { PluginAuthor, PluginInfo } from './PluginCard'
+import { IdRow } from './PluginOptionsActionSheet'
+import { openPluginRefPickerActionSheet } from './PluginRefPickerActionSheet'
+import { openPluginRepositoryPickerActionSheet } from './PluginRepositoryPickerActionSheet'
+import { RefPickerRow, RepositoryPickerRow } from './PluginSourceRows'
+import type { PluginRef, RepoOffer } from '../utils/repos'
+import type { BrowseEntry } from './PluginList'
 
 const { ActionSheet, Button, Stack, TableRowGroup } = Design
 
 const DownloadIcon = getAssetIdByName('DownloadIcon', 'png')!
 
 export interface BrowsePluginActionSheetProps {
-    name: string
-    author: string
-    description: string
-    version: string
-    icon?: string
-    id: string
-    /** Display text for the Repository row, eg. `Name (url)`. */
-    repositoryText: string
-    onInstall: () => void
+    entry: BrowseEntry
+    onInstall: (repo: string, ref: PluginRef) => void
     sheetKey: string
 }
 
 /**
  * Sheet for a plugin that isn't installed yet, opened from the Browse screen.
+ * Picks the repository and channel or version to install.
  */
 export default function BrowsePluginActionSheet({
-    name,
-    author,
-    description,
-    version,
-    icon,
-    id,
-    repositoryText,
+    entry,
     onInstall,
     sheetKey,
 }: BrowsePluginActionSheetProps) {
+    const [offer, setOffer] = useState<RepoOffer>({
+        url: entry.repoUrl,
+        name: entry.repoName,
+        listing: entry.listing,
+    })
+    const [ref, setRef] = useState<PluginRef>({
+        type: 'channel',
+        channel: entry.channel,
+    })
+
+    const { listing } = offer
+    const { id, name } = listing
+    const version =
+        ref.type === 'version'
+            ? ref.version
+            : (versionOfChannel(listing, ref.channel) ?? '')
+
     return (
         <ActionSheet>
             <Stack spacing={24} style={{ paddingTop: 8 }}>
                 <PluginInfo
-                    name={name}
-                    author={author}
-                    version={version}
-                    description={description}
-                    icon={icon}
+                    info={listing}
+                    author={
+                        <PluginAuthor
+                            pluginName={name}
+                            author={listing.author}
+                            contributors={listing.contributors}
+                        />
+                    }
                     actions={
                         <Button
                             size="sm"
@@ -53,14 +69,47 @@ export default function BrowsePluginActionSheet({
                                 ActionSheetActionCreators.hideActionSheet(
                                     sheetKey,
                                 )
-                                onInstall()
+                                onInstall(offer.url, ref)
                             }}
                         />
                     }
                 />
-                <TableRowGroup title="Advanced">
+                <TableRowGroup hasIcons title="Source">
+                    <RepositoryPickerRow
+                        text={formatRepository(offer.url, offer.name)}
+                        onPress={() =>
+                            openPluginRepositoryPickerActionSheet({
+                                id,
+                                name,
+                                repo: offer.url,
+                                onSelect: picked => {
+                                    setOffer(picked)
+                                    setRef(r =>
+                                        retargetPluginRef(r, picked.listing),
+                                    )
+                                    return true
+                                },
+                            })
+                        }
+                    />
+                    <RefPickerRow
+                        pluginRef={ref}
+                        version={`v${version}`}
+                        onPress={() =>
+                            openPluginRefPickerActionSheet({
+                                id,
+                                repo: offer.url,
+                                pluginRef: ref,
+                                onSelect: picked => {
+                                    setRef(picked)
+                                    return true
+                                },
+                            })
+                        }
+                    />
+                </TableRowGroup>
+                <TableRowGroup hasIcons title="Advanced">
                     <IdRow id={id} />
-                    <RepositoryRow text={repositoryText} copyable />
                 </TableRowGroup>
             </Stack>
         </ActionSheet>

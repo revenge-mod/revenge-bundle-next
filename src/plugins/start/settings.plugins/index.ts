@@ -1,23 +1,21 @@
 import { ToastActionCreators } from '@revenge-mod/discord/actions'
 import { onSettingsModulesLoaded } from '@revenge-mod/discord/modules/settings'
+import { NetInfo } from '@revenge-mod/externals/react-native-community'
 import { JsonStorageUpdateMode } from '@revenge-mod/json-storage'
-import {
-    InternalPluginFlags,
-    PluginFlags,
-    registerInternalPlugin,
-} from '@revenge-mod/plugins/_'
+import { registerInternalPlugin } from '@revenge-mod/plugins/_'
 import {
     refreshAllRepos,
     updateAllPlugins,
 } from '@revenge-mod/plugins/_/repositories'
 import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
-import pluginSettings from '../settings'
+import manifest from './manifest.json'
 import { addDefaultRepoIfNeeded } from './repos'
 import type { JsonStorage } from '@revenge-mod/json-storage'
 import type { PluginApi } from '@revenge-mod/plugins/types'
 
 export interface Storage {
     autoUpdate: boolean
+    skipUpdatesOnExpensiveNetwork?: boolean
     lastUpdateCheck?: number
     defaultRepoRestored?: boolean
 }
@@ -31,41 +29,29 @@ const CircleXIconComponent = lookupGeneratedIconComponent(
     'CircleXIcon-secondary',
 )!
 
-registerInternalPlugin<{ jsonStorage: Storage }>(
-    {
-        id: 'revenge.settings.plugins',
-        name: 'Plugin Settings',
-        description: 'Plugin management UI for Revenge.',
-        author: 'Revenge',
-        icon: 'PuzzlePieceIcon',
-        dependencies: { [pluginSettings]: {} },
-    },
-    {
-        jsonStorage: {
-            load: true,
-            default: {
-                autoUpdate: true,
-            },
+registerInternalPlugin<{ jsonStorage: Storage }>(manifest, {
+    jsonStorage: {
+        load: true,
+        default: {
+            autoUpdate: true,
         },
-        async start(api_) {
-            api = api_
+    },
+    async start(api_) {
+        api = api_
 
+        // @as-require
+        import('./plugins')
+
+        onSettingsModulesLoaded(() => {
             // @as-require
-            import('./plugins')
+            import('./register')
+        })
 
-            onSettingsModulesLoaded(() => {
-                // @as-require
-                import('./register')
-            })
-
-            const settings = await api.jsonStorage.get()
-            autoUpdateService(settings)
-            defaultRepoRestoreService(settings, api.jsonStorage)
-        },
+        const settings = await api.jsonStorage.get()
+        autoUpdateService(settings)
+        defaultRepoRestoreService(settings, api.jsonStorage)
     },
-    PluginFlags.Enabled,
-    InternalPluginFlags.Internal | InternalPluginFlags.Essential,
-)
+})
 
 function autoUpdateService(settings: Storage) {
     if (!settings.autoUpdate) return
@@ -77,6 +63,11 @@ function autoUpdateService(settings: Storage) {
 
     setTimeout(async () => {
         try {
+            if (settings.skipUpdatesOnExpensiveNetwork) {
+                const { details } = await NetInfo.fetch()
+                if (details?.isConnectionExpensive) return
+            }
+
             const { errors } = await refreshAllRepos()
             await updateAllPlugins()
 
@@ -96,7 +87,6 @@ function autoUpdateService(settings: Storage) {
     }, AUTO_UPDATE_CHECK_DELAY)
 }
 
-// TODO: Add UI for this?
 function defaultRepoRestoreService(
     settings: Storage,
     storage: JsonStorage<Storage>,

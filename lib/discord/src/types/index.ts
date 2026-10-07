@@ -13,6 +13,8 @@ import type {
     RefObject,
 } from 'react'
 import type {
+    ColorValue,
+    ImageProps,
     ImageSourcePropType,
     ImageStyle,
     LayoutRectangle,
@@ -177,12 +179,17 @@ export namespace DiscordModules {
                 key: string
                 content?: string
                 icon?: number | FC
-                IconComponent?: FC
+                IconComponent?: Components.BaseIconImage
                 /**
                  * The icon's color, same string format as `<Text>`'s color prop
                  */
                 iconColor?: string
                 containerStyle?: ViewStyle
+                /**
+                 * How long the toast should be shown.
+                 * @deprecated This will no longer work after Mana toast components.
+                 */
+                toastDurationMs?: number
             }): void
             close(): void
         }
@@ -249,6 +256,7 @@ export namespace DiscordModules {
                 | `display-${BasicTextSize}`
                 | `redesign/${RedesignTextCategory}/${TextWeight}`
                 | 'redesign/heading-18/bold'
+                | 'redesign/heading-18/semibold'
                 | 'eyebrow'
 
             export type TextStyleSheet = Record<TextVariant, TextStyle>
@@ -386,6 +394,8 @@ export namespace DiscordModules {
             secureTextEntry?: boolean
             returnKeyType?: RNTextInputProps['returnKeyType']
             isClearable?: boolean
+            clearable?: boolean
+            onClear?: () => void
 
             size?: TextFieldSize
             style?: StyleProp<ViewStyle>
@@ -396,7 +406,6 @@ export namespace DiscordModules {
         export type TextFieldStatus = 'default' | 'error'
 
         export interface TextInputProps extends TextFieldProps {
-            isRound?: boolean
             label?: string
         }
 
@@ -417,6 +426,16 @@ export namespace DiscordModules {
         // TODO
         // export type FormRadio = FC
         // export type FormCheckbox = FC
+
+        export interface CheckboxProps {
+            checked: boolean
+            description?: string
+            label?: string
+            onToggle?: (checked: boolean) => void
+            required?: boolean
+        }
+
+        export type Checkbox = FC<CheckboxProps>
 
         export interface ActionSheetProps {
             scrollable?: boolean
@@ -464,6 +483,9 @@ export namespace DiscordModules {
                 }>
         >
 
+        /** {@link ActionSheet} without the horizontal padding around its content. */
+        export type BottomSheet = ActionSheet
+
         export interface ActionSheetCloseButtonProps
             extends Pick<ComponentProps<IconButton>, 'variant' | 'onPress'> {}
 
@@ -479,6 +501,7 @@ export namespace DiscordModules {
         export interface BottomSheetTitleHeaderProps {
             leading?: ReactNode
             title: string
+            subtitle?: string
             trailing?: ReactNode
         }
 
@@ -509,6 +532,7 @@ export namespace DiscordModules {
             extends TableRowGroupProps {
             children: ReactNode
             onChange: (value: T) => void
+            value?: T
             defaultValue?: T
         }
 
@@ -526,7 +550,7 @@ export namespace DiscordModules {
         ): ReactElement
 
         export interface TableRowProps {
-            label: string
+            label: ReactNode
             subLabel?: ReactNode
             icon?: ReactNode
             trailing?: ReactNode
@@ -582,7 +606,8 @@ export namespace DiscordModules {
             | 'translucent'
 
         export interface TableRowIconProps {
-            source: ImageSourcePropType
+            source?: ImageSourcePropType
+            IconComponent?: BaseIconImage
             variant?: TableRowIconVariant
         }
 
@@ -617,7 +642,7 @@ export namespace DiscordModules {
 
         export interface ContextMenuItem {
             label: string
-            IconComponent?: FC
+            IconComponent?: BaseIconImage
             variant?: 'default' | 'destructive'
             action(): void
         }
@@ -825,6 +850,15 @@ export namespace DiscordModules {
         }
 
         export type SegmentedControl = FC<SegmentedControlProps>
+
+        export interface BaseIconImageProps extends ImageProps {
+            /** @default 'md' */
+            size?: 'xxs' | 'xs' | 'sm' | 'md' | 'lg'
+            /** Color value or Discord's color token. */
+            color?: ColorValue | any
+        }
+
+        export type BaseIconImage = FC<BaseIconImageProps>
     }
 
     export namespace Modules {
@@ -869,7 +903,7 @@ export namespace DiscordModules {
                 parent: string | null
                 unsearchable?: boolean
                 variant?: Components.TableRowProps['variant']
-                IconComponent?: () => ReactNode
+                IconComponent?: Components.BaseIconImage
                 usePredicate?: () => boolean
                 useTrailing?: () => ReactNode
                 useDescription?: () => string

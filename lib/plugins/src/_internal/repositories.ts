@@ -1,18 +1,20 @@
 import { TypedEventEmitter } from '@revenge-mod/discord/common/utils'
-import { callNativeMethod, registerJSMethod } from '@revenge-mod/modules/native'
+import { registerJSMethod } from '@revenge-mod/modules/native'
+import { callPluginSystemMethod } from './native'
+import type { PluginSource } from '.'
 
 export interface DownloadProgressEvent {
     id: string
     version: string
-    /** The repository the artifact downloads from. */
+    /** Provenance repository URL. */
     repo: string
-    /** Bytes received so far. */
+    /** Downloaded bytes. */
     received: number
-    /** Total bytes, from the plan's size field. */
+    /** Total byte size from install plan. */
     total: number
-    /** 1-based position of this artifact in the plan. */
+    /** 1-based index in download sequence. */
     index: number
-    /** Number of artifacts in the plan. */
+    /** Total artifact count in plan. */
     count: number
 }
 
@@ -43,21 +45,15 @@ export function registerRepositoryEvents() {
     )
 }
 
-/**
- * A plugin repository as reported by native.
- *
- * The repository's URL is its identity.
- * The hidden internal repository (serving internal plugins) is always first and cannot be modified or removed.
- */
 export interface Repo {
-    /** Absolute URL of the repository root; also its identity. */
+    /** Absolute root URL and unique identity of the repository. */
     url: string
     enabled: boolean
     internal: boolean
-    /** Display metadata from the cached index, if any. */
+    // Display metadata from the index
     name: string | null
     description: string | null
-    /** A Discord-packaged asset name or a `data:` URL. Never a remote URL. */
+    /** Packaged asset name or `data:` URL. */
     icon: string | null
 }
 
@@ -67,21 +63,18 @@ export interface RepoConfigEntry {
 }
 
 export function listRepos(): Promise<Repo[]> {
-    return callNativeMethod('revenge.plugins.repos.list', [])
+    return callPluginSystemMethod('revenge.plugins.repos.list', [])
 }
 
 export function setRepos(config: RepoConfigEntry[]): Promise<null> {
-    return callNativeMethod('revenge.plugins.repos.set', [config])
+    return callPluginSystemMethod('revenge.plugins.repos.set', [config])
 }
 
 export function refreshRepo(url: string): Promise<Repo> {
-    return callNativeMethod('revenge.plugins.repos.refresh', [url])
+    return callPluginSystemMethod('revenge.plugins.repos.refresh', [url])
 }
 
-/**
- * Refreshes every enabled user repository in parallel.
- * Per-repo failures are collected instead.
- */
+/** Refreshes enabled user repositories in parallel, collecting per-repository errors. */
 export async function refreshAllRepos(): Promise<{
     refreshed: Repo[]
     errors: { url: string; error: unknown }[]
@@ -113,14 +106,17 @@ export interface RepoPluginListing {
     name: string
     description: string
     author: string
-    /** A Discord-packaged asset name or a `data:` URL. Never a remote URL. */
+    contributors?: string[]
+    /** Packaged asset name or `data:` URL. */
     icon: string | null
-    /** Channel pointers (eg. `latest`), each naming a key of {@link versions}. */
+    /** Channel target pointers (e.g. `latest`) referencing keys of {@link versions}. */
     channels: Record<string, string>
+    /** Keys of {@link versions}, newest first. */
+    order: string[]
     versions: Record<
         string,
         {
-            /** Absolute artifact URL. `null` for the internal repository (nothing downloadable). */
+            /** Absolute artifact download URL, or `null` for internal repositories. */
             url: string | null
             sha256: string | null
             size: number
@@ -141,136 +137,241 @@ export interface InstallPlanAction {
     url: string
     sha256: string
     size: number
-    /** The repository this action installs from (recorded as provenance). */
+    /** Source repository recorded as installation provenance. */
     repo: string
-    /** The channel followed for future update checks. */
+    /** Channel recorded for future updates. */
     channel: string
-    /** The installed version being replaced, or `null` for a fresh install. */
+    /** `true` pauses updates, `false` resumes, `null` uses the current. */
+    hold: boolean | null
+    /** The installed version being replaced, or `null` for fresh installs. */
     replaces: string | null
+    /** Planned actions that pulled this plugin in. Empty for the requested plugin. */
+    dependents: {
+        id: string
+        optional: boolean
+        /** Version range it requires. */
+        range: string
+    }[]
+    /** Versions satisfying planned dependents, keyed by repository then version. */
+    candidates: Record<string, Record<string, VersionCandidate>>
+}
+
+/** A version a planned plugin could switch to. */
+export interface VersionCandidate {
+    /** Installed plugins outside the plan this version breaks. */
+    breaks: string[]
 }
 
 export interface InstallPlan {
     actions: InstallPlanAction[]
-    /** Non-blocking problems (skipped optionals, dependent-range conflicts). */
-    warnings: string[]
+    /** Non-blocking problems (dependency resolution). */
+    warnings: ResolveIssue[]
 }
 
-export interface RepoUpdate {
+export type ResolveIssue = { message: string } & (
+    | {
+          /** Root already at the resolved version. */
+          type: 'upToDate'
+          id: string
+          version: string
+      }
+    | { type: 'downgrade'; id: string; from: string; to: string }
+    | {
+          /** Planned version outside the range of an installed dependent outside the plan. */
+          type: 'breaks'
+          id: string
+          version: string
+          dependent: string
+          range: string
+          /** Update of {@link dependent} accepting {@link version}. Only from {@link listUpdates}. */
+          fixedBy: string | null
+      }
+    | {
+          /** Planned version outside the range of a planned dependent. */
+          type: 'conflict'
+          id: string
+          version: string
+          dependent: string
+          dependentVersion: string
+          range: string
+      }
+    | {
+          /** Dependency with no usable version. Skipped when optional, blocks otherwise. */
+          type: 'unresolved'
+          id: string
+          dependent: string
+          dependentVersion: string
+          range: string
+          optional: boolean
+          reason: 'unavailable' | 'held' | 'target'
+          installed: string | null
+          /** Explains a `target` reason. */
+          detail: string | null
+      }
+    | {
+          /** Paused updates, held at {@link version}. Only from {@link listUpdates}. */
+          type: 'held'
+          id: string
+          version: string
+      }
+    | {
+          /** Root not served, or not at the requested version. */
+          type: 'unavailable'
+          id: string
+          version: string | null
+      }
+)
+
+export interface PluginUpdate {
     id: string
+    /** Installed version, or the pending on-disk update. */
     installed: string
     available: string
     channel: string
+    repo: string
+    /** Artifact size of {@link available} in bytes. */
+    size: number
+    /** Other planned actions, such as dependency updates. Empty with a {@link blocker}. */
+    includes: {
+        id: string
+        version: string
+        replaces: string | null
+        size: number
+    }[]
+    warnings: ResolveIssue[]
+    /** Why the update can't install. */
+    blocker: ResolveIssue | null
 }
 
-/**
- * Lists one repository's plugins from its cached index.
- */
+/** Lists plugins for repository from cached index. */
 export function listRepoPlugins(url: string): Promise<RepoPluginListing[]> {
-    return callNativeMethod('revenge.plugins.repos.listPlugins', [url])
+    return callPluginSystemMethod('revenge.plugins.repos.listPlugins', [url])
+}
+
+/** Rules for resolving plugins. */
+export interface PlanTarget {
+    /** Resolve from this repository instead of its provenance or the priority order. */
+    repo?: string
+    /**
+     * Channel to follow.
+     * @default The installed plugin's current channel, or `latest`.
+     */
+    channel?: string
+    /** Install exactly this version and hold it. Overrides {@link channel}. */
+    version?: string
+}
+
+export interface PlanOptions {
+    /** Per-plugin targets keyed by ID. */
+    targets?: Record<string, PlanTarget>
+    /** Only consider these repositories, for every plugin. */
+    repos?: string[]
+    /** Skips untargeted optional dependencies that aren't installed, eg. for updates. */
+    skipMissingOptionals?: boolean
 }
 
 /**
- * Resolves an install of one plugin (+ unsatisfied dependencies) against cached indexes.
+ * Computes dependency installation plan against cached repository indexes.
+ * A plugin already at the resolved version is reinstalled when its repository, channel, hold, or artifact would change.
  */
 export function planInstall(
     id: string,
-    version?: string,
-    channel?: string,
-    filteredRepos?: string[],
+    options?: PlanOptions,
 ): Promise<InstallPlan> {
-    return callNativeMethod('revenge.plugins.planInstall', [
+    return callPluginSystemMethod('revenge.plugins.planInstall', [
         id,
-        version ?? null,
-        channel ?? null,
-        filteredRepos ?? null,
+        options ?? null,
     ])
 }
 
-/**
- * Executes one confirmed install plan: download all, verify all, then apply on disk.
- *
- * - Fresh plugins (new IDs with live dependencies) load immediately (`installed`).
- * - Updates, and fresh IDs depending on them, only land on disk and load at next reload (`pending`).
- * - `skipped` lists actions an overlapping plan already satisfied.
- */
+/** Updates plugin hold status, pinning version or resuming channel updates. */
+export function setPluginHeld(
+    id: string,
+    held: boolean,
+): Promise<PluginSource> {
+    return callPluginSystemMethod('revenge.plugins.setHeld', [id, held])
+}
+
+/** Executes an install plan, downloading and applying artifacts to disk. */
 export function installFromRepo(plan: InstallPlan): Promise<{
     installed: string[]
     pending: string[]
     skipped: string[]
 }> {
-    return callNativeMethod('revenge.plugins.install', [plan])
+    return callPluginSystemMethod('revenge.plugins.install', [plan])
 }
 
-/**
- * Lists available updates for plugins pinned to one repository, from its **cached index**.
- * Call {@link refreshRepo} first to ensure the index is up-to-date.
- */
-export function listUpdates(url: string): Promise<RepoUpdate[]> {
-    return callNativeMethod('revenge.plugins.repos.listUpdates', [url])
+/** Lists updates across enabled repositories from cached indexes. */
+export function listUpdates(): Promise<PluginUpdate[]> {
+    return callPluginSystemMethod('revenge.plugins.listUpdates', [])
 }
 
-/**
- * Lists updates across every enabled user repository in parallel.
- * Per-repo failures (eg. no cached index yet) are returned.
- */
-export async function listAllUpdates(): Promise<{
-    updates: RepoUpdate[]
-    errors: { url: string; error: unknown }[]
-}> {
-    const repos = await listRepos()
-    const updates: RepoUpdate[] = []
-    const errors: { url: string; error: unknown }[] = []
-
-    await Promise.all(
-        repos
-            .filter(repo => !repo.internal && repo.enabled)
-            .map(repo =>
-                listUpdates(repo.url).then(
-                    result => {
-                        updates.push(...result)
-                    },
-                    error => {
-                        errors.push({ url: repo.url, error })
-                    },
-                ),
-            ),
+/** Returns issues of {@link update} that break installed plugins, ignoring breaks fixed by {@link selected} updates. */
+export function breakingIssuesOf(
+    update: PluginUpdate,
+    selected: ReadonlySet<string>,
+): ResolveIssue[] {
+    return update.warnings.filter(
+        issue =>
+            issue.type === 'conflict' ||
+            (issue.type === 'breaks' &&
+                !(issue.fixedBy && selected.has(issue.fixedBy))),
     )
-
-    return { updates, errors }
 }
 
-/**
- * Resolves and installs updates for every entry of {@link listAllUpdates}.
- * Failures are collected per plugin. Updates land on disk only (`pending`), a reload applies them.
- */
-export async function updateAllPlugins(): Promise<{
+/** Picks updates safe to install that won't break existing plugins. */
+export function selectSafeUpdates(updates: PluginUpdate[]): Set<string> {
+    const selected = new Set(updates.filter(u => !u.blocker).map(u => u.id))
+
+    // Dropping one can unfix another's break
+    let changed = true
+    while (changed) {
+        changed = false
+        for (const update of updates)
+            if (
+                selected.has(update.id) &&
+                breakingIssuesOf(update, selected).length
+            ) {
+                selected.delete(update.id)
+                changed = true
+            }
+    }
+
+    return selected
+}
+
+/** Resolves and installs updates of {@link ids}. */
+export async function updatePlugins(ids: Iterable<string>): Promise<{
     installed: string[]
     pending: string[]
     errors: { id: string; error: unknown }[]
 }> {
-    const { updates } = await listAllUpdates()
     const installed: string[] = []
     const pending: string[] = []
     const errors: { id: string; error: unknown }[] = []
 
     await Promise.all(
-        updates.map(async update => {
+        [...ids].map(async id => {
             try {
-                const plan = await planInstall(
-                    update.id,
-                    undefined,
-                    update.channel,
-                )
+                // Optional dependencies left out stay out
+                const plan = await planInstall(id, {
+                    skipMissingOptionals: true,
+                })
                 const result = await installFromRepo(plan)
                 installed.push(...result.installed)
                 pending.push(...result.pending)
             } catch (error) {
-                errors.push({ id: update.id, error })
+                errors.push({ id, error })
             }
         }),
     )
 
     return { installed, pending, errors }
+}
+
+/** Installs updates from {@link selectSafeUpdates}. */
+export async function updateAllPlugins() {
+    return updatePlugins(selectSafeUpdates(await listUpdates()))
 }
 
 declare module '@revenge-mod/modules/native' {
@@ -282,19 +383,15 @@ declare module '@revenge-mod/modules/native' {
             [url: string],
             RepoPluginListing[],
         ]
-        'revenge.plugins.repos.listUpdates': [[url: string], RepoUpdate[]]
+        'revenge.plugins.listUpdates': [[], PluginUpdate[]]
         'revenge.plugins.planInstall': [
-            [
-                id: string,
-                version: string | null,
-                channel: string | null,
-                filteredRepos: string[] | null,
-            ],
+            [id: string, options: PlanOptions | null],
             InstallPlan,
         ]
         'revenge.plugins.install': [
             [plan: InstallPlan],
             { installed: string[]; pending: string[]; skipped: string[] },
         ]
+        'revenge.plugins.setHeld': [[id: string, held: boolean], PluginSource]
     }
 }
