@@ -1,10 +1,8 @@
 import { parseBundleVersion } from './manifest'
 import { callPluginSystemMethodSync } from './native'
 
-export const { storageRootPath, defaultsOnlySlot } = callPluginSystemMethodSync(
-    'revenge.plugins.getConstants',
-    [],
-)
+export const { storageRootPath, distRootPath, defaultsOnlySlot } =
+    callPluginSystemMethodSync('revenge.plugins.getConstants', [])
 
 /** Bundle version applied to internal plugins. */
 export const InternalPluginVersion = parseBundleVersion(__BUILD_VERSION__)

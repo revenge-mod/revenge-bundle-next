@@ -23,11 +23,13 @@ export interface InternalPluginManifestExtras {
      * Default source for the plugin.
      * @see {@link PluginSource}
      */
-    defaultSource?: {
-        repo: string
-        channel?: string
-        held?: boolean
-    }
+    defaultSource?:
+        | {
+              repo: string
+              channel?: string
+              held?: boolean
+          }
+        | boolean
     /** The plugin cannot be stopped, disabled, or uninstalled. Implies {@link enabledByDefault}. */
     essential?: boolean
     /**
