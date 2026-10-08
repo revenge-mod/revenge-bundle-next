@@ -10,7 +10,7 @@ import { rolldown } from 'rolldown'
 import { importGlobPlugin } from 'rolldown/experimental'
 import { fileURLToPath } from 'url'
 import pkg from '../package.json' with { type: 'json' }
-import { exists } from './_shared'
+import { boolEnv, exists, stringEnv } from './_shared'
 import {
     getBundleManifest,
     getInternalPluginManifests,
@@ -231,31 +231,4 @@ async function generateAssets() {
     }
 
     await Promise.all(promises)
-}
-
-function isEmpty(value: string | undefined): boolean {
-    return value === undefined || value === ''
-}
-
-function boolEnv(key: string, defaultValue: boolean): boolean {
-    const val = process.env[key]
-    if (isEmpty(val)) return defaultValue
-    return val === 'true' || val === '1'
-}
-
-function stringEnv(
-    key: string,
-    defaultValue?: string,
-    required: boolean = true,
-): string {
-    const val = process.env[key]
-    if (isEmpty(val)) {
-        if (defaultValue === undefined) {
-            if (required)
-                throw new Error(`Environment variable ${key} is required`)
-            return 'undefined'
-        }
-        return JSON.stringify(defaultValue)
-    }
-    return JSON.stringify(val)
 }

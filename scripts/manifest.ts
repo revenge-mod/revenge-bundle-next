@@ -2,7 +2,7 @@ import { readdir, readFile } from 'fs/promises'
 import { dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { ReservedDependencyIds } from '../lib/plugins/src/_internal/manifest'
-import { exists } from './_shared'
+import { exists, stringEnv } from './_shared'
 import type { InternalPluginManifest } from '@revenge-mod/plugins/_'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -24,7 +24,7 @@ interface BundleManifestPlugin {
 
 interface RawBundleManifestPlugin
     extends Omit<BundleManifestPlugin, 'enabledByDefault' | 'defaultSource'>,
-        Pick<InternalPluginManifest, 'defaultSource' | 'enabledByDefault'> {
+        Pick<InternalPluginManifest, 'enabledByDefault' | 'defaultSource'> {
     build?: {
         devOnly?: boolean
     }
@@ -76,6 +76,15 @@ export async function getInternalPluginManifests(
                     `Internal plugin "${manifest.id}" has an invalid enabledByDefault: ${JSON.stringify(enabledByDefault)}`,
                 )
 
+            if (
+                defaultSource !== undefined &&
+                defaultSource !== true &&
+                typeof defaultSource !== 'object'
+            )
+                throw new Error(
+                    `Internal plugin "${manifest.id}" has an invalid defaultSource: ${JSON.stringify(defaultSource)}`,
+                )
+
             manifests.push({
                 id: manifest.id,
                 ...(manifest.essential && { essential: true }),
@@ -85,11 +94,19 @@ export async function getInternalPluginManifests(
                 ...(manifest.dependencies && {
                     dependencies: manifest.dependencies,
                 }),
-                defaultSource: defaultSource && {
-                    repo: defaultSource.repo!,
-                    channel: defaultSource.channel,
-                    held: defaultSource.held,
-                },
+                defaultSource:
+                    defaultSource &&
+                    (defaultSource === true
+                        ? {
+                              repo: stringEnv(
+                                  'REVENGE_DEFAULT_PLUGIN_REPOSITORY_URL',
+                              ),
+                          }
+                        : {
+                              repo: defaultSource.repo!,
+                              channel: defaultSource.channel,
+                              held: defaultSource.held,
+                          }),
             })
         }
     }
