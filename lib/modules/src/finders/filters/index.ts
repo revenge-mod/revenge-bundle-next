@@ -88,7 +88,7 @@ export type WithoutProps = FilterGenerator<
  */
 export const withSingleProp = createFilterGenerator<Parameters<WithSingleProp>>(
     ([prop], _, exports) => {
-        if (!isModuleExportBad(exports) && prop in exports)
+        if (typeof exports === 'object' && exports !== null && prop in exports)
             return Object.keys(exports).length === 1
 
         return false
