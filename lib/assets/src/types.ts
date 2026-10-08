@@ -13,6 +13,15 @@ export interface CustomAsset
 
 export type RegisterableAsset = Omit<CustomAsset, 'id'>
 
+/** Source used in place of an asset. Dimensions default to the original asset's. */
+export interface AssetOverride {
+    /** Any URI React Native can load, eg. `file://`, `https://` or `data:`. */
+    uri: string
+    width?: number
+    height?: number
+    scale?: number
+}
+
 declare module '@revenge-mod/react/types' {
     export namespace ReactNative {
         export namespace AssetsRegistry {

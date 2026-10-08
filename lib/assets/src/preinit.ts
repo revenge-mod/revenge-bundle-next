@@ -14,7 +14,7 @@ import {
 } from '@revenge-mod/modules/metro/patches'
 import { getModuleDependencies } from '@revenge-mod/modules/metro/utils'
 import { proxify } from '@revenge-mod/utils/proxy'
-import { aOverrides } from './_internal'
+import { executeAssetSubscriptions, resolveAssetOverride } from './_internal'
 import { cache, cacheAsset, Uncached } from './caches'
 import type { Metro } from '@revenge-mod/modules/types'
 import type { ReactNative } from '@revenge-mod/react/types'
@@ -68,7 +68,10 @@ const unsubAR = waitForModules(
                 cacheAsset(asset, mInitializingId!)
             }
 
-            return (asset.id = result)
+            asset.id = result
+            executeAssetSubscriptions(asset)
+
+            return result
         }
     },
     cachedOnly,
@@ -120,28 +123,23 @@ export let AssetsRegistry: ReactNative.AssetsRegistry = proxify(() => {
     throw new Error('assets-registry not found')
 })
 
-// TODO: Native overrides?
 // Asset overrides
 const unsubRAS = waitForModules(
     withName<{
         addCustomSourceTransformer: (
-            transformer: (arg: { asset: Asset }) => PackagerAsset,
+            transformer: (arg: { asset: Asset }) => unknown,
         ) => void
     }>('resolveAssetSource'),
     rAS => {
         unsubRAS()
 
-        // Custom assets
-        // Why do we need to do this? Because RN/Discord (unsure which) will attempt to resolve the asset via its path, which we don't provide via custom assets.
+        // Custom assets: RN/Discord (unsure which) will attempt to resolve the asset via its path, which we don't provide via custom assets.
         // This will result in a crash, because it tries to read the path and run checks on it, but the path is undefined.
-        // @ts-expect-error
-        rAS.addCustomSourceTransformer(({ asset }) => {
-            if (!(asset as PackagerAsset).__packager_asset) return asset
-        })
-
-        // Asset overrides
-        // @ts-expect-error
-        rAS.addCustomSourceTransformer(({ asset }) => aOverrides.get(asset))
+        rAS.addCustomSourceTransformer(
+            ({ asset }) =>
+                resolveAssetOverride(asset) ??
+                ((asset as PackagerAsset).__packager_asset ? undefined : asset),
+        )
     },
     cachedOnly,
 )

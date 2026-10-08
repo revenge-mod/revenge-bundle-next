@@ -1,10 +1,17 @@
 import { Platform } from 'react-native'
-import { aCustoms, aOverrides } from './_internal'
+import {
+    aCustoms,
+    aNameOverrides,
+    aOverrides,
+    aSubs,
+    aSubsAny,
+} from './_internal'
 import { cache } from './caches'
 import { AssetsRegistry } from './preinit'
 import type {
     Asset,
     AssetId,
+    AssetOverride,
     CustomAsset,
     PackagerAsset,
     RegisterableAsset,
@@ -139,21 +146,70 @@ export function registerAsset(asset: RegisterableAsset): AssetId {
 }
 
 /**
- * Override an asset with a custom asset.
+ * Override an asset with another source.
  *
- * @param asset The asset to override.
- * @param override The custom asset to override with.
+ * Overriding by name needs no asset module initialized, and also covers assets registered later.
+ * An override for the asset object wins over one for its name.
+ *
+ * @param asset The asset, or the asset name, to override.
+ * @param override The source to use instead.
  */
-export function addAssetOverride(asset: Asset, override: Asset) {
-    aOverrides.set(asset, override)
+export function addAssetOverride(
+    asset: Asset | Asset['name'],
+    override: AssetOverride,
+) {
+    if (typeof asset === 'string') aNameOverrides.set(asset, override)
+    else aOverrides.set(asset, override)
 }
 
 /**
  * Remove an asset override.
  *
- * @param asset The asset to remove the override for.
- * @returns The asset that was removed.
+ * @param asset The asset, or the asset name, to remove the override for.
+ * @returns Whether an override was removed.
  */
-export function removeAssetOverride(asset: Asset) {
+export function removeAssetOverride(asset: Asset | Asset['name']) {
+    if (typeof asset === 'string') return aNameOverrides.delete(asset)
     return aOverrides.delete(asset)
+}
+
+export type AssetRegisteredCallback = (asset: Asset) => void
+
+/**
+ * Registers a callback called when any asset is registered.
+ *
+ * Runs inside `registerAsset`, before the asset module returns, so the asset is not used yet.
+ *
+ * @param callback The callback to be called.
+ * @returns A function that unregisters the callback.
+ */
+export function onAnyAssetRegistered(callback: AssetRegisteredCallback) {
+    aSubsAny.add(callback)
+    return () => {
+        aSubsAny.delete(callback)
+    }
+}
+
+/**
+ * Registers a callback called when an asset with the given name is registered.
+ *
+ * Runs inside `registerAsset`, before the asset module returns, so the asset is not used yet.
+ * Assets of different types can share a name, so this may run more than once.
+ *
+ * @param name The asset name.
+ * @param callback The callback to be called.
+ * @returns A function that unregisters the callback.
+ */
+export function onAssetRegistered(
+    name: Asset['name'],
+    callback: AssetRegisteredCallback,
+) {
+    let set = aSubs.get(name)
+    if (!set) aSubs.set(name, (set = new Set()))
+
+    set.add(callback)
+    return () => {
+        set.delete(callback)
+        if (!set.size) aSubs.delete(name)
+    }
 }
