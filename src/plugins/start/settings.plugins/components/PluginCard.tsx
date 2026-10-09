@@ -224,7 +224,7 @@ export const PluginAuthor = memo(function PluginAuthor({
                 style={styles_.authorClickableText}
             >
                 {parsed.name}
-                {count ? `, ${count} ${pluralize(count, 'contributor')}` : ''}
+                {count ? `, ${pluralize(count, 'contributor')}` : ''}
             </Text>
         </Pressable>
     )
