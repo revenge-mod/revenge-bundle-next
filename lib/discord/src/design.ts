@@ -1,5 +1,6 @@
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
+    allOf,
     withDependencies,
     withProps,
     withSingleProp,
@@ -81,6 +82,27 @@ export let FormSwitch: DiscordModules.Components.FormSwitch = proxify(() => {
     )
 
     if (module) return (FormSwitch = module.FormSwitch)
+})!
+
+export let FormRadio: DiscordModules.Components.FormRadio = proxify(() => {
+    const [module] = lookupModule(
+        withSingleProp('FormRadio')
+            .and(
+                allOf(
+                    withDependencies(last([ImportTrackerModuleId])),
+                    withDependencies(
+                        ordered([
+                            ReactModuleId,
+                            ReactJSXRuntimeModuleId,
+                            TokensModuleId,
+                        ]),
+                    ),
+                ),
+            )
+            .keyAs('revenge.discord.design.FormRadio'),
+    )
+
+    if (module) return (FormRadio = module.FormRadio)
 })!
 
 export interface Design {

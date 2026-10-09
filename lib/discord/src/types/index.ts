@@ -423,8 +423,14 @@ export namespace DiscordModules {
         }
 
         export type FormSwitch = FC<FormSwitchProps>
+
+        export interface FormRadioProps {
+            selected: boolean | null
+        }
+
+        export type FormRadio = FC<FormRadioProps>
+
         // TODO
-        // export type FormRadio = FC
         // export type FormCheckbox = FC
 
         export interface CheckboxProps {
@@ -956,6 +962,25 @@ export namespace DiscordModules {
         export declare class TypedEventEmitter<
             T extends Record<string, any[]> = Record<string, any[]>,
         > {
+            emitter: TypedEventEmitter<T> & {
+                setMaxListeners(n: number): void
+                getMaxListeners(): number
+                prependListener<K extends keyof T>(
+                    event: K,
+                    listener: TypedEventEmitter.Listener<T, K>,
+                ): TypedEventEmitter<T>
+                prependOnceListener<K extends keyof T>(
+                    event: K,
+                    listener: TypedEventEmitter.Listener<T, K>,
+                ): TypedEventEmitter<T>
+                listeners<K extends keyof T>(
+                    event: K,
+                ): TypedEventEmitter.Listener<T, K>[]
+                rawListeners<K extends keyof T>(
+                    event: K,
+                ): TypedEventEmitter.Listener<T, K>[]
+                eventNames(): (keyof T)[]
+            }
             addListener<K extends keyof T>(
                 event: K,
                 listener: TypedEventEmitter.Listener<T, K>,
