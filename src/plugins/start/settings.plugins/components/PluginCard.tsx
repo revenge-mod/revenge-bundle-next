@@ -346,9 +346,11 @@ export const PluginInfo = memo(function PluginInfo({
                             </Text>
                         </Stack>
                     ))}
-                <Text style={styles.grow} variant="text-md/medium">
-                    {description}
-                </Text>
+                {Boolean(description) && (
+                    <Text style={styles.grow} variant="text-md/medium">
+                        {description}
+                    </Text>
+                )}
                 {footer}
             </Stack>
         </Stack>
