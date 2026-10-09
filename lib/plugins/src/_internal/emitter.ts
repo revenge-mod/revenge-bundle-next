@@ -18,3 +18,6 @@ export const pEmitter = new TypedEventEmitter<{
     install: [PluginInstallEvent]
     installReady: [PluginInstallReadyEvent]
 }>()
+
+// metadataUpdate listeners in InstalledPluginCards
+pEmitter.emitter.setMaxListeners(100)
