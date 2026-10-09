@@ -87,26 +87,41 @@ export let ToastActionCreators: DiscordModules.Actions.ToastActionCreators =
                 )
                     .and(
                         anyOf(
-                            // [useToastStore (+1), DesignSystemsNotificationComponents, toManaToast, Dispatcher, ImportTracker]
-                            withDependencies(
-                                ordered([
-                                    // useToastStore: [ImportTracker, +1]
-                                    relative.withDependencies(
-                                        [ImportTrackerModuleId, relative(1)],
-                                        1,
-                                    ),
-                                    // toManaToast: [+1, ImportTracker]
-                                    [relative(1), ImportTrackerModuleId],
+                            withDependencies([
+                                relative.withDependencies(
+                                    [ImportTrackerModuleId, relative(1)],
+                                    1,
+                                ),
+                                // toManaToast: [+1, ImportTracker]
+                                [relative(1), ImportTrackerModuleId],
+                                ImportTrackerModuleId,
+                            ]),
+                            // TODO: Remove when stable > 350203
+                            anyOf(
+                                // [useToastStore (+1), DesignSystemsNotificationComponents, toManaToast, Dispatcher, ImportTracker]
+                                withDependencies(
+                                    ordered([
+                                        // useToastStore: [ImportTracker, +1]
+                                        relative.withDependencies(
+                                            [
+                                                ImportTrackerModuleId,
+                                                relative(1),
+                                            ],
+                                            1,
+                                        ),
+                                        // toManaToast: [+1, ImportTracker]
+                                        [relative(1), ImportTrackerModuleId],
+                                        DispatcherModuleId,
+                                        ImportTrackerModuleId,
+                                    ]),
+                                ),
+                                // TODO: Remove when stable > 349205
+                                // Many other modules share the same dependencies, the second yielded should be the correct module.
+                                withDependencies([
                                     DispatcherModuleId,
                                     ImportTrackerModuleId,
-                                ]),
+                                ]).and(withoutProps('init')),
                             ),
-                            // TODO: Remove when stable > 349205
-                            // Many other modules share the same dependencies, the second yielded should be the correct module.
-                            withDependencies([
-                                DispatcherModuleId,
-                                ImportTrackerModuleId,
-                            ]).and(withoutProps('init')),
                         ),
                     )
                     .keyAs('revenge.discord.actions.ToastActionCreators'),
