@@ -159,7 +159,7 @@ export const PluginInfoStatusIcon = memo(function PluginInfoStatusIcon({
                 isPluginEnabled(plugin) &&
                 !isPluginStartedLate(plugin) &&
                 isPluginStopped(plugin),
-            source: getAssetIdByName('HandRequestDenyIcon')!,
+            source: getAssetIdByName('HandRequestSpeakIcon')!,
             extraStyles: [styles_.iconWarning],
         },
     ].filter(it => it.condition)
