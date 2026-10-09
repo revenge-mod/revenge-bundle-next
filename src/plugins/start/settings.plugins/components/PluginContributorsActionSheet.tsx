@@ -121,7 +121,9 @@ function ContributorEntries({
     const { bottom } = ReactNativeSafeAreaContext.useSafeAreaInsets()
 
     const ids = [...new Set(contributor.ids)].slice(0, MaxShownEntries)
-    const links = [...new Set(contributor.links)].slice(0, MaxShownEntries)
+    const links = Array.from(
+        new Map(contributor.links.map(link => [link.url, link])).values(),
+    ).slice(0, MaxShownEntries)
 
     return (
         <View style={[styles_.page, { paddingBottom: 16 + bottom }]}>
@@ -147,7 +149,7 @@ function ContributorEntryRows({
 }: {
     name: string
     ids: string[]
-    links: string[]
+    links: PluginContributor['links']
 }) {
     return (
         <TableRowGroup hasIcons title={`Contacts for ${name}`}>
@@ -161,13 +163,14 @@ function ContributorEntryRows({
                     onPress={() => openUserProfile(id)}
                 />
             ))}
-            {links.map(link => (
+            {links.map(({ url, label }) => (
                 <TableRow
-                    key={link}
+                    key={url}
                     icon={<TableRowAssetIcon name="LinkIcon" />}
-                    label={formatLink(link)}
+                    label={label ?? formatLink(url)}
+                    subLabel={label ? formatLink(url) : undefined}
                     arrow
-                    onPress={() => openLink(link)}
+                    onPress={() => openLink(url)}
                 />
             ))}
         </TableRowGroup>

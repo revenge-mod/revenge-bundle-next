@@ -16,12 +16,15 @@ describe('parsePluginContributor', () => {
     test('parses IDs and links', () => {
         expect(
             parsePluginContributor(
-                `Jane Doe <${Id1}> <${Id2}> (https://example.com/jane) (mailto:jane@example.com)`,
+                `Jane Doe <${Id1}> <${Id2}> (https://example.com/jane "Website") (mailto:jane@example.com)`,
             ),
         ).toEqual({
             name: 'Jane Doe',
             ids: [Id1, Id2],
-            links: ['https://example.com/jane', 'mailto:jane@example.com'],
+            links: [
+                { url: 'https://example.com/jane', label: 'Website' },
+                { url: 'mailto:jane@example.com', label: undefined },
+            ],
         })
     })
 
@@ -31,7 +34,7 @@ describe('parsePluginContributor', () => {
         ).toEqual({
             name: 'Jane',
             ids: [Id1],
-            links: ['http://example.com'],
+            links: [{ url: 'http://example.com', label: undefined }],
         })
     })
 
@@ -43,6 +46,8 @@ describe('parsePluginContributor', () => {
         ['an unsupported scheme', 'Jane (javascript:alert(1))'],
         ['a link without a scheme', 'Jane (example.com)'],
         ['a parenthesized name', 'Jane (Doe)'],
+        ['an empty link label', 'Jane (https://example.com "")'],
+        ['an unquoted link label', 'Jane (https://example.com Website)'],
         ['trailing text', `Jane <${Id1}> extra`],
         ['an unclosed entry', `Jane <${Id1}`],
     ])('rejects %s', (_, input) => {

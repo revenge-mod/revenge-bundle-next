@@ -4,22 +4,28 @@ import type { PluginManifest, PluginVersion } from '@revenge-mod/plugins/types'
 export const formatVersion = (version: PluginVersion) =>
     version.nums.join('.') + (version.label ? `-${version.label}` : '')
 
-/** Contributor parsed from a `Name <DISCORD_ID> (LINK)` string. */
+/** Contributor parsed from a `Name <DISCORD_ID> (LINK "LABEL")` string. */
 export interface PluginContributor {
     name: string
     /** Discord user IDs. */
     ids: string[]
     /** Links with `https:`, `http:` or `mailto:` scheme. */
-    links: string[]
+    links: PluginContributorLink[]
+}
+
+/** Contributor link with an optional display label. */
+export interface PluginContributorLink {
+    url: string
+    label?: string
 }
 
 const ContributorEntryRegex =
-    /^(?:<(\d{17,20})>|\(((?:https?:\/\/|mailto:)[^()\s]+)\))\s*/i
+    /^(?:<(\d{17,20})>|\(((?:https?:\/\/|mailto:)[^()\s]+)(?:\s+"([^"()]+)")?\))\s*/i
 
 /**
  * Parses a contributor string, such as {@link PluginManifest.author}.
  *
- * Format: `Name <DISCORD_ID_1> <DISCORD_ID_N> (LINK_1) (LINK_N)`.
+ * Format: `Name <DISCORD_ID_1> <DISCORD_ID_N> (LINK_1 "LABEL") (LINK_N)`.
  * Discord IDs and links are optional and repeatable, with IDs first.
  *
  * @returns The parsed contributor, or `null` when the string does not follow the format.
@@ -34,7 +40,7 @@ export function parsePluginContributor(
     if (!name) return null
 
     const ids: string[] = []
-    const links: string[] = []
+    const links: PluginContributorLink[] = []
 
     if (start !== -1) {
         let rest = contributor.slice(start)
@@ -43,11 +49,11 @@ export function parsePluginContributor(
             const match = ContributorEntryRegex.exec(rest)
             if (!match) return null
 
-            const [entry, id, link] = match
+            const [entry, id, url, label] = match
             if (id) {
                 if (links.length) return null
                 ids.push(id)
-            } else links.push(link!)
+            } else links.push({ url: url!, label })
 
             rest = rest.slice(entry.length)
         }
