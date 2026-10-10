@@ -27,14 +27,28 @@ export let ActionSheetActionCreators: DiscordModules.Actions.ActionSheetActionCr
                     'hideActionSheet',
                     'openLazy',
                 )
+                    // TODO: Redo this on 350204+
                     .and(
                         withDependencies(
                             ordered([
                                 ReactModuleId,
                                 ReactJSXRuntimeModuleId,
-                                DispatcherModuleId,
-                                relative(1),
+                                relative.withDependencies(
+                                    ordered([
+                                        relative(2, true),
+                                        relative(3, true),
+                                        ImportTrackerModuleId,
+                                    ]),
+                                    1,
+                                ),
                                 relative(2),
+                            ]),
+                        ),
+                    )
+                    .and(
+                        withDependencies(
+                            ordered([
+                                DispatcherModuleId,
                                 ImportTrackerModuleId,
                             ]),
                         ),
