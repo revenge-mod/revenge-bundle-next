@@ -17,10 +17,9 @@ registerInternalPlugin(manifest, {
         )
 
         const showToast = () =>
-            ToastActionCreators.open({
-                key: 'staff-settings-action',
-                content: 'Navigate out of Settings to apply changes',
-                IconComponent: CircleInformationIcon,
+            ToastActionCreators.open('REVENGE_STAFF_SETTINGS_ACTION', {
+                text: 'Navigate out of Settings to apply changes',
+                icon: CircleInformationIcon,
             })
 
         function reset() {

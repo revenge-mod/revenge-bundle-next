@@ -439,10 +439,15 @@ export default function RevengePluginsAdvancedSettingScreen() {
                                     const restored =
                                         await addDefaultRepoIfNeeded(true)
                                     if (!restored) {
-                                        ToastActionCreators.open({
-                                            key: 'revenge-default-repo-nothing',
-                                            content: 'Nothing to restore',
-                                        })
+                                            ToastActionCreators.open(
+                                                'REVENGE_DEFAULT_REPO_NO_ACTION',
+                                                {
+                                                    text: 'Nothing to restore',
+                                                    icon: lookupGeneratedIconComponent(
+                                                        'FileWarningIcon',
+                                                    ),
+                                                },
+                                            )
 
                                         return
                                     }

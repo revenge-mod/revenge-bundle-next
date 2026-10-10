@@ -15,10 +15,9 @@ export const CopyableSetting = (
     type: 'pressable',
     onPress() {
         Clipboard.setString(description())
-        ToastActionCreators.open({
-            key: 'REVENGE_SETTING_COPIED',
-            content: 'Copied to clipboard',
-            IconComponent: CopyIcon,
+        ToastActionCreators.open('REVENGE_SETTING_COPIED', {
+            text: 'Copied to clipboard',
+            icon: CopyIcon,
         })
     },
 })

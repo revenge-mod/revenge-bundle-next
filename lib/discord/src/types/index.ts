@@ -175,6 +175,36 @@ export namespace DiscordModules {
         }
 
         export interface ToastActionCreators {
+            open(
+                key: string,
+                options: {
+                    text: string
+                    icon?:
+                        | Components.BaseIconImage
+                        | {
+                              alt: string
+                              src: string
+                              type: 'emoji'
+                          }
+                        | {
+                              alt: string
+                              src: string
+                              type: 'avatar'
+                          }
+                        | {
+                              name: string
+                              src: string | null
+                              type: 'guild'
+                          }
+                    /** Discord semantic color token. */
+                    iconColor?: any
+                    /** Discord semantic color token. */
+                    secondaryIconColor?: any
+                    variant?: 'default' | 'success' | 'critical'
+                },
+            ): void
+            // TODO: Remove on 350204+
+            /** @deprecated Use the other overload on 350204+ */
             open(options: {
                 key: string
                 content?: string

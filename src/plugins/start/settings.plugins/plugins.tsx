@@ -169,11 +169,10 @@ const CircleCheckIcon = lookupGeneratedIconComponent(
     'CircleCheckIcon-primary',
 )
 
-function showInstallToast(content: string, id: string) {
-    ToastActionCreators.open({
-        key: pluginInstallToastKeyFor(id),
-        content,
-        IconComponent: CircleCheckIcon,
+function showInstallToast(text: string, id: string) {
+    ToastActionCreators.open(pluginInstallToastKeyFor(id), {
+        text,
+        icon: CircleCheckIcon,
     })
 }
 

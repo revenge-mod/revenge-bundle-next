@@ -245,9 +245,8 @@ const CircleXIconComponent = lookupGeneratedIconComponent(
 )!
 
 export function showErrorToast(message: string) {
-    ToastActionCreators.open({
-        key: 'REVENGE_REPOSITORIES_ERROR',
-        content: message,
-        IconComponent: CircleXIconComponent,
+    ToastActionCreators.open('REVENGE_REPOSITORIES_ERROR', {
+        text: message,
+        icon: CircleXIconComponent,
     })
 }

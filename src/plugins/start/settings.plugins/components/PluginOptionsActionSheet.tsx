@@ -504,9 +504,8 @@ function PluginActions({
 const CopyIcon = lookupGeneratedIconComponent('CopyIcon')!
 
 export function showCopiedToClipboardToast() {
-    ToastActionCreators.open({
-        key: 'REVENGE_PLUGIN_SETTINGS_COPIED',
-        content: 'Copied to clipboard',
-        IconComponent: CopyIcon,
+    ToastActionCreators.open('REVENGE_PLUGIN_SETTINGS_COPIED', {
+        text: 'Copied to clipboard',
+        icon: CopyIcon,
     })
 }

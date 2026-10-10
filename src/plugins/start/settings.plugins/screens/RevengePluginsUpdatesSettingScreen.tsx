@@ -162,10 +162,9 @@ export default function RevengePluginsUpdatesSettingScreen() {
                         .join('\n'),
                 )
             else
-                ToastActionCreators.open({
-                    key: 'REVENGE_PLUGINS_UPDATED',
-                    content: `Updated ${pluralize(pending.length, 'plugin')}. Reload to apply.`,
-                    IconComponent: DownloadIconComponent,
+                ToastActionCreators.open('REVENGE_PLUGINS_UPDATED', {
+                    text: `Updated ${pluralize(pending.length, 'plugin')}. Reload to apply.`,
+                    icon: DownloadIconComponent,
                 })
         } catch (e) {
             showErrorToast(messageOf(e))

@@ -37,10 +37,9 @@ const RevengeDeveloperModeSetting: SettingsItem = {
 }
 
 function showFailureToast(e: unknown) {
-    ToastActionCreators.open({
-        key: 'REVENGE_DEVELOPER_MODE_FAILED',
-        content: `Failed to toggle Developer Mode: ${e instanceof Error ? e.message : String(e)}`,
-        IconComponent: lookupGeneratedIconComponent(
+    ToastActionCreators.open('REVENGE_DEVELOPER_MODE_FAILED', {
+        text: `Failed to toggle Developer Mode: ${e instanceof Error ? e.message : String(e)}`,
+        icon: lookupGeneratedIconComponent(
             'CircleXIcon',
             'CircleXIcon-primary',
             'CircleXIcon-secondary',

@@ -76,10 +76,9 @@ function autoUpdateService(settings: Storage) {
                     lastUpdateCheck: Date.now(),
                 })
         } catch (e) {
-            ToastActionCreators.open({
-                key: 'PLUGIN_UPDATE_CHECK_FAILED',
-                content: 'Failed to check for plugin updates',
-                IconComponent: CircleXIconComponent,
+            ToastActionCreators.open('REVENGE_PLUGIN_UPDATE_CHECK_FAILED', {
+                text: 'Failed to check for plugin updates',
+                icon: CircleXIconComponent,
             })
 
             api.logger.warn('Failed to check for plugin updates', e)

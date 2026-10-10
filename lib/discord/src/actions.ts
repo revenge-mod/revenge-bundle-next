@@ -5,6 +5,7 @@ import {
     withoutProps,
     withProps,
 } from '@revenge-mod/modules/finders/filters'
+import { getModuleDependencies } from '@revenge-mod/modules/metro/utils'
 import {
     ReactJSXRuntimeModuleId,
     ReactModuleId,
@@ -15,7 +16,7 @@ import { DispatcherModuleId } from './common/flux'
 import { ImportTrackerModuleId } from './common/import-tracker'
 import type { DiscordModules } from './types'
 
-const { relative, ordered } = withDependencies
+const { atMost, relative, ordered } = withDependencies
 
 // modules/action_sheet/native/ActionSheetActionCreators.tsx
 export let ActionSheetActionCreators: DiscordModules.Actions.ActionSheetActionCreators =
@@ -87,16 +88,23 @@ export let ToastActionCreators: DiscordModules.Actions.ToastActionCreators =
                 )
                     .and(
                         anyOf(
-                            withDependencies([
-                                relative.withDependencies(
-                                    [ImportTrackerModuleId, relative(1)],
-                                    1,
+                            // TODO: Remove atMost and ordered when stable > 350204
+                            withDependencies(
+                                atMost(
+                                    3,
+                                    ordered([
+                                        relative.withDependencies(
+                                            [
+                                                ImportTrackerModuleId,
+                                                relative(1),
+                                            ],
+                                            1,
+                                        ),
+                                        ImportTrackerModuleId,
+                                    ]),
                                 ),
-                                // toManaToast: [+1, ImportTracker]
-                                [relative(1), ImportTrackerModuleId],
-                                ImportTrackerModuleId,
-                            ]),
-                            // TODO: Remove when stable > 350203
+                            ),
+                            // TODO: Remove when stable > 350204
                             anyOf(
                                 // [useToastStore (+1), DesignSystemsNotificationComponents, toManaToast, Dispatcher, ImportTracker]
                                 withDependencies(
@@ -127,8 +135,12 @@ export let ToastActionCreators: DiscordModules.Actions.ToastActionCreators =
                     .keyAs('revenge.discord.actions.ToastActionCreators'),
             )
 
-            for (const [module] of generator)
-                if (module.open.length === 1)
+            for (const [module, id] of generator)
+                if (
+                    getModuleDependencies(id)![0] === ImportTrackerModuleId
+                        ? module.open.length === 1
+                        : true
+                )
                     return (ToastActionCreators = module)
         },
         {
