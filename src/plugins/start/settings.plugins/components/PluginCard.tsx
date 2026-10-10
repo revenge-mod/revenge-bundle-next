@@ -177,6 +177,8 @@ const GlobeEarthIcon = getAssetIdByName('GlobeEarthIcon', 'png')!
 
 const AuthorRipple = { borderless: false }
 
+const PluginAuthorMaxContributorNamesLength = 16
+
 export const PluginAuthor = memo(function PluginAuthor({
     pluginName,
     author,
@@ -205,6 +207,20 @@ export const PluginAuthor = memo(function PluginAuthor({
 
     const count = contributors.length
 
+    let contributorNames = ''
+    let i = 0
+
+    while (i < contributors.length) {
+        const newNames =
+            i === 0
+                ? contributors[i]
+                : `${contributorNames}, ${contributors[i]}`
+        if (newNames.length <= PluginAuthorMaxContributorNamesLength) {
+            contributorNames = newNames
+            i++
+        } else break
+    }
+
     return (
         <Pressable
             accessibilityRole="button"
@@ -224,7 +240,11 @@ export const PluginAuthor = memo(function PluginAuthor({
                 style={styles_.authorClickableText}
             >
                 {parsed.name}
-                {count ? `, ${pluralize(count, 'contributor')}` : ''}
+                {count
+                    ? i === contributors.length // all fits
+                        ? `, ${contributorNames}`
+                        : `, ${pluralize(count, 'contributor')}`
+                    : ''}
             </Text>
         </Pressable>
     )
