@@ -64,28 +64,22 @@ export default function PluginContributorsActionSheet({
     const state = useSegmentedControlState({ items, pageWidth })
     const styles_ = useStyles()
 
+    const header = (
+        <ContributorsSheetTitle title={`Contributors of ${pluginName}`} />
+    )
+
     if (items.length === 1) {
         const [item] = items
 
         return (
-            <BottomSheet
-                scrollable
-                header={<ContributorsSheetTitle title={item!.label} />}
-            >
+            <BottomSheet scrollable header={header}>
                 <View style={styles_.body}>{item!.page}</View>
             </BottomSheet>
         )
     }
 
     return (
-        <BottomSheet
-            scrollable
-            header={
-                <ContributorsSheetTitle
-                    title={`Contributors of ${pluginName}`}
-                />
-            }
-        >
+        <BottomSheet scrollable header={header}>
             <View style={styles_.body} onLayout={onLayout}>
                 <View>
                     <Tabs state={state} grow={items.length <= MaxGrowingTabs} />
