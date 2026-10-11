@@ -5,6 +5,7 @@ import defer * as ReactNativeCommunity from '@revenge-mod/externals/react-native
 import defer * as ReactNativeSafeAreaContext from '@revenge-mod/externals/react-native-safe-area-context'
 import defer * as ReactNavigation from '@revenge-mod/externals/react-navigation'
 import defer * as Shopify from '@revenge-mod/externals/shopify'
+import defer * as Zustand from '@revenge-mod/externals/zustand'
 import { defineLazyProperties } from '@revenge-mod/utils/object'
 
 export interface PluginApiExternals {
@@ -15,6 +16,7 @@ export interface PluginApiExternals {
     ReactNativeSafeAreaContext: typeof import('@revenge-mod/externals/react-native-safe-area-context')
     ReactNavigation: typeof import('@revenge-mod/externals/react-navigation')
     Shopify: typeof import('@revenge-mod/externals/shopify')
+    Zustand: typeof import('@revenge-mod/externals/zustand')
 }
 
 export const externals: PluginApiExternals = defineLazyProperties(
@@ -40,6 +42,9 @@ export const externals: PluginApiExternals = defineLazyProperties(
         },
         Shopify: () => {
             return Shopify
+        },
+        Zustand: () => {
+            return Zustand
         },
     },
 )

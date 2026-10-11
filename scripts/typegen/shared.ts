@@ -21,6 +21,7 @@ export const TypesPackagePeerDependencies = [
     'react-native-gesture-handler',
     'react-native-reanimated',
     'react-native-safe-area-context',
+    'zustand',
 ]
 
 export const TypesPackageOptionalPeerDependencies = [
@@ -33,6 +34,7 @@ export const TypesPackageOptionalPeerDependencies = [
     '@shopify/flash-list',
     '@types/node',
     'react-native-safe-area-context',
+    'zustand',
 ]
 
 export const Paths = {

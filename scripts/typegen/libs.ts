@@ -94,6 +94,7 @@ export function getLibraries(): LibraryModule[] {
             ],
             ['react-navigation', 'externals.ReactNavigation'],
             ['shopify', 'externals.Shopify'],
+            ['zustand', 'externals.Zustand'],
         ]),
         library(modules, [
             ['finders', 'modules.finders'],

@@ -23,6 +23,9 @@
     },
     "./shopify": {
       "default": "./src/shopify.ts"
+    },
+    "./zustand": {
+      "default": "./src/zustand.ts"
     }
   }
 }
