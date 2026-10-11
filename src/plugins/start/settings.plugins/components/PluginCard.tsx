@@ -177,7 +177,8 @@ const GlobeEarthIcon = getAssetIdByName('GlobeEarthIcon', 'png')!
 
 const AuthorRipple = { borderless: false }
 
-const PluginAuthorMaxContributorNamesLength = 16
+const PluginAuthorContributorNamesBreakLengthThreshold = 24
+const PluginAuthorMaxContributorNamesLength = 36
 
 export const PluginAuthor = memo(function PluginAuthor({
     pluginName,
@@ -211,18 +212,33 @@ export const PluginAuthor = memo(function PluginAuthor({
         .filter(x => !!x)
 
     let contributorNames = ''
-    let i = 0
+    let namesShown = 0
 
-    while (i < contributors.length) {
+    while (namesShown < contributors.length) {
         const newNames =
-            i === 0
-                ? contributors[i].name
-                : `${contributorNames}, ${contributors[i].name}`
-        if (newNames.length <= PluginAuthorMaxContributorNamesLength) {
+            namesShown === 0
+                ? contributors[namesShown].name
+                : `${contributorNames}, ${contributors[namesShown].name}`
+        if (
+            newNames.length <= PluginAuthorContributorNamesBreakLengthThreshold
+        ) {
             contributorNames = newNames
-            i++
-        } else break
+            namesShown++
+        } else {
+            // If the last name is short enough, add it to the list so we don't have a trailing comma and ", X contributors" without any names.
+            if (
+                namesShown === contributors.length - 1 &&
+                newNames.length <= PluginAuthorMaxContributorNamesLength
+            ) {
+                contributorNames = newNames
+                namesShown++
+            }
+
+            break
+        }
     }
+
+    const contributorsLeft = contributors.length - namesShown
 
     return (
         <Pressable
@@ -244,8 +260,11 @@ export const PluginAuthor = memo(function PluginAuthor({
             >
                 {parsed.name}
                 {count
-                    ? i === contributors.length // all fits
-                        ? `, ${contributorNames}`
+                    ? contributorNames
+                        ? `, ${contributorNames}` +
+                          (contributorsLeft
+                              ? `, ${pluralize(contributorsLeft, 'contributor')}`
+                              : '')
                         : `, ${pluralize(count, 'contributor')}`
                     : ''}
             </Text>
