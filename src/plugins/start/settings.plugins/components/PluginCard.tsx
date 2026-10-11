@@ -182,7 +182,7 @@ const PluginAuthorMaxContributorNamesLength = 16
 export const PluginAuthor = memo(function PluginAuthor({
     pluginName,
     author,
-    contributors = [],
+    contributors: rawContributors = [],
 }: {
     pluginName: string
     author: string
@@ -193,7 +193,7 @@ export const PluginAuthor = memo(function PluginAuthor({
 
     if (
         !parsed ||
-        !(parsed.ids.length || parsed.links.length || contributors.length)
+        !(parsed.ids.length || parsed.links.length || rawContributors.length)
     )
         return (
             <Text
@@ -205,7 +205,10 @@ export const PluginAuthor = memo(function PluginAuthor({
             </Text>
         )
 
-    const count = contributors.length
+    const count = rawContributors.length
+    const contributors = rawContributors
+        .map(c => parsePluginContributor(c))
+        .filter(x => !!x)
 
     let contributorNames = ''
     let i = 0
@@ -213,8 +216,8 @@ export const PluginAuthor = memo(function PluginAuthor({
     while (i < contributors.length) {
         const newNames =
             i === 0
-                ? contributors[i]
-                : `${contributorNames}, ${contributors[i]}`
+                ? contributors[i].name
+                : `${contributorNames}, ${contributors[i].name}`
         if (newNames.length <= PluginAuthorMaxContributorNamesLength) {
             contributorNames = newNames
             i++
@@ -231,7 +234,7 @@ export const PluginAuthor = memo(function PluginAuthor({
                 showPluginContributorsActionSheet({
                     pluginName,
                     author,
-                    contributors,
+                    contributors: rawContributors,
                 })
             }
         >
