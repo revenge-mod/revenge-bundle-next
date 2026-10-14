@@ -1,4 +1,6 @@
+import { getInitializedModuleExports } from '@revenge-mod/modules/metro/utils'
 import { FilterScopes } from '.'
+import { NamespaceOnlyMark } from './_internal'
 import { createFilterGenerator } from './utils'
 import type {
     Filter,
@@ -9,6 +11,7 @@ import type {
     MergeFilterInfo,
     UnionFilterInfo,
 } from '.'
+import type { MaybeNamespaceOnly } from './_internal'
 
 /** {@link FilterScopes.All} sets no predicate assumptions. Only {@link FilterScopes.Uninitialized} implies exportless. */
 const canFilterUninitialized = (scopes: FilterScopeValue) =>
@@ -185,3 +188,47 @@ export const anyOf = Object.assign(
         ),
     },
 ) satisfies AnyOf
+
+export type NamespaceOnly = FilterGenerator<
+    <F extends FilterBase>(filter: F) => Filter<FilterInfoOf<F>>
+>
+
+const namespaceOnlyGenerator = createFilterGenerator<Parameters<NamespaceOnly>>(
+    ([filter], id, exports, initialized) => {
+        if (!initialized) return filter(id, undefined, false)
+        // Inside composite filters, this still runs against the `default` export
+        return (
+            exports === getInitializedModuleExports(id) &&
+            filter(id, exports, true)
+        )
+    },
+    ([filter]) => `revenge.namespaceOnly(${filter.key})`,
+    ([filter]) => filter.scopes,
+) as NamespaceOnly
+
+/**
+ * Matches the filter against the module namespace only, excluding its `default` export.
+ *
+ * Works on what the filter is run against, so it also applies inside composite filters.
+ * Uninitialized modules are left to the filter.
+ *
+ * @param filter The filter to match against the module namespace.
+ *
+ * @example
+ * ```ts
+ * // Matches { x }, but not { default: { x } }
+ * const [SomeModule] = lookupModule(namespaceOnly(withProps('x')))
+ * ```
+ */
+export const namespaceOnly = Object.assign(
+    (filter => {
+        const namespaceFilter = namespaceOnlyGenerator(filter)
+        // Lets lookups skip the `default` export without running the filter against it
+        ;(namespaceFilter as MaybeNamespaceOnly)[NamespaceOnlyMark] = true
+        return namespaceFilter
+    }) as NamespaceOnly,
+    {
+        keyFor: namespaceOnlyGenerator.keyFor,
+        defaultScopesFor: namespaceOnlyGenerator.defaultScopesFor,
+    },
+) satisfies NamespaceOnly

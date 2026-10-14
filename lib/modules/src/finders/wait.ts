@@ -5,6 +5,7 @@ import {
     onAnyModuleInitialized,
     onModuleInitialized,
 } from '../metro/subscriptions'
+import { migrateSkipDefaultOption } from './_compat'
 import { DEBUG_waitStatuses } from './_hidden'
 import {
     exportsFromFilterResultFlag,
@@ -84,6 +85,8 @@ export function waitForModules(
     callback: WaitForModulesCallback<any>,
     options?: WaitForModulesOptions,
 ): WaitForModulesUnsubscribeFunction {
+    filter = migrateSkipDefaultOption(filter, options)
+
     if (options?.cached) {
         const reg = getFilterMatches(filter.key)
         if (reg === null) return noop

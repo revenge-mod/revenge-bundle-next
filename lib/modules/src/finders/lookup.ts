@@ -7,6 +7,7 @@ import {
     getInitializedModuleExports,
     isModuleInitialized,
 } from '../metro/utils'
+import { migrateSkipDefaultOption } from './_compat'
 import {
     exportsFromFilterResultFlag,
     FilterResultFlagToHumanReadable,
@@ -90,6 +91,8 @@ export function lookupModules<
 >(filter: F, options: O): Generator<LookupModulesResult<F, O>, undefined>
 
 export function* lookupModules(filter: Filter, options?: LookupModulesOptions) {
+    filter = migrateSkipDefaultOption(filter, options)
+
     let notFound = true
     let cached: Set<Metro.ModuleID> | undefined
 
@@ -244,6 +247,8 @@ export function lookupModule<
 >(filter: F, options: O): LookupModulesResult<F, O> | LookupNotFoundResult
 
 export function lookupModule(filter: Filter, options?: LookupModulesOptions) {
+    filter = migrateSkipDefaultOption(filter, options)
+
     const scopes = filter.scopes
     const includeAll = scopes & FilterScopes.All
     const includeInit = includeAll || scopes & FilterScopes.Initialized

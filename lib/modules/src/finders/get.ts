@@ -1,6 +1,7 @@
 import { onModuleInitialized } from '@revenge-mod/modules/metro/subscriptions'
 import { isModuleInitialized } from '@revenge-mod/modules/metro/utils'
 import { asap, noop } from '@revenge-mod/utils/callback'
+import { migrateSkipDefaultOption } from './_compat'
 import { FilterScopes } from './filters'
 import { lookupModule, lookupModules } from './lookup'
 import { waitForModules } from './wait'
@@ -71,6 +72,8 @@ export function getModules(
     options?: GetModulesOptions,
 ) {
     let max = options?.max ?? 1
+
+    filter = migrateSkipDefaultOption(filter, options)
 
     // Only lookup modules that are already initialized
     const lookupFilter = filter.scope(FilterScopes.Initialized)

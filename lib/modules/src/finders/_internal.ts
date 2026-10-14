@@ -3,15 +3,22 @@ import { cacheFilterResultForId } from '../caches'
 import { mInitialized } from '../metro/patches'
 import { metroRequire } from '../metro/runtime'
 import { isModuleInitialized } from '../metro/utils'
+import { NamespaceOnlyMark } from './filters/_internal'
 import type { If } from '@revenge-mod/utils/types'
 import type { Metro } from '../types'
-import type { Filter } from './filters'
+import type { Filter, namespaceOnly } from './filters'
+import type { MaybeNamespaceOnly } from './filters/_internal'
 
 export interface RunFilterOptions {
     /**
      * Whether to skip checking the default export.
      *
      * @default false
+     * @deprecated Wrap the filter with {@link namespaceOnly} instead, so it doesn't depend on the lookup:
+     *
+     * ```ts
+     * namespaceOnly(filter)
+     * ```
      */
     skipDefault?: boolean
     /**
@@ -107,7 +114,12 @@ export function runFilter(
             FilterResultFlags.Namespace,
         )
 
-    if (options?.skipDefault) return
+    // TODO: Remove skipDefault
+    if (
+        (filter as MaybeNamespaceOnly)[NamespaceOnlyMark] ||
+        options?.skipDefault
+    )
+        return
     if (noDefaultExportsCache.has(id)) return
 
     const type = typeof exports
