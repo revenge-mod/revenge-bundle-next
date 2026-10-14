@@ -2,15 +2,27 @@ import { ToastActionCreators } from '@revenge-mod/discord/actions'
 import { onSettingsModulesLoaded } from '@revenge-mod/discord/modules/settings'
 import { NetInfo } from '@revenge-mod/externals/react-native-community'
 import { JsonStorageUpdateMode } from '@revenge-mod/json-storage'
-import { registerInternalPlugin } from '@revenge-mod/plugins/_'
+import { pList, registerInternalPlugin } from '@revenge-mod/plugins/_'
 import {
     refreshAllRepos,
     updateAllPlugins,
 } from '@revenge-mod/plugins/_/repositories'
+import { createElement } from 'react'
+import { claimPlugins } from './claims'
+import defer * as NavigatorHeaderWithIconModule from './components/NavigatorHeaderWithIcon'
+import defer * as PluginIconModule from './components/PluginIcon'
 import manifest from './manifest.json'
 import { addDefaultRepoIfNeeded } from './repos'
+import defer * as BrowseScreen from './screens/RevengePluginsBrowseSettingScreen'
+import defer * as PluginsScreen from './screens/RevengePluginsSettingScreen'
+import { showPluginOptionsActionSheet } from './utils/sheets'
 import type { JsonStorage } from '@revenge-mod/json-storage'
 import type { PluginApi } from '@revenge-mod/plugins/types'
+import type {
+    BrowsePageProps,
+    PluginSettingsComponents,
+    PluginsPageProps,
+} from './api'
 
 export interface Storage {
     autoUpdate: boolean
@@ -31,6 +43,24 @@ registerInternalPlugin<{ jsonStorage: Storage }>(manifest, {
     },
     async start(api_) {
         api = api_
+
+        api.decorate(plugin => {
+            plugin.api.pluginSettings = {
+                showPluginOptionsSheet(id) {
+                    const target = pList.get(id)
+                    if (!target) throw new Error(`Plugin not installed: ${id}`)
+                    showPluginOptionsActionSheet(target)
+                },
+                claimPlugins(match) {
+                    const unclaim = claimPlugins(match)
+                    plugin.api.cleanup(unclaim)
+                    return unclaim
+                },
+                PluginsPage,
+                BrowsePage,
+                components,
+            }
+        })
 
         // @as-require
         import('./plugins')
@@ -89,6 +119,20 @@ function defaultRepoRestoreService(
         if (mode === JsonStorageUpdateMode.Load && !update.defaultRepoRestored)
             addDefaultRepoIfNeeded()
     })
+}
+
+function PluginsPage(props: PluginsPageProps) {
+    return createElement(PluginsScreen.PluginsPage, props)
+}
+
+function BrowsePage(props: BrowsePageProps) {
+    return createElement(BrowseScreen.BrowsePage, props)
+}
+
+const components: PluginSettingsComponents = {
+    PluginIcon: props => createElement(PluginIconModule.PluginIcon, props),
+    NavigatorHeaderWithIcon: props =>
+        createElement(NavigatorHeaderWithIconModule.default, props),
 }
 
 // Exposed for the Advanced settings screen (auto-update toggle)

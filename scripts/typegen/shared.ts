@@ -58,6 +58,18 @@ export const Exports = {
     manifest: 'package.json',
 } as const
 
+/**
+ * Plugin API types published as `@revenge-mod/types/plugins/<id>`.
+ * Consumers can opt in by referencing them, like the hidden API.
+ */
+export const PluginTypes: GeneratedEntry[] = [
+    {
+        entry: 'plugins/settings.plugins',
+        path: join('src', 'plugins', 'start', 'settings.plugins', 'api.ts'),
+        declaration: 'plugins/settings.plugins.d.ts',
+    },
+]
+
 /** Root object definition and visibility tier. */
 export interface ApiRoot {
     /** Dotted path recorded in import map. */

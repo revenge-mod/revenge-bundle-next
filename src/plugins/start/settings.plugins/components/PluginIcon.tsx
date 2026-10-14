@@ -2,7 +2,7 @@ import { getAssetIdByName } from '@revenge-mod/assets'
 import { Tokens } from '@revenge-mod/discord/common/tokens'
 import { Design } from '@revenge-mod/discord/design'
 import { Image } from 'react-native'
-import type { AssetId } from '@revenge-mod/assets/types'
+import type { PluginIconProps } from '../api'
 
 const PuzzlePieceIcon = getAssetIdByName('PuzzlePieceIcon', 'png')!
 
@@ -11,12 +11,9 @@ export function PluginIcon({
     defaultIcon = PuzzlePieceIcon,
     size = 20,
     danger = false,
-}: {
-    icon?: string
-    defaultIcon?: AssetId
-    danger?: boolean
-    size?: number
-}) {
+    tintColor,
+    style,
+}: PluginIconProps) {
     const styles = usePluginIconStyles()
     // Icons are either a packaged asset name or an inline data: URL, never fetched.
     // Asset icons are monochrome and get tinted, data: URLs render as-is.
@@ -32,9 +29,14 @@ export function PluginIcon({
                       : defaultIcon
             }
             style={[
-                !dataUrl && styles.icon,
-                danger && styles.danger,
+                !dataUrl &&
+                    (danger
+                        ? styles.danger
+                        : tintColor
+                          ? { tintColor }
+                          : styles.icon),
                 { width: size, height: size },
+                style,
             ]}
         />
     )

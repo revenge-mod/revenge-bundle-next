@@ -6,6 +6,7 @@ import { writeJson } from './helpers'
 import {
     Exports,
     Paths,
+    PluginTypes,
     TypesPackageDependencies,
     TypesPackagePeerDependencies,
     TypesPackageScope,
@@ -134,6 +135,10 @@ function renderImportMapCheck(maps: ImportMap[]): ImportMapCheck {
     const lines = [
         `/// <reference path="${join(root, Exports.types)}" />`,
         `/// <reference path="${join(root, Exports.hiddenTypes)}" />`,
+        ...PluginTypes.map(
+            ({ declaration }) =>
+                `/// <reference path="${join(root, declaration)}" />`,
+        ),
         '',
         `import type { ${CheckApiType} } from '${CheckApiModule}'`,
         '',

@@ -30,12 +30,18 @@ import {
 } from 'react'
 import { Image, View } from 'react-native'
 import RevengeIcon from '~assets/RevengeIcon'
+import {
+    belongsOnPage,
+    matchInfoOfManifest,
+    usePluginClaimsVersion,
+} from '../claims'
 import { InstalledPluginMasonryFlashList } from '../components/PluginList'
 import PluginTooltipsProvider from '../components/TooltipProvider'
 import { RouteNames, Setting } from '../constants'
 import { pluralize } from '../utils/strings'
 import type { NavigationProp, RouteProp } from '@react-navigation/core'
 import type { ReactNavigationParamList } from '@revenge-mod/externals/react-navigation'
+import type { PluginsPageProps } from '../api'
 import type { FilterAndSortActionSheetProps } from '../components/FilterAndSortActionSheet'
 
 const { Stack, IconButton, FloatingActionButton, LayerScope, Card, Text } =
@@ -46,11 +52,19 @@ const SettingsIcon = getAssetIdByName('SettingsIcon')!
 const PlusLargeIcon = getAssetIdByName('PlusLargeIcon')!
 
 export default function RevengePluginsSettingScreen() {
+    return <PluginsPage />
+}
+
+/**
+ * The Plugins page. Without {@link match}, lists every installed plugin no other plugin claimed.
+ * Dependents receive it with {@link match} as `pluginSettings.PluginsPage`, without the header button.
+ */
+export function PluginsPage(props: Partial<PluginsPageProps>) {
     return (
         <LayerScope>
             <PluginTooltipsProvider>
                 <Page spacing={16}>
-                    <Screen />
+                    <Screen {...props} />
                 </Page>
             </PluginTooltipsProvider>
         </LayerScope>
@@ -125,7 +139,13 @@ function HeaderButton() {
     )
 }
 
-function BrowseFloatingActionButton({ disabled }: { disabled?: boolean }) {
+function BrowseFloatingActionButton({
+    disabled,
+    onBrowse,
+}: {
+    disabled?: boolean
+    onBrowse?: () => void
+}) {
     const navigation = useNavigation<NavigationProp<any>>()
 
     return (
@@ -133,8 +153,12 @@ function BrowseFloatingActionButton({ disabled }: { disabled?: boolean }) {
             disabled={disabled}
             icon={PlusLargeIcon}
             accessibilityLabel="Browse plugins"
-            onPress={() =>
-                navigation.navigate(RouteNames[Setting.RevengePluginsBrowse])
+            onPress={
+                onBrowse ??
+                (() =>
+                    navigation.navigate(
+                        RouteNames[Setting.RevengePluginsBrowse],
+                    ))
             }
         />
     )
@@ -255,7 +279,7 @@ function snapshotPlugins() {
     )
 }
 
-function Screen() {
+function Screen({ match, onBrowse }: Partial<PluginsPageProps>) {
     const navigation = useNavigation()
     const route =
         useRoute<
@@ -271,11 +295,13 @@ function Screen() {
         [],
     )
 
+    // Our settings, not on pages of other plugins
     useLayoutEffect(() => {
-        navigation.setOptions({
-            headerRight: () => <HeaderButton />,
-        })
-    }, [navigation])
+        if (!match)
+            navigation.setOptions({
+                headerRight: () => <HeaderButton />,
+            })
+    }, [navigation, match])
 
     const filter = route.params?.filter ?? DefaultFilters
     const matchAll = route.params?.matchAll ?? true
@@ -293,6 +319,7 @@ function Screen() {
     )
 
     const [allPlugins, setAllPlugins] = useState(snapshotPlugins)
+    const claimsVersion = usePluginClaimsVersion()
 
     useEffect(() => {
         const handleUpdate = () => setAllPlugins(snapshotPlugins())
@@ -306,9 +333,13 @@ function Screen() {
         }
     }, [])
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: claimsVersion changes when claims do, which belongsOnPage reads
     const plugins = useMemo(
         () =>
             allPlugins
+                .filter(([plugin]) =>
+                    belongsOnPage(matchInfoOfManifest(plugin.manifest), match),
+                )
                 .filter(([plugin, meta]) => {
                     if (filter.length === 0) return true
                     if (matchAll)
@@ -331,7 +362,16 @@ function Screen() {
                     const result = Sorts[sort as keyof typeof Sorts][1](a, b)
                     return reverse ? -result : result
                 }),
-        [allPlugins, filter, matchAll, reverse, sort, search],
+        [
+            allPlugins,
+            filter,
+            matchAll,
+            reverse,
+            sort,
+            search,
+            match,
+            claimsVersion,
+        ],
     )
 
     return (
@@ -374,7 +414,10 @@ function Screen() {
                 ListHeaderComponent={ListHeader}
                 plugins={plugins}
             />
-            <BrowseFloatingActionButton disabled={isDefaultsOnlyBoot} />
+            <BrowseFloatingActionButton
+                disabled={isDefaultsOnlyBoot}
+                onBrowse={onBrowse}
+            />
         </>
     )
 }

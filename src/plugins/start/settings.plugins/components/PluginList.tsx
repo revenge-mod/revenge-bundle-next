@@ -15,7 +15,7 @@ import type { FlashListProps } from '@shopify/flash-list'
 import type { PluginRef } from '../utils/repos'
 import type { PluginCardProps, PluginInfoData } from './PluginCard'
 
-const { Text } = Design
+const { Stack, Text } = Design
 
 const gutterCompensation = { margin: -PLUGIN_CARD_HALF_GUTTER }
 
@@ -134,9 +134,12 @@ export interface BrowseEntry {
 export function BrowsePluginMasonryFlashList({
     entries,
     onInstall,
+    empty = NoBrowsePluginsText,
 }: {
     entries: BrowseEntry[]
     onInstall: (id: string, repo: string, ref: PluginRef) => Promise<unknown>
+    /** Shown when there are no entries. */
+    empty?: string
 }) {
     const numColumns = useNumColumns()
     const hideTooltips = useHidePluginTooltips()
@@ -146,13 +149,13 @@ export function BrowsePluginMasonryFlashList({
             maintainVisibleContentPosition={MaintainVisibleContentPosition}
             masonry
             style={gutterCompensation}
-            contentContainerStyle={{ paddingBottom: 16 }}
+            contentContainerStyle={{ paddingBottom: 16, flexGrow: 1 }}
             data={entries}
             onScrollBeginDrag={hideTooltips}
             fadingEdgeLength={16}
             keyExtractor={entry => entry.key}
             numColumns={numColumns}
-            ListEmptyComponent={NoBrowsePlugins}
+            ListEmptyComponent={<NoBrowsePlugins text={empty} />}
             renderItem={({ item: entry }) => {
                 if (entry.installed) {
                     const [plugin, meta] = entry.installed
@@ -165,10 +168,15 @@ export function BrowsePluginMasonryFlashList({
     )
 }
 
-function NoBrowsePlugins() {
+const NoBrowsePluginsText =
+    'No plugins available.\nYou probably reached the end of the list, somehow!'
+
+function NoBrowsePlugins({ text }: { text: string }) {
     return (
-        <Text variant="heading-md/medium" style={{ textAlign: 'center' }}>
-            No plugins available. Add repositories to browse plugins.
-        </Text>
+        <Stack style={styles.flex} align="center" justify="center">
+            <Text variant="heading-md/medium" style={{ textAlign: 'center' }}>
+                {text}
+            </Text>
+        </Stack>
     )
 }

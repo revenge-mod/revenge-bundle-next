@@ -13,10 +13,13 @@ import {
 import { debounce, noop } from '@revenge-mod/utils/callback'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { View } from 'react-native'
+import { belongsOnPage, usePluginClaimsVersion } from '../claims'
 import { BrowsePluginMasonryFlashList } from '../components/PluginList'
 import PluginTooltipsProvider from '../components/TooltipProvider'
 import { installPluginRef, pickChannel, versionOfChannel } from '../utils/repos'
 import type { AnyPlugin, InternalPluginMeta } from '@revenge-mod/plugins/_'
+import type { RepoPluginListing } from '@revenge-mod/plugins/_/repositories'
+import type { BrowsePageProps, PluginMatchInfo } from '../api'
 import type { BrowseSortKey } from '../components/BrowseFilterAndSortActionSheet'
 import type { BrowseEntry } from '../components/PluginList'
 import type { PluginRef, RepoOffer } from '../utils/repos'
@@ -28,15 +31,36 @@ const FiltersHorizontalIcon = getAssetIdByName('FiltersHorizontalIcon', 'png')!
 const SearchDebounceTime = 100
 
 export default function RevengePluginsBrowseSettingScreen() {
+    return <BrowsePage />
+}
+
+/**
+ * The Browse page. Without {@link match}, lists every listing no other plugin claimed.
+ * Dependents receive it with {@link match} as `pluginSettings.BrowsePage`.
+ */
+export function BrowsePage(props: Partial<BrowsePageProps>) {
     return (
         <LayerScope>
             <PluginTooltipsProvider>
                 <Page spacing={16}>
-                    <Screen />
+                    <Screen {...props} />
                 </Page>
             </PluginTooltipsProvider>
         </LayerScope>
     )
+}
+
+/** Extracts filterable metadata from {@link listing} using its default channel version. */
+function matchInfoOfListing(listing: RepoPluginListing): PluginMatchInfo {
+    const version = versionOfChannel(listing, pickChannel(listing))
+    const dependencies: PluginMatchInfo['dependencies'] = {}
+    for (const [id, { optional }] of Object.entries(
+        (version && listing.versions[version]?.dependencies) || {},
+    ))
+        dependencies[id] = { optional }
+
+    const { id, name, description, author } = listing
+    return { id, name, description, author, dependencies }
 }
 
 /** One plugin and every repository serving it, by priority. */
@@ -76,10 +100,13 @@ const Sorts: Record<BrowseSortKey, (a: BrowseEntry, b: BrowseEntry) => number> =
         size: (a, b) => a.size - b.size || compareNames(a, b),
     }
 
-function Screen() {
+function Screen({ match, empty }: Partial<BrowsePageProps>) {
     const [groups, setGroups] = useState<BrowseGroup[]>([])
 
-    // Plugins installed before opening the page, hidden. Fresh installs stay until exit
+    // Re-evaluates plugins when claims change
+    const claimsVersion = usePluginClaimsVersion()
+
+    // Plugins installed prior to opening the page remain hidden; fresh installs stay visible until exit
     const [preinstalled] = useState(() => new Set(pList.keys()))
 
     const [search, setSearch] = useState('')
@@ -98,6 +125,7 @@ function Screen() {
         [excluded, sort, reverse],
     )
 
+    // biome-ignore lint/correctness/useExhaustiveDependencies: claimsVersion changes when claims do, which belongsOnPage reads
     const load = useCallback(async () => {
         const repos = (await listRepos()).filter(
             repo => !repo.internal && repo.enabled,
@@ -114,7 +142,11 @@ function Screen() {
         const byId = new Map<string, BrowseGroup>()
         repos.forEach((repo, i) => {
             for (const listing of listings[i]!) {
-                if (preinstalled.has(listing.id)) continue
+                if (
+                    preinstalled.has(listing.id) ||
+                    !belongsOnPage(matchInfoOfListing(listing), match)
+                )
+                    continue
 
                 let group = byId.get(listing.id)
                 if (!group) {
@@ -134,7 +166,7 @@ function Screen() {
         })
 
         setGroups([...byId.values()])
-    }, [preinstalled])
+    }, [preinstalled, match, claimsVersion])
 
     useEffect(() => {
         // Show cached indexes right away, then refresh everything
@@ -241,6 +273,7 @@ function Screen() {
             <BrowsePluginMasonryFlashList
                 entries={visible}
                 onInstall={install}
+                empty={empty}
             />
         </>
     )

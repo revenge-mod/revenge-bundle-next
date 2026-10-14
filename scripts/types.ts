@@ -12,7 +12,14 @@ import {
 } from './typegen/helpers'
 import { getLibraries } from './typegen/libs'
 import { typesPackageManifest } from './typegen/package'
-import { Exports, HiddenApi, Paths, PublicApi } from './typegen/shared'
+import {
+    Exports,
+    HiddenApi,
+    Paths,
+    PluginTypes,
+    PublicApi,
+    TypesPackageName,
+} from './typegen/shared'
 import { verifyImportMaps } from './typegen/verification'
 import type { GeneratedEntry } from './typegen/shared'
 
@@ -35,6 +42,11 @@ export default async function buildTypes(log = true): Promise<void> {
     try {
         const libraries = getLibraries()
 
+        for (const { entry } of PluginTypes)
+            console.debug(
+                chalk.gray(`🔌 ${entry} -> ${TypesPackageName}/${entry}`),
+            )
+
         // Merged modules need additional files to be written
         for (const { path, source } of libraries) {
             if (source) await writeFile(path, source)
@@ -43,6 +55,7 @@ export default async function buildTypes(log = true): Promise<void> {
         // Emit declarations together so there aren't conflicting duplicate chunks which consumers would have to consume.
         const defaultExports = await emitDeclarations(libraries, [
             ConsumerGlobals,
+            ...PluginTypes,
         ])
 
         const [publicModules, hiddenModules] = partitionModules(libraries)

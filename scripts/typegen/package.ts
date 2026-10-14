@@ -2,6 +2,7 @@ import chalk from 'chalk'
 import pkg from '../../package.json' with { type: 'json' }
 import {
     Exports,
+    PluginTypes,
     TypesPackageDependencies,
     TypesPackageName,
     TypesPackageOptionalPeerDependencies,
@@ -22,6 +23,12 @@ export function typesPackageManifest(assets: string[]) {
         exports: {
             '.': { types: `./${Exports.types}` },
             './hidden': { types: `./${Exports.hiddenTypes}` },
+            ...Object.fromEntries(
+                PluginTypes.map(({ entry, declaration }) => [
+                    `./${entry}`,
+                    { types: `./${declaration}` },
+                ]),
+            ),
             ...Object.fromEntries(
                 assets.map(file => [`./${file}`, { default: `./${file}` }]),
             ),
