@@ -75,6 +75,40 @@ describe('getInternalPluginManifests', () => {
         await expect(getInternalPluginManifests(root)).resolves.toBeDefined()
     })
 
+    it('keeps the version of a stub', async () => {
+        await plugin('start', 'settings.themes', {
+            id: 'revenge.settings.themes',
+            version: '1.0.0-beta1',
+            defaultSource: { repo: 'https://example.com' },
+        })
+
+        const [stub] = await getInternalPluginManifests(root)
+        expect(stub).toMatchObject({ version: '1.0.0-beta1' })
+    })
+
+    it('rejects a version on a plugin that is not a stub', async () => {
+        await plugin('start', 'settings', {
+            id: 'revenge.settings',
+            version: '1.0.0',
+        })
+
+        await expect(getInternalPluginManifests(root)).rejects.toThrow(
+            /only stubs/,
+        )
+    })
+
+    it('rejects an invalid stub version', async () => {
+        await plugin('start', 'settings.themes', {
+            id: 'revenge.settings.themes',
+            version: 'v1',
+            defaultSource: { repo: 'https://example.com' },
+        })
+
+        await expect(getInternalPluginManifests(root)).rejects.toThrow(
+            /invalid version/,
+        )
+    })
+
     it('rejects two plugins claiming one ID', async () => {
         await plugin('preinit', 'settings', { id: 'revenge.settings' })
         await plugin('start', 'settings', { id: 'revenge.settings' })

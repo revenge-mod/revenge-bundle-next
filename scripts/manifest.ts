@@ -15,6 +15,8 @@ interface BundleManifestPlugin {
     /** On until the user says otherwise. */
     enabledByDefault?: true
     dependencies?: Record<string, { version?: string }>
+    /** Overrides the bundle version. Stubs only. */
+    version?: string
     defaultSource?: {
         repo: string
         channel?: string
@@ -66,7 +68,7 @@ export async function getInternalPluginManifests(
 
             seen.set(manifest.id, where)
 
-            const { enabledByDefault, defaultSource } = manifest
+            const { enabledByDefault, defaultSource, version } = manifest
             if (
                 enabledByDefault !== undefined &&
                 typeof enabledByDefault !== 'boolean' &&
@@ -85,8 +87,24 @@ export async function getInternalPluginManifests(
                     `Internal plugin "${manifest.id}" has an invalid defaultSource: ${JSON.stringify(defaultSource)}`,
                 )
 
+            if (version !== undefined) {
+                if (!defaultSource)
+                    throw new Error(
+                        `Internal plugin "${manifest.id}" sets a version, but only stubs (with defaultSource) can`,
+                    )
+
+                if (
+                    typeof version !== 'string' ||
+                    !/^\d+(\.\d+)*(-[a-z0-9]+)?$/.test(version)
+                )
+                    throw new Error(
+                        `Internal plugin "${manifest.id}" has an invalid version: ${JSON.stringify(version)}`,
+                    )
+            }
+
             manifests.push({
                 id: manifest.id,
+                ...(version !== undefined && { version }),
                 ...(manifest.essential && { essential: true }),
                 ...((enabledByDefault === 'dev' ? dev : enabledByDefault) && {
                     enabledByDefault: true,
@@ -98,8 +116,11 @@ export async function getInternalPluginManifests(
                     defaultSource &&
                     (defaultSource === true
                         ? {
-                              repo: stringEnv(
-                                  'REVENGE_DEFAULT_PLUGIN_REPOSITORY_URL',
+                              // stringEnv quotes values for build defines
+                              repo: JSON.parse(
+                                  stringEnv(
+                                      'REVENGE_DEFAULT_PLUGIN_REPOSITORY_URL',
+                                  ),
                               ),
                           }
                         : {

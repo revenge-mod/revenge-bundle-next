@@ -14,8 +14,13 @@ export type InternalPluginManifest = Omit<
     PluginManifest,
     'version' | 'format' | 'dependencies'
 > &
-    Partial<Pick<PluginManifest, 'version' | 'format' | 'dependencies'>> &
-    InternalPluginManifestExtras
+    Partial<Pick<PluginManifest, 'format' | 'dependencies'>> & {
+        /**
+         * Plugin version. Defaults to the bundle version.
+         * Only stubs (see {@link InternalPluginManifestExtras.defaultSource}) may set it in `manifest.json`, as a string like `1.0.0`.
+         */
+        version?: PluginManifest['version'] | string
+    } & InternalPluginManifestExtras
 
 /** Extra keys from an internal plugin's `manifest.json` for the build and registration system. */
 export interface InternalPluginManifestExtras {

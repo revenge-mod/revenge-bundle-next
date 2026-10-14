@@ -34,7 +34,10 @@ export function completeInternalManifest(
     manifest: InternalPluginManifest,
     version: PluginVersion,
 ): PluginManifest {
-    manifest.version ??= version
+    manifest.version =
+        typeof manifest.version === 'string'
+            ? parseBundleVersion(manifest.version)
+            : (manifest.version ?? version)
     manifest.format ??= ManifestFormat
 
     if (!isReservedDependency(manifest.id)) {
