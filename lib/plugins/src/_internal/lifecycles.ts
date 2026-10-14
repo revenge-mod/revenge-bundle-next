@@ -208,22 +208,18 @@ export async function runPluginLate(plugin: AnyPlugin) {
     pPending.add(plugin)
     computePendingNodes()
 
-    await Promise.all(
-        pListOrdered
-            .filter(plugin => isPluginStopped(plugin))
-            .map(async function runLate(plugin) {
-                // Native would write this after revenge.plugins.restart
-                adoptPluginFlags(plugin, PluginFlags.StartedLate)
+    for (const plugin of pListOrdered.filter(isPluginStopped)) {
+        // Native would write this after revenge.plugins.restart
+        adoptPluginFlags(plugin, PluginFlags.StartedLate)
 
-                await callPluginSystemMethod('revenge.plugins.restart', [
-                    plugin.manifest.id,
-                ])
+        await callPluginSystemMethod('revenge.plugins.restart', [
+            plugin.manifest.id,
+        ])
 
-                await preInitPlugin(plugin)
-                await initPlugin(plugin)
-                await startPlugin(plugin)
-            }),
-    )
+        await preInitPlugin(plugin)
+        await initPlugin(plugin)
+        await startPlugin(plugin)
+    }
 }
 
 export async function preInitPlugin(plugin: AnyPlugin) {
