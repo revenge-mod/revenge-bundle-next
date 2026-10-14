@@ -17,6 +17,12 @@ interface BundleManifestPlugin {
     dependencies?: Record<string, { version?: string }>
     /** Overrides the bundle version. Stubs only. */
     version?: string
+    // Metadata, stubs only. Native shows a restored stub before JS can fill these in.
+    name?: string
+    description?: string
+    author?: string
+    contributors?: string[]
+    icon?: string
     defaultSource?: {
         repo: string
         channel?: string
@@ -105,6 +111,13 @@ export async function getInternalPluginManifests(
             manifests.push({
                 id: manifest.id,
                 ...(version !== undefined && { version }),
+                ...(defaultSource && {
+                    name: manifest.name,
+                    description: manifest.description,
+                    author: manifest.author,
+                    contributors: manifest.contributors,
+                    icon: manifest.icon,
+                }),
                 ...(manifest.essential && { essential: true }),
                 ...((enabledByDefault === 'dev' ? dev : enabledByDefault) && {
                     enabledByDefault: true,

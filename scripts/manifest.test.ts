@@ -86,6 +86,25 @@ describe('getInternalPluginManifests', () => {
         expect(stub).toMatchObject({ version: '1.0.0-beta1' })
     })
 
+    it('keeps the metadata of a stub', async () => {
+        await plugin('start', 'settings.themes', {
+            id: 'revenge.settings.themes',
+            name: 'Theme Settings',
+            description: 'Manage your themes.',
+            author: 'Revenge',
+            icon: 'PaintPaletteIcon',
+            defaultSource: { repo: 'https://example.com' },
+        })
+
+        const [stub] = await getInternalPluginManifests(root)
+        expect(stub).toMatchObject({
+            name: 'Theme Settings',
+            description: 'Manage your themes.',
+            author: 'Revenge',
+            icon: 'PaintPaletteIcon',
+        })
+    })
+
     it('rejects a version on a plugin that is not a stub', async () => {
         await plugin('start', 'settings', {
             id: 'revenge.settings',
