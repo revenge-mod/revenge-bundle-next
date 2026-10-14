@@ -8,7 +8,6 @@ import {
     runPluginLate,
 } from '@revenge-mod/plugins/_'
 import { usePluginEnabledById } from '@revenge-mod/plugins/_/react'
-import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import pluginHiddenApi from '~plugins/preinit/api.hidden'
 import { Setting } from '../constants'
 import type { SettingsItem } from '@revenge-mod/discord/modules/settings'
@@ -39,11 +38,7 @@ const RevengeDeveloperModeSetting: SettingsItem = {
 function showFailureToast(e: unknown) {
     ToastActionCreators.open('REVENGE_DEVELOPER_MODE_FAILED', {
         text: `Failed to toggle Developer Mode: ${e instanceof Error ? e.message : String(e)}`,
-        icon: lookupGeneratedIconComponent(
-            'CircleXIcon',
-            'CircleXIcon-primary',
-            'CircleXIcon-secondary',
-        )!,
+        variant: 'critical',
     })
 }
 

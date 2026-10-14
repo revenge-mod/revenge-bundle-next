@@ -107,7 +107,7 @@ function UserRepoRow({
                 IconComponent: lookupGeneratedIconComponent('RefreshIcon')!,
                 action: () =>
                     refreshRepo(repo.url).catch(e => {
-                        showErrorToast(messageOf(e))
+                        showErrorToast(messageOf(e), 'REFRESH_ERROR')
                     }),
             },
             {
@@ -228,7 +228,9 @@ export default function RevengePluginsAdvancedSettingScreen() {
     const settings = api.jsonStorage.use()
 
     const refresh = useCallback(() => {
-        listRepos().then(setReposState, e => showErrorToast(messageOf(e)))
+        listRepos().then(setReposState, e =>
+            showErrorToast(messageOf(e), 'LIST_REPOS_ERROR'),
+        )
     }, [])
 
     // biome-ignore lint/correctness/useExhaustiveDependencies: forceUpdate so we can refresh the screen
@@ -239,7 +241,7 @@ export default function RevengePluginsAdvancedSettingScreen() {
             try {
                 await setRepos(config)
             } catch (e) {
-                showErrorToast(messageOf(e))
+                showErrorToast(messageOf(e), 'SET_REPOS_ERROR')
             }
             refresh()
         },
@@ -269,7 +271,7 @@ export default function RevengePluginsAdvancedSettingScreen() {
             // Refresh the new repository right away so its plugins show up
             await refreshRepo(added)
         } catch (e) {
-            showErrorToast(messageOf(e))
+            showErrorToast(messageOf(e), 'REFRESH_ERROR')
         }
         refresh()
     }, [commit, refresh, url, userRepos])
@@ -428,7 +430,12 @@ export default function RevengePluginsAdvancedSettingScreen() {
                                 callPluginSystemMethod(
                                     'revenge.plugins.installFile',
                                     [],
-                                ).catch(e => showErrorToast(messageOf(e)))
+                                ).catch(e =>
+                                    showErrorToast(
+                                        messageOf(e),
+                                        'INSTALL_FILE_ERROR',
+                                    ),
+                                )
                             }
                         />
                         <TableRow
@@ -439,22 +446,25 @@ export default function RevengePluginsAdvancedSettingScreen() {
                                     const restored =
                                         await addDefaultRepoIfNeeded(true)
                                     if (!restored) {
-                                            ToastActionCreators.open(
-                                                'REVENGE_DEFAULT_REPO_NO_ACTION',
-                                                {
-                                                    text: 'Nothing to restore',
-                                                    icon: lookupGeneratedIconComponent(
-                                                        'FileWarningIcon',
-                                                    ),
-                                                },
-                                            )
+                                        ToastActionCreators.open(
+                                            'REVENGE_DEFAULT_REPO_NO_ACTION',
+                                            {
+                                                text: 'Nothing to restore',
+                                                icon: lookupGeneratedIconComponent(
+                                                    'FileWarningIcon',
+                                                ),
+                                            },
+                                        )
 
                                         return
                                     }
 
                                     forceUpdate()
                                 } catch (e) {
-                                    showErrorToast(messageOf(e))
+                                    showErrorToast(
+                                        messageOf(e),
+                                        'RESTORE_DEFAULT_REPO_ERROR',
+                                    )
                                 }
                             }}
                         />

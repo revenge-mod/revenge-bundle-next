@@ -53,7 +53,7 @@ export async function handleEnablePlugin(plugin: AnyPlugin) {
             await enablePluginInActiveSlot(plugin, true)
         } catch (e) {
             // Requirements not satisfied by native, don't try to start
-            showErrorToast(messageOf(e))
+            showErrorToast(messageOf(e), 'ENABLE_ERROR')
             return
         }
 

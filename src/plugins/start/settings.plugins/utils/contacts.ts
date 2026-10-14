@@ -41,7 +41,7 @@ export function openUserProfile(userId: string) {
     )[0]
 
     if (showUserProfileActionSheet) showUserProfileActionSheet({ userId })
-    else showErrorToast('Could not open user profile')
+    else showErrorToast('Could not open user profile', 'OPEN_PROFILE_ERROR')
 }
 
 /** Opens a link through Discord's link handler, which confirms untrusted links. */

@@ -55,6 +55,7 @@ export async function loadUpdates(refresh: boolean): Promise<boolean> {
                     errors
                         .map(e => `${e.url}: ${messageOf(e.error)}`)
                         .join('\n'),
+                    'REFRESH_ERROR',
                 )
         }
 
@@ -85,7 +86,9 @@ export async function installSelectedUpdates() {
     try {
         const result = await updatePlugins(updatesStore.getState().selected)
         await resyncPluginSources().catch(noop)
-        await loadUpdates(false).catch(e => showErrorToast(messageOf(e)))
+        await loadUpdates(false).catch(e =>
+            showErrorToast(messageOf(e), 'LOAD_UPDATES_ERROR'),
+        )
         return result
     } finally {
         updatesStore.setState({ installing: false })

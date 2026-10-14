@@ -7,7 +7,6 @@ import {
     refreshAllRepos,
     updateAllPlugins,
 } from '@revenge-mod/plugins/_/repositories'
-import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import manifest from './manifest.json'
 import { addDefaultRepoIfNeeded } from './repos'
 import type { JsonStorage } from '@revenge-mod/json-storage'
@@ -22,12 +21,6 @@ export interface Storage {
 
 const OUTDATED_THRESHOLD = 60 * 60 * 1000 // 1 hour
 const AUTO_UPDATE_CHECK_DELAY = 10_000
-
-const CircleXIconComponent = lookupGeneratedIconComponent(
-    'CircleXIcon',
-    'CircleXIcon-primary',
-    'CircleXIcon-secondary',
-)!
 
 registerInternalPlugin<{ jsonStorage: Storage }>(manifest, {
     jsonStorage: {
@@ -78,7 +71,7 @@ function autoUpdateService(settings: Storage) {
         } catch (e) {
             ToastActionCreators.open('REVENGE_PLUGIN_UPDATE_CHECK_FAILED', {
                 text: 'Failed to check for plugin updates',
-                icon: CircleXIconComponent,
+                variant: 'critical',
             })
 
             api.logger.warn('Failed to check for plugin updates', e)

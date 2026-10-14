@@ -499,7 +499,7 @@ export const InstalledPluginSwitch = memo(function InstalledPluginSwitch({
                 ;(enabled
                     ? handleEnablePlugin(plugin)
                     : handleDisablePlugin(plugin)
-                ).catch(e => showErrorToast(messageOf(e)))
+                ).catch(e => showErrorToast(messageOf(e), 'TOGGLE_ERROR'))
             }}
             value={enabled}
         />

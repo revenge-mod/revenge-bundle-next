@@ -102,7 +102,9 @@ export default function RevengePluginsUpdatesSettingScreen() {
     const [progress, setProgress] = useState<DownloadProgressEvent | null>(null)
 
     const load = useCallback((refresh: boolean) => {
-        loadUpdates(refresh).catch(e => showErrorToast(messageOf(e)))
+        loadUpdates(refresh).catch(e =>
+            showErrorToast(messageOf(e), 'LOAD_UPDATES_ERROR'),
+        )
     }, [])
 
     // Cached updates stay until refreshed
@@ -160,6 +162,7 @@ export default function RevengePluginsUpdatesSettingScreen() {
                     errors
                         .map(e => `${e.id}: ${messageOf(e.error)}`)
                         .join('\n'),
+                    'INSTALL_UPDATES_ERROR',
                 )
             else
                 ToastActionCreators.open('REVENGE_PLUGINS_UPDATED', {
@@ -167,7 +170,7 @@ export default function RevengePluginsUpdatesSettingScreen() {
                     icon: DownloadIconComponent,
                 })
         } catch (e) {
-            showErrorToast(messageOf(e))
+            showErrorToast(messageOf(e), 'INSTALL_UPDATES_ERROR')
         } finally {
             setProgress(null)
         }

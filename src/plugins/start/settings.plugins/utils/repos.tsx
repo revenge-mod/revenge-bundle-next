@@ -1,5 +1,7 @@
 import {
     getInternalPluginMeta,
+    isPluginSystemErrorPayload,
+    PluginErrorCodes,
     resyncPluginSources,
 } from '@revenge-mod/plugins/_'
 import {
@@ -18,6 +20,7 @@ import type {
     InstallPlanAction,
     PlanTarget,
     RepoPluginListing,
+    ResolveIssue,
 } from '@revenge-mod/plugins/_/repositories'
 
 /** Finds a plugin in a repository index. Refreshes it when `refresh` is set or nothing is cached. */
@@ -98,11 +101,15 @@ export async function installPlugins(
         const plan = await planAll(ids, targets)
 
         if (plan.warnings.length)
-            showErrorToast(plan.warnings.map(describeIssue).join('\n'))
+            showErrorToast(
+                plan.warnings.map(describeIssue).join('\n'),
+                'PLAN_WARNINGS',
+            )
 
         if (!plan.actions.length) {
             showErrorToast(
                 'Plugins already installed, or no versions compatible.',
+                'PLAN_NO_ACTIONS',
             )
 
             return true
@@ -125,8 +132,21 @@ export async function installPlugins(
         await resyncPluginSources()
         return true
     } catch (e) {
-        showErrorToast(messageOf(e))
+        handlePotentialPlanResolveError(e)
         return false
+    }
+}
+
+export function handlePotentialPlanResolveError(e: unknown) {
+    if (isPluginSystemErrorPayload(e)) {
+        if (e.code === PluginErrorCodes.ResolveFailed) {
+            showErrorToast(
+                describeIssue(e.details as ResolveIssue),
+                'PLAN_ERROR',
+            )
+        }
+    } else {
+        showErrorToast(messageOf(e), 'PLAN_ERROR')
     }
 }
 

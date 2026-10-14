@@ -56,7 +56,8 @@ export default function PluginRepositoryPickerActionSheet({
                 )
 
                 // Errors only matter on a manual refresh
-                if (refresh && errors.length) showErrorToast(errors.join('\n'))
+                if (refresh && errors.length)
+                    showErrorToast(errors.join('\n'), 'REFRESH_ERROR')
 
                 // Names can change after a refresh
                 const names = new Map(
@@ -78,7 +79,7 @@ export default function PluginRepositoryPickerActionSheet({
                     }),
                 )
             } catch (e) {
-                showErrorToast(messageOf(e))
+                showErrorToast(messageOf(e), 'REFRESH_ERROR')
             } finally {
                 setLoading(false)
             }

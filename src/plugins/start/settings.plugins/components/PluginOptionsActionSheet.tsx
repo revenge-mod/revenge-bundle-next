@@ -372,7 +372,7 @@ function AllowUpdatesRow({
             value={allowUpdates}
             onValueChange={value => {
                 setUpdatesPaused(plugin, !value).catch(e =>
-                    showErrorToast(messageOf(e)),
+                    showErrorToast(messageOf(e), 'PAUSE_UPDATES_ERROR'),
                 )
             }}
         />
@@ -469,7 +469,7 @@ function PluginActions({
                                 if (running) await stopPlugin(plugin)
                                 else await runPluginLate(plugin)
                             } catch (e) {
-                                showErrorToast(messageOf(e))
+                                showErrorToast(messageOf(e), 'RUN_STOP_ERROR')
                             }
                         }}
                     />

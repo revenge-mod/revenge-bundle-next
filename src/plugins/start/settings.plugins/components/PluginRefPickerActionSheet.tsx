@@ -56,7 +56,7 @@ export default function PluginRefPickerActionSheet({
             try {
                 setListing((await findRepoListing(repo, id, refresh)) ?? null)
             } catch (e) {
-                showErrorToast(messageOf(e))
+                showErrorToast(messageOf(e), 'LISTING_ERROR')
                 if (!refresh) setListing(null)
             } finally {
                 setLoading(false)

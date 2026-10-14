@@ -11,7 +11,6 @@ import {
     isPluginStarted,
     uninstallExternalPlugin,
 } from '@revenge-mod/plugins/_'
-import { lookupGeneratedIconComponent } from '@revenge-mod/utils/discord'
 import { getErrorStack } from '@revenge-mod/utils/error'
 import { deleteJsonStorageForPlugin } from '~plugins/preinit/api/json-storage'
 import PluginClearDataConfirmationAlert from '../components/PluginClearDataConfirmationAlert'
@@ -238,15 +237,9 @@ export function showPluginRelinkAlert(
     )
 }
 
-const CircleXIconComponent = lookupGeneratedIconComponent(
-    'CircleXIcon',
-    'CircleXIcon-primary',
-    'CircleXIcon-secondary',
-)!
-
-export function showErrorToast(message: string) {
-    ToastActionCreators.open('REVENGE_REPOSITORIES_ERROR', {
+export function showErrorToast(message: string, key: string) {
+    ToastActionCreators.open(`REVENGE_PLUGINS_ERROR:${key}`, {
         text: message,
-        icon: CircleXIconComponent,
+        variant: 'critical',
     })
 }

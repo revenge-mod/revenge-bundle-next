@@ -13,7 +13,12 @@ import {
 } from 'react'
 import { ScrollView, View } from 'react-native'
 import { showErrorToast } from '../utils/alerts'
-import { findRepoListing, pickChannel, planAll } from '../utils/repos'
+import {
+    findRepoListing,
+    handlePotentialPlanResolveError,
+    pickChannel,
+    planAll,
+} from '../utils/repos'
 import { formatBytes, messageOf } from '../utils/strings'
 import { describeIssue } from '../utils/updates'
 import PluginInstallConfirmAlert from './PluginInstallConfirmAlert'
@@ -134,6 +139,7 @@ function PluginPlanConfirmAlert({
                 if (replanned.warnings.length)
                     showErrorToast(
                         replanned.warnings.map(describeIssue).join('\n'),
+                        'PLAN_WARNINGS',
                     )
 
                 setState({
@@ -145,7 +151,7 @@ function PluginPlanConfirmAlert({
                 if (!replanned.actions.some(a => a.id === id))
                     setEditingId(null)
             } catch (e) {
-                showErrorToast(messageOf(e))
+                handlePotentialPlanResolveError(e)
             } finally {
                 setBusy(false)
             }
@@ -248,7 +254,7 @@ function PlanTargetPage() {
         setListing(null)
         findRepoListing(action.repo, item.id).then(
             found => !stale && setListing(found ?? null),
-            e => showErrorToast(messageOf(e)),
+            e => showErrorToast(messageOf(e), 'LISTING_ERROR'),
         )
         return () => {
             stale = true
@@ -312,7 +318,7 @@ function PlanTargetPage() {
                     : { repo: url },
             )
         } catch (e) {
-            showErrorToast(messageOf(e))
+            showErrorToast(messageOf(e), 'RETARGET_ERROR')
         }
     }
 
