@@ -2,7 +2,6 @@ import { lookupModule, lookupModules } from '@revenge-mod/modules/finders'
 import {
     anyOf,
     withDependencies,
-    withoutProps,
     withProps,
 } from '@revenge-mod/modules/finders/filters'
 import { getModuleDependencies } from '@revenge-mod/modules/metro/utils'
@@ -126,27 +125,19 @@ export let [ToastActionCreators, ToastActionCreatorsModuleId]: [
                             ),
                         ),
                         // TODO: Remove when stable > 350204
-                        anyOf(
-                            // [useToastStore (+1), DesignSystemsNotificationComponents, toManaToast, Dispatcher, ImportTracker]
-                            withDependencies(
-                                ordered([
-                                    // useToastStore: [ImportTracker, +1]
-                                    relative.withDependencies(
-                                        [ImportTrackerModuleId, relative(1)],
-                                        1,
-                                    ),
-                                    // toManaToast: [+1, ImportTracker]
-                                    [relative(1), ImportTrackerModuleId],
-                                    DispatcherModuleId,
-                                    ImportTrackerModuleId,
-                                ]),
-                            ),
-                            // TODO: Remove when stable > 349205
-                            // Many other modules share the same dependencies, the second yielded should be the correct module.
-                            withDependencies([
+                        // [useToastStore (+1), DesignSystemsNotificationComponents, toManaToast, Dispatcher, ImportTracker]
+                        withDependencies(
+                            ordered([
+                                // useToastStore: [ImportTracker, +1]
+                                relative.withDependencies(
+                                    [ImportTrackerModuleId, relative(1)],
+                                    1,
+                                ),
+                                // toManaToast: [+1, ImportTracker]
+                                [relative(1), ImportTrackerModuleId],
                                 DispatcherModuleId,
                                 ImportTrackerModuleId,
-                            ]).and(withoutProps('init')),
+                            ]),
                         ),
                     ),
                 )

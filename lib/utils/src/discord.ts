@@ -3,7 +3,6 @@ import { ImportTrackerModuleId } from '@revenge-mod/discord/common/import-tracke
 import { TokensModuleId } from '@revenge-mod/discord/common/tokens'
 import { lookupModule } from '@revenge-mod/modules/finders'
 import {
-    anyOf,
     createFilterGenerator,
     withDependencies,
 } from '@revenge-mod/modules/finders/filters'
@@ -56,21 +55,15 @@ function depsFilterFor(names: string[]) {
 
     const [firstMid, ...restMids] = [...mids].sort((a, b) => a - b)
 
-    return (depsFilters[key] = anyOf(
-        withDependencies(
-            last([
-                TokensModuleId,
-                firstMid,
-                // BaseIconImage
-                null,
-                ...restMids,
-                ImportTrackerModuleId,
-            ]),
-        ),
-        // TODO: Remove when stable > 349205
-        withDependencies(
-            last([TokensModuleId, null, ...mids, ImportTrackerModuleId]),
-        ),
+    return (depsFilters[key] = withDependencies(
+        last([
+            TokensModuleId,
+            firstMid,
+            // BaseIconImage
+            null,
+            ...restMids,
+            ImportTrackerModuleId,
+        ]),
     ))
 }
 
