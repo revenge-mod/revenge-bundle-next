@@ -12,7 +12,7 @@ import type { AnyPlugin } from '../_internal'
 export const pRootNodes = new Set<AnyPlugin>()
 export const pLeafOrSingleNodes = new Set<AnyPlugin>()
 
-// Visited non-leaf nodes
+// Plugins being ordered, guarding against cycles
 const visited = new Set<AnyPlugin>()
 
 // Sorted plugins to be started
@@ -48,28 +48,26 @@ export function computePendingNodes() {
 
     for (const plugin of apis) pListOrdered.unshift(plugin)
 
-    const stack = [...pRootNodes]
-    while (stack.length) {
-        const plugin = stack.shift()!
-
-        if (visited.has(plugin)) {
-            pListOrdered.push(plugin)
-            continue
-        }
-
-        if (hasGraphableDependencies(plugin)) {
-            for (const dep of getPluginDependencies(plugin, false))
-                if (!pLeafOrSingleNodes.has(dep)) stack.push(dep)
-
-            stack.push(plugin)
-            visited.add(plugin)
-        } else pListOrdered.push(plugin)
-    }
+    // Visit the children first to prevent the parent from being added before its dependencies.
+    const ordered = new Set(pListOrdered)
+    for (const plugin of pRootNodes) orderAfterDependencies(plugin, ordered)
 
     pPending.clear()
     pLeafOrSingleNodes.clear()
     pRootNodes.clear()
     visited.clear()
+}
+
+function orderAfterDependencies(plugin: AnyPlugin, ordered: Set<AnyPlugin>) {
+    // Guards against cycles
+    if (ordered.has(plugin) || visited.has(plugin)) return
+    visited.add(plugin)
+
+    for (const dep of getPluginDependencies(plugin, false))
+        orderAfterDependencies(dep, ordered)
+
+    ordered.add(plugin)
+    pListOrdered.push(plugin)
 }
 
 export function resolvePluginGraph(plugin: AnyPlugin) {
