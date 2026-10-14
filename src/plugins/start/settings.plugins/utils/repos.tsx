@@ -96,9 +96,17 @@ export async function installPlugins(
 ): Promise<boolean> {
     try {
         const plan = await planAll(ids, targets)
-        if (!plan.actions.length) return true
+
         if (plan.warnings.length)
             showErrorToast(plan.warnings.map(describeIssue).join('\n'))
+
+        if (!plan.actions.length) {
+            showErrorToast(
+                'Plugins already installed, or no versions compatible.',
+            )
+
+            return true
+        }
 
         // Prevent circular imports
         const { showPluginPlanConfirmAlert } = await import(
