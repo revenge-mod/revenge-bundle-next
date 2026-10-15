@@ -178,7 +178,7 @@ export namespace DiscordModules {
             open(
                 key: string,
                 options: {
-                    text: string
+                    text: ReactNode
                     icon?:
                         | Components.BaseIconImage
                         | {
@@ -201,6 +201,7 @@ export namespace DiscordModules {
                     /** Discord semantic color token. */
                     secondaryIconColor?: any
                     variant?: 'default' | 'success' | 'critical'
+                    duration?: number
                 },
             ): void
             // TODO: Remove on 350204+
