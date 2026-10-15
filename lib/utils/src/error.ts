@@ -1,5 +1,12 @@
-export function getErrorStack(e: unknown) {
-    return e instanceof Error ? (e.stack ?? String(e)) : String(e)
+export function getErrorStack(e: unknown): string {
+    if (e instanceof Error) {
+        const stack = e.stack ?? String(e)
+        return e.cause
+            ? `${stack}\n\nCaused by: ${getErrorStack(e.cause)}`
+            : stack
+    } else {
+        return String(e)
+    }
 }
 
 export function getCurrentStack() {
