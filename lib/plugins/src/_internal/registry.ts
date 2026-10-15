@@ -13,7 +13,11 @@ import {
     stopPlugin,
 } from './lifecycles'
 import { completeInternalManifest, isEnabledByDefault } from './manifest'
-import { isPluginEnabled, isPluginStartedLate } from './predicates'
+import {
+    isPluginEnabled,
+    isPluginInternal,
+    isPluginStartedLate,
+} from './predicates'
 import { addPluginFlags } from './state'
 import * as store from './store'
 import type {
@@ -233,6 +237,9 @@ function index(plugin: AnyPlugin, meta: InternalPluginMeta) {
 }
 
 export function unregisterPlugin(plugin: AnyPlugin) {
+    pPending.delete(plugin)
+    pLeafOrSingleNodes.delete(plugin)
+    pApis.delete(plugin)
     pList.delete(plugin.manifest.id)
     store.removePlugin(plugin.manifest.id)
     pEmitter.emit('unregister', plugin)
