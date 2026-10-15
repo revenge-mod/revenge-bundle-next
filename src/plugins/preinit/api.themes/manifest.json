@@ -5,7 +5,7 @@
   "author": "Revenge",
   "icon": "PaintPaletteIcon",
   "version": "0.0.0",
-  "enabledByDefault": false,
+  "enabledByDefault": true,
   "defaultSource": true,
   "api": true
 }
