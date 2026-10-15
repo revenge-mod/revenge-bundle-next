@@ -1,0 +1,11 @@
+{
+  "id": "revenge.api.themes",
+  "name": "Themes API",
+  "description": "This feature requires an update to be installed.",
+  "author": "Revenge",
+  "icon": "PaintPaletteIcon",
+  "version": "0.0.0",
+  "enabledByDefault": false,
+  "defaultSource": true,
+  "api": true
+}
