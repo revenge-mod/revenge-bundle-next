@@ -236,12 +236,17 @@ function index(plugin: AnyPlugin, meta: InternalPluginMeta) {
     pEmitter.emit('register', plugin, meta.options)
 }
 
-export function unregisterPlugin(plugin: AnyPlugin) {
+/**
+ * Removes a registered plugin.
+ *
+ * @param keepFlags Retains slot flags. Ysed fior when an installed copy replaces a bundled stub with the same ID.
+ */
+export function unregisterPlugin(plugin: AnyPlugin, keepFlags = false) {
     pPending.delete(plugin)
     pLeafOrSingleNodes.delete(plugin)
     pApis.delete(plugin)
     pList.delete(plugin.manifest.id)
-    store.removePlugin(plugin.manifest.id)
+    if (!keepFlags) store.removePlugin(plugin.manifest.id)
     pEmitter.emit('unregister', plugin)
 }
 

@@ -167,8 +167,8 @@ export function registerExternalPlugins() {
                     continue
                 }
 
-                // This is a stub, so we'll just register it as if it were an external plugin.
-                unregisterPlugin(known)
+                // This is a stub, so we'll just register it as if it were an external plugin and keep its existing flags.
+                unregisterPlugin(known, true)
             }
 
             registerExternalPlugin(external)
