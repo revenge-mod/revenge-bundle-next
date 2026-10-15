@@ -113,6 +113,11 @@ function register<O extends PluginApiExtensionsOptions>(
     const existing = pList.get(manifest.id)
     if (existing) {
         const meta = getInternalPluginMeta(existing)!
+        // Later-stage bundled plugins register after native's list is read,
+        // so an installed copy may have replaced this one already.
+        if (iflags & InternalPluginFlags.Internal && !isPluginInternal(meta))
+            return manifest.id
+
         if (meta.attached)
             throw new Error(`Plugin "${manifest.id}" already attached`)
 

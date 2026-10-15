@@ -161,8 +161,14 @@ export function registerExternalPlugins() {
             // JS internal plugins are already registered before we grab native descriptors
             // so we only apply the descriptors instead of re-registering them.
             if (known) {
-                applyNativeDescriptor(known, external)
-                continue
+                // If this is really an internal plugin and not a stub.
+                if (external.internal) {
+                    applyNativeDescriptor(known, external)
+                    continue
+                }
+
+                // This is a stub, so we'll just register it as if it were an external plugin.
+                unregisterPlugin(known)
             }
 
             registerExternalPlugin(external)
