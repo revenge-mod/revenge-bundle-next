@@ -21,6 +21,7 @@ import {
     getPluginDependents,
 } from './dependencies'
 import { computePendingNodes, pListOrdered, pPending } from './dependency-graph'
+import { pEmitter } from './emitter'
 import {
     formatPluginSystemErrorPayload,
     isPluginSystemErrorPayload,
@@ -215,6 +216,10 @@ export async function runPluginLate(plugin: AnyPlugin) {
         await callPluginSystemMethod('revenge.plugins.restart', [
             plugin.manifest.id,
         ])
+
+        // Native starts over with a new scope, so its earlier errors are gone.
+        getInternalPluginMeta(plugin).nativeErrors = Object.freeze([])
+        pEmitter.emit('metadataUpdate', plugin)
 
         await preInitPlugin(plugin)
         await initPlugin(plugin)
