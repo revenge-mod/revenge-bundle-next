@@ -14,7 +14,7 @@ export function useIsFirstRender() {
 }
 
 export function useReRender() {
-    const [, forceUpdate] = useReducer(x => ~x, 0)
+    const [, forceUpdate] = useReducer(x => x + 1, 0)
     return forceUpdate
 }
 
