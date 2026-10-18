@@ -12,7 +12,6 @@ import {
     isPluginPendingReload,
     isPluginPendingUpdate,
     isPluginStarted,
-    isPluginStartedLate,
     isPluginStopped,
 } from '@revenge-mod/plugins/_'
 import {
@@ -155,10 +154,7 @@ export const PluginInfoStatusIcon = memo(function PluginInfoStatusIcon({
         {
             key: 'stopped',
             text: 'This plugin is stopped.',
-            condition:
-                isPluginEnabled(plugin) &&
-                !isPluginStartedLate(plugin) &&
-                isPluginStopped(plugin),
+            condition: isPluginEnabled(plugin) && isPluginStopped(plugin),
             source: getAssetIdByName('HandRequestSpeakIcon')!,
             extraStyles: [styles_.iconWarning],
         },
