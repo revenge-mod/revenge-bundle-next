@@ -9,23 +9,26 @@ import {
 } from '@revenge-mod/modules/finders/filters'
 import { Linking } from 'react-native'
 import { showErrorToast } from './alerts'
+import type { DiscordModules } from '@revenge-mod/discord/types'
 
 const { ordered, relative } = withDependencies
 
-type ShowUserProfileActionSheet = (props: { userId: string }) => void
+type ShowUserProfileActionSheet = (
+    props: { userId: string },
+    stackingBehavior?: Parameters<
+        DiscordModules.Actions.ActionSheetActionCreators['openLazy']
+    >[3],
+) => void
 
 interface LinkHandler {
     handleClick(props: { href: string; onConfirm: () => void }): void
 }
 
-let showUserProfileActionSheet: ShowUserProfileActionSheet | undefined
-let LinkHandler: LinkHandler | undefined
-
 const getStoreModuleId = (name: string) => lookupModule(withStoreName(name))[1]
 
 /** Opens the Discord profile sheet of a user. */
 export function openUserProfile(userId: string) {
-    showUserProfileActionSheet ??= lookupModule(
+    const [showUserProfileActionSheet] = lookupModule(
         withName<ShowUserProfileActionSheet>('showUserProfileActionSheet').and(
             withDependencies(
                 ordered([
@@ -38,9 +41,10 @@ export function openUserProfile(userId: string) {
                 ]),
             ),
         ),
-    )[0]
+    )
 
-    if (showUserProfileActionSheet) showUserProfileActionSheet({ userId })
+    if (showUserProfileActionSheet)
+        showUserProfileActionSheet({ userId }, 'stack')
     else showErrorToast('Could not open user profile', 'OPEN_PROFILE_ERROR')
 }
 
@@ -48,7 +52,7 @@ export function openUserProfile(userId: string) {
 export function openLink(href: string) {
     const open = () => Linking.openURL(href)
 
-    LinkHandler ??= lookupModule(
+    const [LinkHandler] = lookupModule(
         withProps<LinkHandler>('handleClick').and(
             withDependencies(
                 ordered([
@@ -61,7 +65,7 @@ export function openLink(href: string) {
                 ]),
             ),
         ),
-    )[0]
+    )
 
     if (LinkHandler) LinkHandler.handleClick({ href, onConfirm: open })
     else open()
