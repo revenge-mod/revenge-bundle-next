@@ -15,6 +15,7 @@ import manifest from './manifest.json'
 import { addDefaultRepoIfNeeded } from './repos'
 import defer * as BrowseScreen from './screens/RevengePluginsBrowseSettingScreen'
 import defer * as PluginsScreen from './screens/RevengePluginsSettingScreen'
+import { openPluginSettings } from './utils/alerts'
 import { showPluginOptionsActionSheet } from './utils/sheets'
 import type { JsonStorage } from '@revenge-mod/json-storage'
 import type { PluginApi } from '@revenge-mod/plugins/types'
@@ -50,6 +51,20 @@ registerInternalPlugin<{ jsonStorage: Storage }>(manifest, {
                     const target = pList.get(id)
                     if (!target) throw new Error(`Plugin not installed: ${id}`)
                     showPluginOptionsActionSheet(target)
+                },
+                hasPluginSettings(id) {
+                    const target = pList.get(id)
+                    if (!target) return false
+
+                    return Boolean(target.SettingsComponent)
+                },
+                openPluginSettings(id) {
+                    if (!this.hasPluginSettings(id))
+                        throw new Error(
+                            `Plugin not installed or has no settings: ${id}`,
+                        )
+
+                    openPluginSettings(pList.get(id)!)
                 },
                 claimPlugins(match) {
                     const unclaim = claimPlugins(match)

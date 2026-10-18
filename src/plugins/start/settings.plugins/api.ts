@@ -7,6 +7,10 @@ import type { ImageStyle, StyleProp } from 'react-native'
 export interface PluginSettingsApi {
     /** Opens the options sheet of the installed plugin with ID {@link id}, matching the Plugins page. Throws if uninstalled. */
     showPluginOptionsSheet(id: string): void
+    /** Opens the settings page of the installed plugin with ID {@link id}, matching the Plugins page. Throws if uninstalled. */
+    openPluginSettings(id: string): void
+    /** Returns whether the installed plugin with ID {@link id} has a settings page. Throws if uninstalled. */
+    hasPluginSettings(id: string): boolean
     /**
      * Moves plugins matching {@link match} off the Plugins and Browse Plugins pages, whether installed or not,
      * for caller pages rendering {@link PluginsPage} and {@link BrowsePage}.
