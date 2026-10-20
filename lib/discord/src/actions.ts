@@ -29,27 +29,50 @@ export let [ActionSheetActionCreators, ActionSheetActionCreatorsModuleId]: [
                 'hideActionSheet',
                 'openLazy',
             )
-                // TODO: Redo this on 350204+
                 .and(
-                    withDependencies(
-                        ordered([
-                            ReactModuleId,
-                            ReactJSXRuntimeModuleId,
-                            relative.withDependencies(
+                    anyOf(
+                        // [?, React, +1, JSXRuntime, +2, +3, ?, Dispatcher, ImportTracker] as of 352202
+                        withDependencies(
+                            ordered([
+                                ReactModuleId,
+                                // [?, Dispatcher, ImportTracker]
+                                relative.withDependencies(
+                                    ordered([
+                                        DispatcherModuleId,
+                                        ImportTrackerModuleId,
+                                    ]),
+                                    1,
+                                ),
+                                ReactJSXRuntimeModuleId,
+                                relative(2),
+                                relative(3),
+                                DispatcherModuleId,
+                                ImportTrackerModuleId,
+                            ]),
+                        ),
+                        // TODO: Remove when stable >= 352202
+                        withDependencies(
+                            ordered([
+                                ReactModuleId,
+                                ReactJSXRuntimeModuleId,
+                                relative.withDependencies(
+                                    ordered([
+                                        relative(2, true),
+                                        relative(3, true),
+                                        ImportTrackerModuleId,
+                                    ]),
+                                    1,
+                                ),
+                                relative(2),
+                            ]),
+                        ).and(
+                            withDependencies(
                                 ordered([
-                                    relative(2, true),
-                                    relative(3, true),
+                                    DispatcherModuleId,
                                     ImportTrackerModuleId,
                                 ]),
-                                1,
                             ),
-                            relative(2),
-                        ]),
-                    ),
-                )
-                .and(
-                    withDependencies(
-                        ordered([DispatcherModuleId, ImportTrackerModuleId]),
+                        ),
                     ),
                 )
                 .keyAs('revenge.discord.actions.ActionSheetActionCreators'),
