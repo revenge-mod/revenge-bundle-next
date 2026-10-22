@@ -18,6 +18,7 @@ import type { PluginRef } from '../utils/repos'
 const {
     BottomSheet,
     SegmentedControlPages,
+    Stack,
     Tabs,
     Text,
     createStyles,
@@ -101,17 +102,29 @@ export default function PluginRefPickerActionSheet({
                 page: (
                     <RefPage empty="No channels in this repository.">
                         {channels.length > 0 && (
-                            <ChannelRadioGroup
-                                listing={listing}
-                                value={
-                                    selected.type === 'channel'
-                                        ? selected.channel
-                                        : null
-                                }
-                                onChange={channel =>
-                                    select({ type: 'channel', channel })
-                                }
-                            />
+                            <Stack spacing={16}>
+                                {[true, false].map(compatible => (
+                                    <ChannelRadioGroup
+                                        key={String(compatible)}
+                                        compatible={compatible}
+                                        listing={listing}
+                                        value={
+                                            selected.type === 'channel' &&
+                                            Boolean(selected.compatible) ===
+                                                compatible
+                                                ? selected.channel
+                                                : null
+                                        }
+                                        onChange={channel =>
+                                            select({
+                                                type: 'channel',
+                                                channel,
+                                                compatible,
+                                            })
+                                        }
+                                    />
+                                ))}
+                            </Stack>
                         )}
                     </RefPage>
                 ),

@@ -545,6 +545,7 @@ export const BrowsePluginCard = memo(function BrowsePluginCard({
                         install(entry.repoUrl, {
                             type: 'channel',
                             channel: entry.channel,
+                            compatible: true,
                         })
                     }
                     onLongPress={showSheet}

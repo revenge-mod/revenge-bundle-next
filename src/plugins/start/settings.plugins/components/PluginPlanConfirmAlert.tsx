@@ -209,6 +209,12 @@ function PluginPlanConfirmAlert({
                                 ? `${roots[0]!.name} requires extra plugins. Uncheck any optional ones you don't need.`
                                 : `${roots[0]!.name} requires extra plugins.`
                             : undefined,
+                        ...items
+                            .filter(item => item.action.channelVersion)
+                            .map(
+                                ({ name, action }) =>
+                                    `${name} v${action.channelVersion} doesn't work with your setup, so v${action.version} will be installed instead.`,
+                            ),
                         note,
                     ]
                         .filter(Boolean)

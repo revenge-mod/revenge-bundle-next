@@ -149,6 +149,12 @@ export function updateNotesOf(
         if (issue.type !== 'breaks' && issue.type !== 'conflict')
             notes.push(warn(issue))
 
+    if (update.channelVersion)
+        notes.push({
+            text: `v${update.channelVersion} on ${update.channel} can't be used with your setup, so this updates to v${update.available}.`,
+            warning: false,
+        })
+
     for (const action of update.includes)
         notes.push({
             text: action.replaces

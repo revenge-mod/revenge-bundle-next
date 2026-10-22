@@ -81,6 +81,7 @@ export function ChannelRadioGroup({
     onChange,
     disabled,
     constraints,
+    compatible,
 }: {
     listing: RepoPluginListing
     /** Followed channel, `null` when following a version. */
@@ -89,11 +90,17 @@ export function ChannelRadioGroup({
     onChange: (channel: string) => void
     disabled?: boolean
     constraints?: VersionConstraints
+    /** Lists channels to install the newest compatible version of, instead of exactly what they point to. */
+    compatible?: boolean
 }) {
     return (
         <TableRadioGroup
-            title="Follow a channel"
-            description="Updates install automatically as the channel moves."
+            title={compatible ? 'Newest compatible' : 'Follow a channel'}
+            description={
+                compatible
+                    ? 'Installs the newest version of the channel that works with your setup. Updates install automatically as the channel moves.'
+                    : 'Installs exactly what the channel points to. Updates install automatically as the channel moves.'
+            }
             value={value}
             onChange={(channel: string | null) => {
                 if (channel && channel !== value) onChange(channel)
@@ -105,7 +112,7 @@ export function ChannelRadioGroup({
                     label={channel}
                     subLabel={describeVersion(
                         version,
-                        `v${version}`,
+                        compatible ? `Up to v${version}` : `v${version}`,
                         constraints,
                     )}
                     value={channel}

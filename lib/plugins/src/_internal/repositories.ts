@@ -145,6 +145,8 @@ export interface InstallPlanAction {
     hold: boolean | null
     /** The installed version being replaced, or `null` for fresh installs. */
     replaces: string | null
+    /** What {@link channel} points to when it can't install and {@link version} fell back below it. */
+    channelVersion: string | null
     /** Planned actions that pulled this plugin in. Empty for the requested plugin. */
     dependents: {
         id: string
@@ -228,6 +230,8 @@ export interface PluginUpdate {
     installed: string
     available: string
     channel: string
+    /** What {@link channel} points to when it can't install and {@link available} fell back below it. */
+    channelVersion: string | null
     repo: string
     /** Artifact size of {@link available} in bytes. */
     size: number
@@ -253,10 +257,12 @@ export interface PlanTarget {
     /** Resolve from this repository instead of its provenance or the priority order. */
     repo?: string
     /**
-     * Channel to follow.
+     * Channel to follow. Installs exactly what it points to, unless {@link compatible}.
      * @default The installed plugin's current channel, or `latest`.
      */
     channel?: string
+    /** Falls back to the newest older version that installs when what {@link channel} points to can't. */
+    compatible?: boolean
     /** Install exactly this version and hold it. Overrides {@link channel}. */
     version?: string
 }

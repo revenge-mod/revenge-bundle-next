@@ -52,7 +52,12 @@ export function pickChannel(listing: RepoPluginListing, preferred?: string) {
 
 /** How a plugin should update. */
 export type PluginRef =
-    | { type: 'channel'; channel: string }
+    | {
+          type: 'channel'
+          channel: string
+          /** Falls back to the newest version that installs when the channel's can't. */
+          compatible?: boolean
+      }
     | { type: 'version'; version: string }
 
 /** A repository serving a plugin. */
@@ -66,7 +71,7 @@ export interface RepoOffer {
 export const planTargetOf = (repo: string, ref: PluginRef): PlanTarget =>
     ref.type === 'version'
         ? { repo, version: ref.version }
-        : { repo, channel: ref.channel }
+        : { repo, channel: ref.channel, compatible: ref.compatible }
 
 /**
  * Installs a plugin from {@link repo} following {@link ref}.
@@ -205,7 +210,12 @@ export function pluginRefOf(plugin: AnyPlugin): PluginRef {
               // Pending install is newer than the running manifest
               version: pendingVersion ?? formatVersion(plugin.manifest.version),
           }
-        : { type: 'channel', channel: source?.channel ?? 'latest' }
+        : // Updates fall back like compatible installs
+          {
+              type: 'channel',
+              channel: source?.channel ?? 'latest',
+              compatible: true,
+          }
 }
 
 /** Returns the closest {@link ref} in another listing. Missing versions fall back to a channel pointer. */
@@ -214,14 +224,14 @@ export function retargetPluginRef(
     listing: RepoPluginListing,
 ): PluginRef {
     if (ref.type === 'channel')
-        return { type: 'channel', channel: pickChannel(listing, ref.channel) }
+        return { ...ref, channel: pickChannel(listing, ref.channel) }
 
     if (ref.version in listing.versions) return ref
 
     const version = versionOfChannel(listing, pickChannel(listing))
     return version
         ? { type: 'version', version }
-        : { type: 'channel', channel: pickChannel(listing) }
+        : { type: 'channel', channel: pickChannel(listing), compatible: true }
 }
 
 /** The version {@link channel} points to, or the newest when the listing doesn't have it. */

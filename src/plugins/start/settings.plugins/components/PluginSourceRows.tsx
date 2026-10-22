@@ -35,7 +35,12 @@ export function RefPickerRow({
     /** Omit when there is nothing to pick. */
     onPress?: () => void
 }) {
-    const channel = pluginRef?.type === 'channel' ? pluginRef.channel : null
+    const channel =
+        pluginRef?.type === 'channel'
+            ? pluginRef.compatible
+                ? pluginRef.channel
+                : `${pluginRef.channel} (exact)`
+            : null
 
     return (
         <TableRow

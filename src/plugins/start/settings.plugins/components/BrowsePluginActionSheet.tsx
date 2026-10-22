@@ -39,6 +39,7 @@ export default function BrowsePluginActionSheet({
     const [ref, setRef] = useState<PluginRef>({
         type: 'channel',
         channel: entry.channel,
+        compatible: true,
     })
 
     const { listing } = offer
@@ -94,7 +95,11 @@ export default function BrowsePluginActionSheet({
                     />
                     <RefPickerRow
                         pluginRef={ref}
-                        version={`v${version}`}
+                        version={
+                            ref.type === 'channel' && ref.compatible
+                                ? `up to v${version}`
+                                : `v${version}`
+                        }
                         onPress={() =>
                             openPluginRefPickerActionSheet({
                                 id,
