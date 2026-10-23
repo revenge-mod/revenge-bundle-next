@@ -448,6 +448,9 @@ export const InstalledPluginCard = memo(function InstalledPluginCard({
                             }}
                         >
                             <IconButton
+                                // Remount since Discord's IconButton doesn't seem to set its appearance reliably
+                                // Sometimes it appears disabled even though it's clickable
+                                key={started ? 'started' : 'stopped'}
                                 ref={settingsRef}
                                 size="sm"
                                 variant="secondary"
