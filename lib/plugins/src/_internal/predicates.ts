@@ -28,7 +28,10 @@ export function hasPluginStub({ hasStub }: InternalPluginMeta): boolean {
 }
 
 export function isPluginErrored(plugin: AnyPlugin): boolean {
-    return plugin.errors.length > 0
+    return (
+        plugin.errors.length > 0 ||
+        getInternalPluginMeta(plugin).nativeErrors.length > 0
+    )
 }
 
 /**
