@@ -228,6 +228,30 @@ describe('Patcher', () => {
             expect(result).toBe('original')
         })
 
+        test('should call original after unpatching the first hook', () => {
+            const unpatch1 = instead(
+                obj,
+                'method',
+                (_args, original) => `first-${original()}`,
+            )
+            instead(obj, 'method', (_args, original) => `second-${original()}`)
+
+            unpatch1()
+            expect(obj.method()).toBe('second-original')
+
+            instead(obj, 'method', (_args, original) => `third-${original()}`)
+            expect(obj.method()).toBe('third-second-original')
+        })
+
+        test('should call original when a later hook has the lowest priority', () => {
+            instead(obj, 'method', (_args, original) => `first-${original()}`)
+            instead(obj, 'method', (_args, original) => `low-${original()}`, {
+                priority: -1,
+            })
+
+            expect(obj.method()).toBe('first-low-original')
+        })
+
         test('should not crash when unpatch is called multiple times', () => {
             const replacement = vi.fn(() => 'replaced')
             const unpatch = instead(obj, 'method', replacement)

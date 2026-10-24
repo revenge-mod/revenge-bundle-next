@@ -141,6 +141,9 @@ export function instead<Key extends PropertyKey, Value extends UnknownFunction>(
     hookNode.prev = undefined
 
     if (state?.parent === parent && state.key === key) {
+        // We already patched this function. Point to the actual target, not the proxy.
+        hookNode.target = state.target
+
         let current = state.instead
         let prev: InsteadHookNode<Value> | undefined
 
