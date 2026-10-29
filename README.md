@@ -32,6 +32,10 @@
 
 Revenge aims to be a lightweight and lightning-fast client modification for Discord Android, while being user-friendly and developer-first. It provides a powerful framework, allowing developers to make add-ons with ease. The sky is the limit!
 
+> [!IMPORTANT]  
+> **Revenge Next is now discontinued.** Thank you to all the people who've tried this out.  
+> Works of Revenge Next have now been moved to [Valenced](https://github.com/Valenced/valenced). A brand new Discord mobile client modification.
+
 ## ❓ About
 
 This repository releases Hermes Bytecode to be executed on official Discord Android clients. The bytecode is not standalone and is meant to be used with official bootstrappers listed in the [⬇️ Download](#️-download) section.
